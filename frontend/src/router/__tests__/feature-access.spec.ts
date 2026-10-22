@@ -210,3 +210,49 @@ describe('subscription route guard (opt-out flag)', () => {
     expect(next).toHaveBeenCalledWith('/admin/dashboard')
   })
 })
+
+// Stage 1 直接调用正式 beforeEach，确认布局分流不会改变访问边界。
+describe('user console existing access boundaries', () => {
+  beforeEach(() => {
+    authStore.isAuthenticated = true
+    authStore.isAdmin = false
+    authStore.isSimpleMode = false
+    appStore.backendModeEnabled = false
+    appStore.publicSettingsLoaded = true
+  })
+
+  it.each(['/dashboard', '/usage', '/monitor', '/keys', '/redeem', '/profile'])('keeps %s authenticated', async path => {
+    authStore.isAuthenticated = false
+    const { navigation, next } = runGuard({ requiresAuth: true, requiresAdmin: false }, path)
+    await navigation
+    expect(next).toHaveBeenCalledWith({ path: '/login', query: { redirect: path } })
+  })
+
+  it('does not let a normal user enter admin pages', async () => {
+    const { navigation, next } = runGuard({ requiresAdmin: true }, '/admin/users')
+    await navigation
+    expect(next).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it('keeps wallet direct access blocked in simple mode', async () => {
+    authStore.isSimpleMode = true
+    const { navigation, next } = runGuard({ requiresAdmin: false }, '/redeem')
+    await navigation
+    expect(next).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it('keeps backend mode blocking non-admin user pages', async () => {
+    appStore.backendModeEnabled = true
+    const { navigation, next } = runGuard({ requiresAdmin: false }, '/keys')
+    await navigation
+    expect(next).toHaveBeenCalledWith('/login')
+  })
+
+  it('keeps the existing admin exception for shared pages in backend mode', async () => {
+    appStore.backendModeEnabled = true
+    authStore.isAdmin = true
+    const { navigation, next } = runGuard({ requiresAdmin: false }, '/keys')
+    await navigation
+    expect(next).toHaveBeenCalledWith()
+  })
+})

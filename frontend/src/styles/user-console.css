@@ -1,0 +1,86 @@
+/* 仅用户外壳使用这些变量。不得向 :root、body 或 .dark 写入用户主题。 */
+.user-console {
+  --uc-bg: #070c12;
+  --uc-panel: #101d29;
+  --uc-border: #2d485c;
+  --uc-muted: #a7b9ce;
+  --uc-text: #e9f1f8;
+  --uc-cyan: #19e5d2;
+  min-height: 100vh;
+  color: var(--uc-text);
+  background: radial-gradient(ellipse at 97% 90%, #0a31571c, transparent 74%), linear-gradient(115deg, var(--uc-bg), #080e15 62%, #07101b);
+}
+.user-console .uc-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 72px;
+  padding: 0 28px;
+  border-bottom: 1px solid #58799d38;
+  background: #080e15f5;
+}
+.user-console .uc-nav { grid-column: 2; display: flex; align-self: stretch; gap: 10px; }
+.user-console .uc-nav-link {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  padding: 0 15px; min-height: 72px; color: var(--uc-muted); font-size: 15px; font-weight: 500; white-space: nowrap;
+}
+.user-console .uc-nav-link:hover, .user-console .uc-active { color: var(--uc-cyan); }
+.user-console .uc-active { font-weight: 700; text-shadow: 0 0 16px #10e8da52; }
+.user-console .uc-active::after {
+  content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 3px;
+  border-radius: 5px; background: var(--uc-cyan); box-shadow: 0 0 16px 2px #0fecdb99;
+}
+.user-console .uc-actions { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.user-console .uc-announcements button { min-width: 44px; min-height: 44px; color: var(--uc-muted); }
+.user-console .uc-announcements button:hover { background: #518fbc21; }
+.user-console .uc-balance {
+  display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px;
+  padding: 8px 12px; border: 1px solid #1f4648; border-radius: 9px; background: #0c2026;
+  color: #2be8d2; font-size: 14px; font-weight: 700; white-space: nowrap;
+}
+.user-console .uc-account { display: flex; align-items: center; gap: 9px; min-height: 44px; color: #d9e6ef; padding: 4px; border-radius: 8px; }
+.user-console .uc-avatar { width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, #058778, #17baa9); display: grid; place-items: center; font-size: 14px; font-weight: 700; color: #dbfef6; }
+.user-console .uc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.user-console .uc-account-text { display: flex; flex-direction: column; text-align: left; line-height: 1.3; max-width: 96px; }
+.user-console .uc-account-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.user-console .uc-account-text small { color: #8da5b7; font-size: 12px; }
+.user-console .uc-popover-anchor { position: relative; }
+.user-console .uc-popover { position: absolute; right: 0; top: calc(100% + 10px); width: 270px; max-width: calc(100vw - 32px); border: 1px solid var(--uc-border); border-radius: 10px; padding: 12px; background: var(--uc-panel); color: var(--uc-text); box-shadow: 0 15px 40px #0009; font-size: 13px; overflow-wrap: anywhere; }
+.user-console .uc-balance-details p { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; color: var(--uc-muted); }
+.user-console .uc-balance-details strong { color: var(--uc-cyan); }
+.user-console .uc-identity { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 12px; border-bottom: 1px solid var(--uc-border); }
+.user-console .uc-identity small, .user-console .uc-support { color: var(--uc-muted); }
+.user-console .uc-support { padding: 10px 8px; }
+.user-console .uc-account-menu > a, .user-console .uc-account-menu > button { display: flex; align-items: center; min-height: 44px; width: 100%; border-radius: 6px; padding: 8px; text-align: left; }
+.user-console .uc-account-menu > a:hover, .user-console .uc-account-menu > button:hover { background: #203242; }
+.user-console .uc-logout { color: #ff9aaa; }
+.user-console .uc-workspace { width: 100%; margin: 0 auto; padding: 26px 30px 75px; min-height: calc(100vh - 72px); }
+/* 旧业务内容只限定容器宽度，保留原有组件外观、弹层及全局 Toast 主题。 */
+.user-console .uc-content { min-width: 0; }
+.user-console .uc-tabs { display: flex; gap: 22px; border-bottom: 1px solid #7b9ec738; margin-bottom: 22px; }
+.user-console .uc-tabs a { position: relative; display: flex; align-items: center; min-height: 60px; padding: 0 20px; color: #b5c4d1; font-size: 15px; }
+.user-console .uc-tabs a[aria-current='page'] { color: var(--uc-cyan); font-weight: 700; }
+.user-console .uc-tabs a[aria-current='page']::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--uc-cyan); box-shadow: 0 0 14px #15e5dacc; }
+.user-console :is(.uc-nav-link, .uc-actions button, .uc-popover a, .uc-tabs a, .uc-skip):focus-visible { outline: 2px solid var(--uc-cyan); outline-offset: 3px; }
+.user-console .uc-skip { position: fixed; top: 4px; left: 12px; z-index: 100; transform: translateY(-150%); padding: 10px; background: var(--uc-panel); color: var(--uc-cyan); }
+.user-console .uc-skip:focus { transform: translateY(0); }
+@media (max-width: 1279px) {
+  .user-console .uc-header { grid-template-columns: minmax(0, 1fr) auto; padding: 0 20px; }
+  .user-console .uc-nav { grid-column: 1; justify-self: center; gap: 4px; }
+  .user-console .uc-actions { grid-column: 2; gap: 8px; }
+  .user-console .uc-account-text { display: none; }
+}
+@media (max-width: 800px) {
+  .user-console .uc-header { display: flex; flex-direction: column-reverse; align-items: stretch; padding: 0 12px; }
+  .user-console .uc-actions { align-self: flex-end; min-height: 56px; }
+  .user-console .uc-nav { display: flex; justify-content: center; gap: 0; width: 100%; }
+  .user-console .uc-nav-link { flex: 1 1 0; padding: 0 6px; min-height: 52px; font-size: 13px; }
+  .user-console .uc-nav-link::after { left: 6px; right: 6px; }
+  .user-console .uc-workspace { padding: 16px 12px 48px; }
+  .user-console .uc-tabs { gap: 8px; }
+  .user-console .uc-tabs a { padding: 0 14px; min-height: 52px; }
+  .user-console .uc-balance-details { right: -52px; }
+}
