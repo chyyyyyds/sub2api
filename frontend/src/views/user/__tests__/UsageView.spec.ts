@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import UsageView from '../UsageView.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
-import DateRangePicker from '@/components/common/DateRangePicker.vue'
+import DateRangePicker from '@/components/user/analytics/UserDateRangePicker.vue'
 import UsageTable from '@/components/admin/usage/UsageTable.vue'
 
 const {
@@ -156,7 +156,9 @@ function mountUsageView() {
         AppLayout: simpleStub,
         Pagination: true,
         Select: true,
-        DateRangePicker: true,
+        UserDateRangePicker: true,
+        UserAnalyticsStats: chartStub,
+        UserRequestDetail: chartStub,
         Icon: true,
         UsageStatsCards: chartStub,
         UsageTable: { ...chartStub, props: ['columns'] },
@@ -216,7 +218,7 @@ describe('user UsageView', () => {
     getAvailable.mockResolvedValue([{ id: 1, name: 'default' }])
   })
 
-  it('loads logs, stats, model stats, and snapshot on first render', async () => {
+  it('loads records, period statistics and model filter options without duplicate charts', async () => {
     const wrapper = mountUsageView()
     await flushPromises()
 
@@ -224,14 +226,60 @@ describe('user UsageView', () => {
     expect(query).toHaveBeenCalled()
     expect(getStats).toHaveBeenCalled()
     expect(getDashboardModels).toHaveBeenCalled()
-    expect(getDashboardSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({
-      include_trend: true,
-      include_model_stats: false,
-      include_group_stats: true,
-    }))
+    expect(getDashboardSnapshotV2).not.toHaveBeenCalled()
     expect(list).toHaveBeenCalledTimes(1)
     expect(list).toHaveBeenCalledWith(1, 100)
     expect(getAvailable).toHaveBeenCalled()
+  })
+
+  it('keeps the latest period stats and cancels stale record requests', async () => {
+    let resolveOld!: (value: unknown) => void
+    getStats.mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
+    const wrapper = mountUsageView()
+    await flushPromises()
+    const oldSignal = query.mock.calls[0][1].signal as AbortSignal
+    ;(wrapper.vm as any).filters.model = 'new-model'
+    ;(wrapper.vm as any).applyFilters()
+    await flushPromises()
+    expect(oldSignal.aborted).toBe(true)
+    resolveOld({ total_requests: 999 })
+    await flushPromises()
+    expect((wrapper.vm as any).usageStats.total_requests).toBe(1)
+    wrapper.unmount()
+    expect((query.mock.calls.at(-1)![1].signal as AbortSignal).aborted).toBe(true)
+  })
+
+  it('cancels stale error lists and recovers failed statistics without showing old values', async () => {
+    const wrapper = mountUsageView()
+    await flushPromises()
+    let resolveOld!: (value: unknown) => void
+    listMyErrorRequests.mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
+    ;(wrapper.vm as any).switchToErrors()
+    await flushPromises()
+    const oldSignal = listMyErrorRequests.mock.calls[0][1].signal as AbortSignal
+    ;(wrapper.vm as any).applyErrorFilters()
+    await flushPromises()
+    resolveOld({ items: [{ id: 999 }], total: 999 })
+    await flushPromises()
+    expect(oldSignal.aborted).toBe(true)
+    expect((wrapper.vm as any).errorTotal).toBe(0)
+    getStats.mockRejectedValueOnce(new Error('fixture failure'))
+    ;(wrapper.vm as any).refreshData(); await flushPromises()
+    expect((wrapper.vm as any).usageStats).toBeNull()
+    expect((wrapper.vm as any).statsFailed).toBe(true)
+    ;(wrapper.vm as any).refreshData(); await flushPromises()
+    expect((wrapper.vm as any).statsFailed).toBe(false)
+    expect((wrapper.vm as any).usageStats.total_requests).toBe(1)
+    wrapper.unmount()
+  })
+
+  it('does not expose error requests when their feature flag is disabled', async () => {
+    appStoreState.cachedPublicSettings = { allow_user_view_error_requests: false }
+    const wrapper = mountUsageView(); await flushPromises()
+    expect(wrapper.find('.ua-record-switch').exists()).toBe(false)
+    expect(listMyErrorRequests).not.toHaveBeenCalled()
+    wrapper.unmount()
+    appStoreState.cachedPublicSettings = { allow_user_view_error_requests: true }
   })
 
   it('includes API keys after the first page in both record filters and queries by the selected key', async () => {
@@ -279,7 +327,8 @@ describe('user UsageView', () => {
     await flushPromises()
 
     expect(listMyErrorRequests).toHaveBeenCalledWith(
-      expect.objectContaining({ api_key_id: laterKey.id, page: 1 })
+      expect.objectContaining({ api_key_id: laterKey.id, page: 1 }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
     )
     expect(list).toHaveBeenCalledTimes(2)
     wrapper.unmount()
@@ -343,9 +392,8 @@ describe('user UsageView', () => {
       expect.objectContaining({ native_compaction_v2: true }),
       expect.anything()
     )
-    expect(getStats).toHaveBeenCalledWith(expect.objectContaining({ native_compaction_v2: true }))
+    expect(getStats).toHaveBeenCalledWith(expect.objectContaining({ native_compaction_v2: true }), undefined, expect.objectContaining({ signal: expect.any(AbortSignal) }))
     expect(getDashboardModels).toHaveBeenCalledWith(expect.objectContaining({ native_compaction_v2: true }))
-    expect(getDashboardSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({ native_compaction_v2: true }))
 
     query.mockClear()
     getStats.mockClear()
@@ -360,9 +408,8 @@ describe('user UsageView', () => {
       expect.objectContaining({ native_compaction_v2: null }),
       expect.anything()
     )
-    expect(getStats).toHaveBeenCalledWith(expect.objectContaining({ native_compaction_v2: null }))
+    expect(getStats).toHaveBeenCalledWith(expect.objectContaining({ native_compaction_v2: null }), undefined, expect.objectContaining({ signal: expect.any(AbortSignal) }))
     expect(getDashboardModels).toHaveBeenCalledWith(expect.objectContaining({ native_compaction_v2: null }))
-    expect(getDashboardSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({ native_compaction_v2: null }))
   })
 
   it('exports csv with current filters and without admin-only fields', async () => {

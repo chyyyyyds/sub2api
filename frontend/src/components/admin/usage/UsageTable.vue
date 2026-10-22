@@ -307,6 +307,9 @@
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
         </template>
 
+        <!-- 用户展示层按需扩展状态及操作列；管理员未传入插槽时保持原行为。 -->
+        <template v-if="$slots['cell-status']" #cell-status="slotProps"><slot name="cell-status" v-bind="slotProps" /></template>
+        <template v-if="$slots['cell-actions']" #cell-actions="slotProps"><slot name="cell-actions" v-bind="slotProps" /></template>
         <template #empty><EmptyState :message="t('usage.noRecords')" /></template>
       </DataTable>
     </div>

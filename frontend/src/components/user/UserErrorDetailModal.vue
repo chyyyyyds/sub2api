@@ -1,5 +1,5 @@
 <template>
-  <BaseDialog :show="show" :title="t('usage.errors.detail.title')" width="wide" @close="emit('update:show', false)">
+  <BaseDialog :show="show" :title="t('usage.errors.detail.title')" width="wide" panel-class="ua-error-dialog" @close="emit('update:show', false)">
     <!-- Loading -->
     <div v-if="loading" class="flex justify-center py-10">
       <svg class="h-7 w-7 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24">
@@ -11,6 +11,7 @@
     <!-- Error state -->
     <div v-else-if="loadError" class="py-8 text-center text-sm text-red-500">
       {{ t('usage.errors.detail.loadFailed') }}
+      <button v-if="errorId != null" type="button" class="ua-error-retry" @click="fetchDetail(errorId)">{{ t('userAnalytics.retry') }}</button>
     </div>
 
     <!-- Detail content -->

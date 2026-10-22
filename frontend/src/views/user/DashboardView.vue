@@ -1,40 +1,93 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
-      <div v-if="loading" class="flex items-center justify-center py-12"><LoadingSpinner /></div>
-      <template v-else-if="stats">
-        <UserDashboardStats :stats="stats" :balance="user?.balance || 0" :is-simple="authStore.isSimpleMode" :platform-quotas="platformQuotas" />
-        <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="loadCharts" @granularityChange="loadCharts" @refresh="refreshAll" />
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div class="lg:col-span-2"><UserDashboardRecentUsage :data="recentUsage" :loading="loadingUsage" /></div>
-          <div class="lg:col-span-1"><UserDashboardQuickActions /></div>
-        </div>
-      </template>
+    <div class="uc-analytics ua-overview">
+      <div class="ua-toolbar"><UserDateRangePicker v-model:start-date="startDate" v-model:end-date="endDate" @change="refreshRange" /><button class="ua-button ua-refresh" type="button" :aria-label="t('common.refresh')" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" /></button></div>
+      <p class="ua-scope">{{ t('userAnalytics.naturalDays') }} · {{ analyticsTimezone() }}</p>
+      <div v-if="failed || realtimeFailed || balanceFailed" class="ua-error" role="alert">{{ t('userAnalytics.loadFailed') }}<button class="ua-button" type="button" @click="refreshAll">{{ t('userAnalytics.retry') }}</button></div>
+      <UserAnalyticsStats :stats="stats" :balance="balanceFailed ? undefined : user?.balance" :loading="loading" overview />
+      <div class="ua-overview-mid"><UserTokenTrend v-model:granularity="granularity" :trend="trend" :loading="loading" @update:granularity="refreshRange" /><UserDistributionPanel :title="t('userAnalytics.modelDistribution')" :name-label="t('usage.model')" :items="models" :loading="loading" /></div>
+      <div class="ua-overview-bottom">
+        <UserDistributionPanel :title="t('userAnalytics.groupDistribution')" :name-label="t('admin.usage.group')" :items="groups" :loading="loading" />
+        <UserDistributionPanel :title="t('usage.endpointDistribution')" :name-label="t('usage.endpoint')" :items="endpoints" :loading="loading" />
+        <section class="ua-panel ua-performance"><h3>{{ t('userAnalytics.performance') }}</h3><p>{{ t('userAnalytics.avgResponse') }}</p><strong class="ua-response">{{ loading ? '…' : stats?.total_requests ? duration(stats.average_duration_ms) : '—' }}</strong><small>{{ t('userAnalytics.selectedRange') }}</small><div class="ua-perf-grid"><div><strong>{{ realtime?.rpm ?? '—' }}</strong><span>RPM</span></div><div><strong>{{ realtime?.tpm?.toLocaleString() ?? '—' }}</strong><span>TPM</span></div><div><strong>{{ cacheRate }}</strong><span>{{ t('userAnalytics.cacheReadShare') }}</span></div></div><p class="ua-scope">{{ t('userAnalytics.performanceScope') }}</p><p class="ua-scope">{{ t('userAnalytics.noPerformanceTrend') }}</p></section>
+      </div>
     </div>
   </AppLayout>
 </template>
-
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'; import { useAuthStore } from '@/stores/auth'; import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
-import AppLayout from '@/components/layout/AppLayout.vue'; import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'; import UserDashboardCharts from '@/components/user/dashboard/UserDashboardCharts.vue'
-import UserDashboardRecentUsage from '@/components/user/dashboard/UserDashboardRecentUsage.vue'; import UserDashboardQuickActions from '@/components/user/dashboard/UserDashboardQuickActions.vue'
-import type { UsageLog, TrendDataPoint, ModelStat, PlatformQuotaItem } from '@/types'
-import { getMyPlatformQuotas } from '@/api/user'
-import { formatDateLocalInput } from '@/utils/format'
-
-const authStore = useAuthStore(); const user = computed(() => authStore.user)
-const stats = ref<UserStatsType | null>(null); const loading = ref(false); const loadingUsage = ref(false); const loadingCharts = ref(false)
-const trendData = ref<TrendDataPoint[]>([]); const modelStats = ref<ModelStat[]>([]); const recentUsage = ref<UsageLog[]>([])
-const platformQuotas = ref<PlatformQuotaItem[] | null>(null)
-
-const startDate = ref(formatDateLocalInput(new Date(Date.now() - 6 * 86400000))); const endDate = ref(formatDateLocalInput(new Date())); const granularity = ref('day')
-
-const loadStats = async () => { loading.value = true; try { await authStore.refreshUser(); stats.value = await usageAPI.getDashboardStats() } catch (error) { console.error('Failed to load dashboard stats:', error) } finally { loading.value = false } }
-const loadCharts = async () => { loadingCharts.value = true; try { const res = await Promise.all([usageAPI.getDashboardTrend({ start_date: startDate.value, end_date: endDate.value, granularity: granularity.value as any }), usageAPI.getDashboardModels({ start_date: startDate.value, end_date: endDate.value })]); trendData.value = res[0].trend || []; modelStats.value = res[1].models || [] } catch (error) { console.error('Failed to load charts:', error) } finally { loadingCharts.value = false } }
-const loadRecent = async () => { loadingUsage.value = true; try { const res = await usageAPI.getByDateRange(startDate.value, endDate.value); recentUsage.value = res.items.slice(0, 5) } catch (error) { console.error('Failed to load recent usage:', error) } finally { loadingUsage.value = false } }
-const loadPlatformQuotas = async () => { try { const data = await getMyPlatformQuotas(); platformQuotas.value = data.platform_quotas ?? [] } catch (error) { console.warn('Failed to load platform quotas:', error); platformQuotas.value = [] } }
-const refreshAll = () => { loadStats(); loadCharts(); loadRecent(); loadPlatformQuotas() }
-
-onMounted(() => { refreshAll() })
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
+import { usageAPI, type UserDashboardStats } from '@/api/usage'
+import type { TrendDataPoint, UsageStatsResponse } from '@/types'
+import AppLayout from '@/components/layout/AppLayout.vue'
+import Icon from '@/components/icons/Icon.vue'
+import UserAnalyticsStats from '@/components/user/analytics/UserAnalyticsStats.vue'
+import UserDateRangePicker from '@/components/user/analytics/UserDateRangePicker.vue'
+import UserDistributionPanel from '@/components/user/analytics/UserDistributionPanel.vue'
+import UserTokenTrend from '@/components/user/analytics/UserTokenTrend.vue'
+import { analyticsTimezone, duration, naturalDayRange, type DistributionItem } from '@/components/user/analytics/analytics'
+import '@/styles/user-analytics.css'
+const { t } = useI18n()
+const authStore = useAuthStore()
+const user = computed(() => authStore.user)
+const initialRange = naturalDayRange()
+const startDate = ref(initialRange.start)
+const endDate = ref(initialRange.end)
+const granularity = ref<'day' | 'hour'>('day')
+const stats = ref<UsageStatsResponse | null>(null)
+const realtime = ref<UserDashboardStats | null>(null)
+const trend = ref<TrendDataPoint[]>([])
+const models = ref<DistributionItem[]>([])
+const groups = ref<DistributionItem[]>([])
+const endpoints = computed<DistributionItem[]>(() => (stats.value?.endpoints ?? []).map(item => ({ name: item.endpoint || t('usage.unknown'), requests: item.requests, actualCost: item.actual_cost })))
+const loading = ref(false)
+const failed = ref(false)
+const realtimeFailed = ref(false)
+const balanceFailed = ref(false)
+let controller: AbortController | null = null
+let realtimeController: AbortController | null = null
+let disposed = false
+const cacheRate = computed(() => {
+  const s = stats.value
+  if (!s?.total_requests) return '—'
+  const prompt = s.total_input_tokens + s.total_cache_read_tokens + s.total_cache_creation_tokens
+  return prompt ? `${(s.total_cache_read_tokens / prompt * 100).toFixed(1)}%` : '—'
+})
+async function refreshRange() {
+  controller?.abort()
+  const current = new AbortController()
+  controller = current
+  loading.value = true
+  failed.value = false
+  // 同一日期快照加载；先清空旧周期，防止把旧数据标成新日期。
+  stats.value = null; trend.value = []; models.value = []; groups.value = []
+  const params = { start_date: startDate.value, end_date: endDate.value, timezone: analyticsTimezone() }
+  try {
+    const [summary, snapshot] = await Promise.all([
+      usageAPI.getStats(params, undefined, { signal: current.signal }),
+      usageAPI.getDashboardSnapshotV2({ ...params, granularity: granularity.value, include_trend: true, include_model_stats: true, include_group_stats: true }, { signal: current.signal }),
+    ])
+    if (current.signal.aborted || disposed) return
+    stats.value = summary; trend.value = [...(snapshot.trend ?? [])].sort((a, b) => a.date.localeCompare(b.date))
+    models.value = (snapshot.models ?? []).map(item => ({ name: item.model, requests: item.requests, actualCost: item.actual_cost }))
+    groups.value = (snapshot.groups ?? []).map(item => ({ name: item.group_name, requests: item.requests, actualCost: item.actual_cost }))
+  } catch { if (!current.signal.aborted && !disposed) failed.value = true }
+  finally { if (controller === current && !disposed) loading.value = false }
+}
+async function refreshRealtime() {
+  realtimeController?.abort()
+  const current = new AbortController()
+  realtimeController = current
+  realtimeFailed.value = false; realtime.value = null
+  try { const result = await usageAPI.getDashboardStats({ signal: current.signal }); if (!current.signal.aborted && !disposed) realtime.value = result }
+  catch { if (!current.signal.aborted && !disposed) realtimeFailed.value = true }
+}
+async function refreshBalance() {
+  balanceFailed.value = false
+  try { await authStore.refreshUser() } catch { if (!disposed) balanceFailed.value = true }
+}
+function refreshAll() { void refreshRange(); void refreshRealtime(); void refreshBalance() }
+onMounted(refreshAll)
+onBeforeUnmount(() => { disposed = true; controller?.abort(); realtimeController?.abort() })
 </script>

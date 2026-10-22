@@ -101,6 +101,7 @@
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
         </template>
 
+        <template #cell-actions="{ row }"><button type="button" class="ua-detail-button" @click.stop="openDetail(row.id)">{{ t('userAnalytics.viewDetail') }} <span aria-hidden="true">›</span></button></template>
         <template #empty><EmptyState :message="t('usage.errors.empty')" /></template>
       </DataTable>
     </div>
@@ -180,11 +181,12 @@ const allColumns = computed<Column[]>(() => [
   { key: 'user_agent', label: t('usage.userAgent') },
 ])
 
-const columns = computed<Column[]>(() =>
-  props.visibleColumnKeys
+const columns = computed<Column[]>(() => [
+  ...(props.visibleColumnKeys
     ? allColumns.value.filter((c) => props.visibleColumnKeys!.includes(c.key))
-    : allColumns.value
-)
+    : allColumns.value),
+  { key: 'actions', label: t('common.actions') },
+])
 
 function requestTypeBadge(row: UserErrorRequest): { label: string; className: string } | null {
   const kind = numericRequestTypeKind(row.request_type, row.stream)

@@ -169,7 +169,8 @@ export async function query(
  */
 export async function getStats(
   paramsOrPeriod: (UsageQueryParams & { period?: string; timezone?: string }) | string = 'today',
-  apiKeyId?: number
+  apiKeyId?: number,
+  config: { signal?: AbortSignal } = {}
 ): Promise<UsageStatsResponse> {
   const params: Record<string, unknown> = typeof paramsOrPeriod === 'string'
     ? { period: paramsOrPeriod }
@@ -180,6 +181,7 @@ export async function getStats(
   }
 
   const { data } = await apiClient.get<UsageStatsResponse>('/usage/stats', {
+    ...config,
     params
   })
   return data
@@ -257,8 +259,8 @@ export async function getById(id: number): Promise<UsageLog> {
  * Get user dashboard statistics
  * @returns Dashboard statistics for current user
  */
-export async function getDashboardStats(): Promise<UserDashboardStats> {
-  const { data } = await apiClient.get<UserDashboardStats>('/usage/dashboard/stats')
+export async function getDashboardStats(config: { signal?: AbortSignal } = {}): Promise<UserDashboardStats> {
+  const { data } = await apiClient.get<UserDashboardStats>('/usage/dashboard/stats', config)
   return data
 }
 
@@ -313,11 +315,12 @@ export async function getMyApiKeyDailyUsage(
 }
 
 export async function getDashboardSnapshotV2(
-  params?: UsageDashboardSnapshotV2Params
+  params?: UsageDashboardSnapshotV2Params,
+  config: { signal?: AbortSignal } = {}
 ): Promise<UsageDashboardSnapshotV2Response> {
   const { data } = await apiClient.get<UsageDashboardSnapshotV2Response>(
     '/usage/dashboard/snapshot-v2',
-    { params }
+    { ...config, params }
   )
   return data
 }
@@ -357,9 +360,11 @@ export async function getDashboardApiKeysUsage(
 }
 
 export async function listMyErrorRequests(
-  params: UserErrorListParams
+  params: UserErrorListParams,
+  config: { signal?: AbortSignal } = {}
 ): Promise<PaginatedResponse<UserErrorRequest>> {
   const { data } = await apiClient.get<PaginatedResponse<UserErrorRequest>>('/usage/errors', {
+    ...config,
     params
   })
   return data

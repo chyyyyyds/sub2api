@@ -139,7 +139,8 @@ describe('Stage 1 用户外壳契约', () => {
   })
   it('管理员分支模板保持 HEAD 原样，用户 CSS 所有选择器均带命名空间', () => {
     const root = resolve(import.meta.dirname, '../../../../..')
-    const before = execFileSync('git', ['show', 'HEAD:frontend/src/components/layout/AppLayout.vue'], { cwd: root, encoding: 'utf8' })
+    // 固定 Stage 1 前基线，避免创建检查点后 HEAD 改变导致自我比较。
+    const before = execFileSync('git', ['show', '7da09cab4e875463baa79fc150adde700c5438df:frontend/src/components/layout/AppLayout.vue'], { cwd: root, encoding: 'utf8' })
     const after = readFileSync(resolve(root, 'frontend/src/components/layout/AppLayout.vue'), 'utf8')
     const template = (source: string) => source.slice(0, source.indexOf('</template>')).replace(/\r\n/g, '\n')
     expect(template(after).replace('  <UserConsoleLayout v-if="isUserConsole"><slot /></UserConsoleLayout>\n', '').replace('<div v-else ', '<div ')).toBe(template(before))
