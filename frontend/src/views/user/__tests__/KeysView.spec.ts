@@ -6,7 +6,8 @@ import type { ApiKey } from '@/types'
 import { keysAPI, usageAPI } from '@/api'
 import KeysView from '../KeysView.vue'
 import { collectKeys } from '../keysConsole'
-vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }) }))
+const navigation = vi.hoisted(() => ({ query: {} as Record<string, string> }))
+vi.mock('vue-router', () => ({ useRoute: () => navigation }))
 // 集合完整性由 keysConsole.spec 单独验证，此处隔离页面列表与全局统计读取。
 vi.mock('../keysConsole', async () => ({ ...await vi.importActual('../keysConsole'), collectKeys: vi.fn().mockResolvedValue([]) }))
 
@@ -273,6 +274,7 @@ const getButtonByText = (wrapper: VueWrapper, text: string) => {
 
 describe('user KeysView column settings', () => {
   beforeEach(() => {
+    navigation.query = {}
     localStorage.clear()
     vi.mocked(collectKeys).mockResolvedValue([])
 
@@ -800,6 +802,35 @@ describe('user KeysView column settings', () => {
     finish({items:[{...createApiKey(),name:'old result'}],total:99,page:1,page_size:10,pages:10});await flushPromises()
     expect(wrapper.findComponent({name:'DataTable'}).props('data')[0].name).toBe('new result')
     expect(wrapper.findComponent({name:'Pagination'}).props('total')).toBe(1)
+    wrapper.unmount()
+  })
+
+  it('渠道状态创建导航在取得真实授权后预填合法组，复用正式表单', async () => {
+    navigation.query = { vendor: 'openai', group_id: '1', action: 'create' }
+    getAvailableGroups.mockResolvedValue([{ id: 1, name: 'Allowed', platform: 'openai', rate_multiplier: .05 }])
+    const wrapper = await mountView()
+    await flushPromises()
+    const formGroup = wrapper.findAllComponents({ name: 'Select' }).find(component => component.attributes('id') === 'key-form-group')!
+    expect(formGroup.props('modelValue')).toBe(1)
+    expect(formGroup.props('options').map((option: { value: number }) => option.value)).toEqual([1])
+    wrapper.unmount()
+  })
+
+  it('渠道状态 URL 不会把未授权历史分组加入创建候选或打开创建弹窗', async () => {
+    navigation.query = { vendor: 'openai', group_id: '99', action: 'create' }
+    getAvailableGroups.mockResolvedValue([{ id: 1, name: 'Allowed', platform: 'openai' }])
+    const wrapper = await mountView()
+    expect(showError).toHaveBeenCalledWith('keys.groupRequired')
+    expect((wrapper.vm as unknown as { showCreateModal: boolean }).showCreateModal).toBe(false)
+    expect(keysAPI.create).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('渠道状态指定密钥 ID 时复用正式详情，不能被默认第一行覆盖', async () => {
+    navigation.query = { group_id: '1', key_id: '2' }
+    listKeys.mockResolvedValue({ items: [createApiKey(), { ...createApiKey(), id: 2, name: 'Selected detail' }], total: 2, page: 1, page_size: 10, pages: 1 })
+    const wrapper = await mountView()
+    expect(wrapper.get('.uk-detail-heading h2').text()).toBe('Selected detail')
     wrapper.unmount()
   })
 

@@ -1153,7 +1153,7 @@
 </template>
 
 <script setup lang="ts">
-	import { ref, reactive, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
+	import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
 	import { useOnboardingStore } from '@/stores/onboarding'
@@ -1610,7 +1610,9 @@ const loadApiKeys = async (reuse = false) => {
       } catch (error) { if (!signal.aborted && !disposed) appStore.showError(t('userKeys.usageFailed')); if (isAbortError(error)) return }
     }
     if (signal.aborted || disposed) return
-    detailKey.value = response.items.find(k => k.id === selectedDetailId) || response.items[0] || null
+    // 渠道状态的详情导航只从当前用户已读取的真实集合中选取，不另建详情或 CRUD。
+    const requestedId = typeof route.query.key_id === 'string' ? Number(route.query.key_id) : selectedDetailId
+    detailKey.value = [...response.items, ...(collection || []), ...catalogKeys.value].find(k => k.id === requestedId) || response.items[0] || null
     void loadDetail()
   } catch (error) {
     if (signal.aborted || disposed || isAbortError(error)) return
@@ -1686,6 +1688,7 @@ const loadGroups = async () => {
     const result = await userGroupsAPI.getAvailable()
     if (version !== groupRequestVersion || disposed) return
     groups.value = result
+    void applyChannelCreateNavigation()
   } catch {
     if (version !== groupRequestVersion || disposed) return
     groupsFailed.value = true
@@ -2130,12 +2133,33 @@ function formatResetTime(resetAt: string | null): string {
   return `${mins}m`
 }
 
+let handledCreateNavigation = ''
+/** 仅扩展导航预填；授权目录重新读取后才允许预选，不把 URL 当成授权。 */
+const applyChannelCreateNavigation = async () => {
+  if (route.query.action !== 'create' || disposed || groupsFailed.value) return
+  const identity = JSON.stringify(route.query)
+  if (handledCreateNavigation === identity) return
+  const raw = route.query.group_id ?? route.query.group
+  const group = typeof raw === 'string' && /^\d+$/.test(raw) ? groups.value.find(g => g.id === Number(raw)) : undefined
+  handledCreateNavigation = identity
+  if (!group) { appStore.showError(t('keys.groupRequired')); return }
+  showCreateModal.value = true
+  await nextTick()
+  if (disposed || identity !== JSON.stringify(route.query) || !showCreateModal.value) return
+  selectCreateProvider(getKeyGroupProvider(group.platform))
+  await nextTick()
+  if (!disposed && identity === JSON.stringify(route.query) && groups.value.some(g => g.id === group.id) && showCreateModal.value) formData.value.group_id = group.id
+}
+
 watch(() => route.query, query => {
   const vendor = typeof query.vendor === 'string' ? query.vendor : typeof query.platform === 'string' ? query.platform : ''
   filterVendor.value = /^[a-z][a-z0-9_]*$/.test(vendor) ? vendor : ''
   const group = query.group_id ?? query.group
   filterGroupId.value = typeof group === 'string' && /^\d+$/.test(group) ? Number(group) : ''
   if (!disposed) onFilterChange()
+  handledCreateNavigation = ''
+  // 再次读取正式授权目录，避免 SPA 导航沿用旧的绑定资格。
+  if (query.action === 'create') void loadGroups()
 }, { deep: true })
 onMounted(() => {
   const vendor = String(route.query.vendor || route.query.platform || '')

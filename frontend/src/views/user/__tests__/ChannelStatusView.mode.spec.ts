@@ -14,6 +14,9 @@ vi.mock('../ChannelStatusV1View.vue', () => ({
 vi.mock('../ChannelStatusV2View.vue', () => ({
   default: defineComponent({ name: 'ChannelStatusV2View', setup: () => () => h('div', { 'data-testid': 'v2' }) }),
 }))
+vi.mock('../UserChannelStatus.vue', () => ({
+  default: defineComponent({ name: 'UserChannelStatus', setup: () => () => h('div', { 'data-testid': 'user-passive-monitor' }) }),
+}))
 
 import ChannelStatusView from '../ChannelStatusView.vue'
 
@@ -22,17 +25,18 @@ describe('ChannelStatusView mode switch', () => {
     isV1.mockReset()
   })
 
-  it('renders V2 when not in v1 mode', () => {
+  it('V2 模式使用新版普通用户界面', () => {
     isV1.mockReturnValue(false)
     const wrapper = mount(ChannelStatusView)
-    expect(wrapper.find('[data-testid="v2"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="user-passive-monitor"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="v1"]').exists()).toBe(false)
   })
 
-  it('renders V1 when in v1 mode', () => {
+  it('V1 模式仍使用新版界面明确停用状态，不回退展示主动探测', () => {
     isV1.mockReturnValue(true)
     const wrapper = mount(ChannelStatusView)
-    expect(wrapper.find('[data-testid="v1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="user-passive-monitor"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="v1"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="v2"]').exists()).toBe(false)
   })
 })

@@ -1,4 +1,28 @@
 export default {
+  userMonitor: {
+    vendor: '选择厂商', group: '选择分组', range: '时间范围', filter: '状态筛选',
+    ranges: { '90m': '近 90 分钟', '24h': '近 24 小时', '7d': '近 7 天', '30d': '近 30 天' },
+    health: { healthy: '健康', warning: '警告', critical: '严重', unknown: '未知' },
+    disabled: 'V2 监控暂未启用，当前仅展示合法可见的目录与价格。',
+    forbidden: '无权读取 V2 监控，请检查当前账号权限。', unavailable: 'V2 监控接口暂不可用，请刷新重试。',
+    noDirectory: '暂无可展示的授权模型目录。渠道目录或模型广场可能未启用；监控历史不会作为调用权限。',
+    passive: '健康状态来自真实请求表现，不代表所有上游账号存活。',
+    authorizedModels: '授权目录模型', observedModels: '有请求表现的模型', updated: '数据截至', computed: '聚合时间', lag: '聚合延迟 {seconds} 秒',
+    bootstrap: '历史聚合补齐中', pending: '聚合尚未完成或延迟', partial: '所选范围覆盖不完整', stale: '监控数据已过期',
+    missing: '无精确三维监控关联，可能未纳入监控或被归并；不猜测状态。',
+    noSamples: '已纳入监控，当前覆盖区间尚无请求样本。', insufficient: '已有样本，但不足以计算健康评分', measured: '已有健康指标', minimum: '健康评分最低样本数 {count}',
+    score: '原生健康评分', errorRate: '请求错误率', duration: '平均响应耗时', ttft: '首 Token P50', p95: '首 Token P95',
+    history: '真实请求健康历史', noTrend: '暂无可展示的历史趋势', selectKeys: '关联密钥',
+    priceDetails: '查看价格详情', priceUnknown: '暂无完整价格规则', billingMode: '计费模式', referencePrice: '渠道基础参考价', standardPrices: '标准时段参考价，不含高峰因子', tokenUnit: 'USD / 1M token', rulePricing: '价格遵循完整计费规则',
+    priceNote: '价格与倍率来自正式目录，与健康统计独立。按正式币种 USD 展示；高峰时段、上下文阶梯、缓存及媒体独立倍率遵循原价格规则。',
+    basePriceOnly: '当前接口仅提供渠道基础参考价，未包含完整分组计费规则，不作为最终实付单价。',
+    rateUnknown: '专属倍率未取得', authorizedKeys: '以下密钥按真实分组具备目录授权能力，不表示曾请求过此模型；IP、额度、有效期等限制仍生效。',
+    viewKeys: '查看关联密钥', linkedKeys: '关联 API 密钥', noKeys: '暂无关联密钥', selectModel: '选择模型后查看关联密钥。',
+    composite: '此密钥绑定 Composite 复合分组，可使用该分组授权的多个厂商；跳转沿用 Composite 分组筛选。',
+    openKey: '查看密钥 {name}', emptyFilter: '当前状态筛选下暂无模型',
+    issue: { channels: '可用渠道目录加载失败，可刷新重试。', groups: '授权分组加载失败，已隐藏目录与创建入口。', rates: '用户专属倍率读取失败，默认倍率仅供参考，暂不计算实付价格。', pricing: '模型广场价格规则读取失败，当前仅展示可取得的基础参考价。', keys: '关联密钥未完整加载，未显示部分集合。', snapshot: '监控刷新配置读取失败，暂按 5 分钟刷新；三维矩阵结果独立展示。', timeout: '读取超时，请刷新重试。' },
+    priceFields: { input_price: '输入', output_price: '输出', cache_write_price: '缓存写入 5 分钟', cache_write_1h_price: '缓存写入 1 小时', cache_read_price: '缓存读取' }
+  },
   userKeys: {"directoryFailed": "分组目录或用户倍率加载失败，请重试后再创建或调整分组。","reverseSort": "切换排序方向","total": "密钥总数", "active": "活跃密钥", "today": "今日消耗", "month": "近 30 天消耗", "allKeys": "全部当前密钥", "activeScope": "状态为已启用", "todayScope": "后端时区的今天", "monthScope": "滚动近 30 天", "statsScope": "统计全部当前密钥；今日按后端时区，近 30 天为滚动区间。", "statsFailed": "全局统计未完整加载，请重试。", "vendor": "厂商", "allVendors": "全部厂商", "clearFilters": "清除筛选", "collecting": "正在完整加载并校验匹配集合…", "listFailed": "列表未完整加载或数据持续变化，请重试；未显示部分结果。", "usageFailed": "密钥用量加载失败，可刷新重试。", "statusFor": "{name} 启用状态", "endpoint": "接入地址", "trend": "最近 7 天使用趋势", "detailFailed": "详情加载失败", "noHistory": "最近 7 天暂无使用历史", "selectKey": "选择一条密钥查看详情", "sort": "排序", "quotaLimit": "额度限制", "ccsHidden": "站点已关闭 CCS 导入"},
   userConsole: {
     wallet: '钱包',

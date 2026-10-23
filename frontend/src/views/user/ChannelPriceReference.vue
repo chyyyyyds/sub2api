@@ -1,0 +1,12 @@
+<template>
+  <div v-if="model.pricing" class="um-reference"><p>{{ t('userMonitor.billingMode') }}: {{ model.pricing.billing_mode }}</p><template v-if="model.pricing.billing_mode === 'token'"><PricingRow v-for="field in tokenFields" :key="field" :label="t(`userMonitor.priceFields.${field}`)" :value="model.pricing[field] ?? null" :scale="1000000" :unit="t('availableChannels.pricing.unitPerMillion')" /></template><PricingRow v-else :label="t('userMonitor.referencePrice')" :value="model.pricing.per_request_price" :scale="1" :unit="model.pricing.billing_mode === 'video' ? t('availableChannels.pricing.unitPerSecond') : t('availableChannels.pricing.unitPerRequest')" /><PricingRow v-if="model.pricing.image_input_price != null" :label="t('availableChannels.pricing.imageInputPrice')" :value="model.pricing.image_input_price" :scale="1000000" :unit="t('availableChannels.pricing.unitPerMillion')" /><PricingRow v-if="model.pricing.image_output_price != null" :label="t('availableChannels.pricing.imageOutputPrice')" :value="model.pricing.image_output_price" :scale="1000000" :unit="t('availableChannels.pricing.unitPerMillion')" /><div v-for="(interval,index) in model.pricing.intervals" :key="index"><h5>{{ interval.tier_label || `${interval.min_tokens} – ${interval.max_tokens ?? '∞'} tokens` }}</h5><template v-if="model.pricing.billing_mode === 'token'"><PricingRow v-for="field in tokenFields" :key="field" :label="t(`userMonitor.priceFields.${field}`)" :value="resolveIntervalPrices(interval, model.pricing)[field] ?? null" :scale="1000000" :unit="t('availableChannels.pricing.unitPerMillion')" /></template><PricingRow v-else :label="t('userMonitor.referencePrice')" :value="interval.per_request_price" :scale="1" :unit="model.pricing.billing_mode === 'video' ? t('availableChannels.pricing.unitPerSecond') : t('availableChannels.pricing.unitPerRequest')" /></div></div><p v-else>{{ t('userMonitor.priceUnknown') }}</p>
+</template>
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import PricingRow from '@/components/channels/PricingRow.vue'
+import type { UserSupportedModel } from '@/api/channels'
+import { resolveIntervalPrices } from '@/utils/pricing'
+defineProps<{ /** @description 当前用户目录中的渠道模型及基础报价。 */ model: UserSupportedModel }>()
+const { t } = useI18n()
+const tokenFields = ['input_price', 'output_price', 'cache_write_price', 'cache_write_1h_price', 'cache_read_price'] as const
+</script>

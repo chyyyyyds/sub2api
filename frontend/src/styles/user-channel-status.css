@@ -1,0 +1,97 @@
+/* 仅用户控制台与主动标记的价格弹窗生效，管理员专属页面不使用这些类。 */
+.user-console .um-console { color:#e9f1f8; font-size:13px; min-width:0; }
+.user-console .um-layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:20px; align-items:start; }
+.user-console :is(.um-primary,.um-side) { min-width:0; display:flex; flex-direction:column; gap:16px; }
+.user-console .um-panel { border:1px solid #25394b; border-radius:12px; background:#0d1721; min-width:0; }
+.user-console .um-filters { padding:20px; display:flex; flex-direction:column; gap:18px; }
+.user-console .um-field { display:flex; gap:16px; align-items:flex-start; min-width:0; }
+.user-console .um-field>span { width:60px; flex-shrink:0; color:#a6b8ca; padding-top:10px; font-size:12px; }
+.user-console .um-pills { display:flex; flex-wrap:wrap; gap:8px; min-width:0; }
+.user-console .um-pills button { display:flex; align-items:center; gap:8px; border:1px solid #2c4054; border-radius:7px; padding:8px 12px; min-height:38px; color:#b8c8da; background:#101e2c; white-space:nowrap; max-width:100%; }
+.user-console .um-pills button[aria-pressed=true] { color:#2ce5d0; background:#103332; border-color:#1d8076; box-shadow:inset 0 0 15px #19e5d209; }
+.user-console .um-pills small { color:#20d9c7; flex-shrink:0; font-family:monospace; }
+.user-console .um-ellipsis { min-width:0; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.user-console .um-toolbar { display:flex; align-items:end; flex-wrap:wrap; gap:12px; padding-top:14px; border-top:1px solid #243749; }
+.user-console .um-toolbar label { display:flex; flex-direction:column; gap:6px; color:#a6b8ca; font-size:11px; }
+.user-console .um-toolbar select { min-width:140px; color:#dce9f7; color-scheme:dark; background:#09141f; border:1px solid #2b4055; border-radius:7px; font-size:12px; padding:8px 10px; min-height:38px; }
+.user-console .um-refresh { margin-left:auto; display:grid; place-items:center; height:38px; width:38px; border:1px solid #30475f; border-radius:7px; }
+.user-console .um-notice { padding:10px 14px; font-size:12px; line-height:1.7; color:#b7c9dc; border:1px solid #31465d; border-radius:8px; background:#102032; }
+.user-console .um-alert { border-color:#665036; background:#282419; color:#f1cf91; }
+.user-console .um-summary { padding:20px; display:flex; gap:18px; justify-content:space-between; align-items:center; }
+.user-console .um-summary-title { display:flex; align-items:center; gap:14px; min-width:0; }
+.user-console .um-summary-title>div { min-width:0; }
+.user-console .um-summary h2 { font-size:17px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:8px; }
+.user-console .um-summary-title .inline-flex { max-width:100%; }
+.user-console .um-summary p { font-size:11px; color:#99afc4; margin-top:9px; line-height:1.7; }
+.user-console .um-summary-metrics { display:flex; gap:20px; flex-shrink:0; }
+.user-console .um-summary-metrics div { display:grid; text-align:center; gap:6px; }
+.user-console .um-summary-metrics strong { color:#25dcca; font-size:22px; }
+.user-console .um-summary-metrics small { color:#a1b5cb; font-size:10px; }
+.user-console .um-coverage { display:flex; gap:6px 14px; flex-wrap:wrap; color:#9fb5cb; font-size:10px; line-height:1.6; }
+.user-console .um-warning { color:#efbf67; }
+.user-console .um-model-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.user-console .um-model { padding:18px; }
+.user-console .um-model.selected { border-color:#25756e; }
+.user-console .um-model-head { display:flex; align-items:center; gap:8px; }
+.user-console .um-model-name { font-size:15px; font-weight:650; color:#edf5ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; text-align:left; }
+.user-console .um-health { margin-left:auto; flex-shrink:0; font-size:10px; padding:3px 7px; border-radius:5px; background:#243344; color:#b9c8d9; white-space:nowrap; }
+.user-console .um-health.healthy { background:#103e33; color:#3ae0aa; }
+.user-console .um-health.warning { background:#41331d; color:#e9bf66; }
+.user-console .um-health.critical { background:#422430; color:#ff92a5; }
+.user-console .um-model-context,.user-console .um-sample { color:#a7bace; font-size:11px; margin-top:8px; line-height:1.65; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.user-console .um-sample { color:#ddbc7f; white-space:normal; }
+.user-console .um-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:20px 0 12px; }
+.user-console .um-kpis>div { display:grid; gap:6px; min-width:0; }
+.user-console .um-kpis strong { font-size:17px; font-family:ui-monospace,monospace; white-space:nowrap; }
+.user-console .um-kpis small { font-size:10px; color:#a4b7ca; }
+.user-console .um-percentile { font-size:10px; color:#9fb6cf; margin-bottom:10px; }
+.user-console .um-price-preview { display:flex; align-items:center; justify-content:space-between; gap:8px; border-top:1px solid #243849; padding:12px 0; font-size:11px; color:#aac1d9; }
+.user-console .um-card-prices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 14px; border-top:1px solid #243849; padding:12px 0; font-size:10px; }
+.user-console .um-card-prices>small { grid-column:1/-1; color:#9eb6cf; }
+.user-console .um-card-prices>div { display:flex; justify-content:space-between; gap:8px; color:#b2c6d9; }
+.user-console .um-card-prices b { color:#dfedf9; font-weight:550; }
+.user-console :is(.um-price-preview button,.um-model-footer button,.um-text-button) { display:inline-flex; align-items:center; gap:4px; color:#24dcc7; font-size:11px; }
+.user-console .um-history { display:flex; gap:3px; height:22px; overflow:hidden; }
+.user-console .um-history span { flex:1; min-width:2px; border-radius:2px; background:#354352; }
+.user-console .um-history .healthy { background:#1aaf84; }
+.user-console .um-history .warning { background:#ba8c32; }
+.user-console .um-history .critical { background:#c05d6c; }
+.user-console .um-history-empty { font-size:11px; color:#8da3b8; min-height:22px; }
+.user-console .um-model-footer { display:flex; justify-content:space-between; gap:8px; margin-top:10px; font-size:10px; color:#99afc5; }
+.user-console .um-empty { padding:32px 20px; color:#a6bed5; text-align:center; line-height:1.8; }
+.user-console .um-intro { padding:20px; }
+.user-console .um-side-heading { display:flex; align-items:center; gap:12px; }
+.user-console .um-side-heading>div { min-width:0; }
+.user-console .um-side-heading h3 { font-weight:650; font-size:15px; line-height:1.6; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.user-console .um-side-heading p { font-size:11px; color:#a2b8ce; margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.user-console .um-help { color:#a6b9cc; font-size:11px; line-height:1.8; margin:14px 0; }
+.user-console :is(.um-primary-button,.um-secondary-button) { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:42px; border-radius:7px; font-size:12px; }
+.user-console .um-primary-button { background:#19d9c4; color:#04221c; font-weight:650; }
+.user-console .um-secondary-button { border:1px solid #30485d; color:#c3d4e5; background:#142435; margin-top:10px; }
+.user-console .um-endpoint { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; padding:12px; background:#09131e; border:1px solid #203447; border-radius:7px; min-width:0; }
+.user-console .um-endpoint>span { width:100%; color:#9db3c9; font-size:10px; }
+.user-console .um-endpoint code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:#c2d6eb; }
+.user-console .um-linked { padding:20px; }
+.user-console .um-linked h3 { display:flex; gap:8px; font-size:14px; font-weight:600; padding-bottom:16px; border-bottom:1px solid #22374a; }
+.user-console .um-linked h3 small { color:#26d9c6; }
+.user-console .um-key { display:flex; align-items:center; gap:10px; padding:16px 0; border-bottom:1px solid #213447; }
+.user-console .um-key>div { display:grid; gap:5px; flex:1; min-width:0; }
+.user-console .um-key b { font-size:12px; font-weight:550; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.user-console .um-key code,.user-console .um-key small { font-size:10px; color:#9fb3c9; }
+.user-console .um-key button { color:#9fbed8; min-width:32px; min-height:38px; display:grid; place-items:center; }
+.user-console .um-key-dot { height:7px; width:7px; border-radius:50%; background:#8296aa; flex-shrink:0; }
+.user-console .um-key-dot.active { background:#28d5a5; }
+.user-console .um-key-dot.expired,.user-console .um-key-dot.quota_exhausted { background:#d9ac57; }
+.user-console .um-console :is(button,select):focus-visible { outline:2px solid #19e5d2; outline-offset:3px; }
+.user-console .um-console button:disabled { opacity:.45; cursor:not-allowed; }
+.um-dialog { background:#0d1721!important; color:#e9f1f8; border:1px solid #31465c!important; color-scheme:dark; }
+.um-dialog :is(.modal-header,.modal-footer) { background:#0d1721!important; border-color:#2a4056!important; }
+.um-dialog .modal-title { color:#e9f1f8!important; }
+.um-dialog .um-price-note { color:#b4c6d9; font-size:12px; margin-bottom:16px; line-height:1.8; }
+.um-dialog .um-source-price { margin-top:18px; border-top:1px solid #31465b; padding-top:12px; font-size:12px; }
+.um-dialog .um-source-price h4 { margin-bottom:10px; color:#31dfcc; }
+.um-dialog .um-reference { display:grid; gap:8px; }
+.um-dialog .um-reference h5 { margin:14px 0 8px; }
+@media (max-width:1200px) { .user-console .um-layout { grid-template-columns:minmax(0,1fr) 285px; gap:16px; } .user-console .um-summary { flex-wrap:wrap; } .user-console .um-summary-metrics { width:100%; justify-content:space-around; } .user-console .um-model { padding:14px; } .user-console .um-model-head>svg { display:none; } }
+@media (max-width:900px) { .user-console .um-layout { grid-template-columns:minmax(0,1fr); } .user-console .um-side { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; } }
+@media (max-width:600px) { .user-console .um-model-grid,.user-console .um-side { grid-template-columns:minmax(0,1fr); } .user-console .um-filters { padding:14px; } .user-console .um-field { flex-direction:column; gap:8px; } .user-console .um-field>span { padding:0; width:auto; } .user-console .um-pills button { padding:8px 10px; } .user-console .um-toolbar { gap:8px; } .user-console .um-toolbar select { min-width:112px; } .user-console .um-summary { padding:16px; } .um-dialog { max-width:calc(100vw - 24px)!important; } }

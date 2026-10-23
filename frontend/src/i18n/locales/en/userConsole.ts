@@ -1,4 +1,28 @@
 export default {
+  userMonitor: {
+    vendor: 'Provider', group: 'Group', range: 'Time range', filter: 'Health filter',
+    ranges: { '90m': 'Last 90 minutes', '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days' },
+    health: { healthy: 'Healthy', warning: 'Warning', critical: 'Critical', unknown: 'Unknown' },
+    disabled: 'V2 monitoring is not enabled. Only authorized catalog and pricing data are shown.',
+    forbidden: 'You do not have permission to read V2 monitoring.', unavailable: 'V2 monitoring is unavailable. Refresh to retry.',
+    noDirectory: 'No authorized model catalog is available. Channels or Model Plaza may be disabled; monitoring history does not grant access.',
+    passive: 'Health reflects real requests; it does not mean every upstream account is alive.',
+    authorizedModels: 'Catalog models', observedModels: 'Models with observations', updated: 'Data through', computed: 'Computed at', lag: 'Aggregation lag: {seconds}s',
+    bootstrap: 'Historical aggregation in progress', pending: 'Aggregation pending or delayed', partial: 'Incomplete time coverage', stale: 'Monitoring data is stale',
+    missing: 'No exact monitoring identity. It may be excluded or collapsed; health is not inferred.',
+    noSamples: 'Monitored, with no request samples in the covered interval.', insufficient: 'Samples exist but are insufficient for scoring', measured: 'Health metrics available', minimum: 'Scoring requires at least {count} samples',
+    score: 'Native health score', errorRate: 'Request error rate', duration: 'Average duration', ttft: 'TTFT P50', p95: 'TTFT P95',
+    history: 'Observed request health', noTrend: 'No observed history available', selectKeys: 'Related keys',
+    priceDetails: 'Price details', priceUnknown: 'Full pricing unavailable', billingMode: 'Billing mode', referencePrice: 'Channel base reference price', standardPrices: 'Standard period reference, excluding peak factors', tokenUnit: 'USD / 1M token', rulePricing: 'Prices follow full billing rules',
+    priceNote: 'Pricing and multipliers come from the official catalog, independently of health. Prices use USD. Peak periods, context tiers, caching and media rates follow the original pricing rules.',
+    basePriceOnly: 'Only channel base reference prices are available. Full group billing rules are unavailable; these are not final charges.',
+    rateUnknown: 'Custom rate unavailable', authorizedKeys: 'Keys are related by real group authorization, not observed model usage. IP, quota and expiration restrictions still apply.',
+    viewKeys: 'View related keys', linkedKeys: 'Related API keys', noKeys: 'No related keys', selectModel: 'Select a model to inspect related keys.',
+    composite: 'This key belongs to a Composite group and can access multiple authorized providers. Navigation retains the Composite group filter.',
+    openKey: 'View key {name}', emptyFilter: 'No models match this health filter',
+    issue: { channels: 'Channel catalog failed to load. Refresh to retry.', groups: 'Authorized groups failed to load. Catalog and creation are hidden.', rates: 'Custom rates are unavailable. Default rates are reference only; final prices are hidden.', pricing: 'Model Plaza pricing failed to load. Available base reference prices remain visible.', keys: 'Related keys could not be loaded completely. Partial results are hidden.', snapshot: 'Refresh settings are unavailable. Using five minutes; matrix results remain independent.', timeout: 'The request timed out. Refresh to retry.' },
+    priceFields: { input_price: 'Input', output_price: 'Output', cache_write_price: 'Cache write 5m', cache_write_1h_price: 'Cache write 1h', cache_read_price: 'Cache read' }
+  },
   userKeys: {"directoryFailed": "The group directory or your rates failed to load. Retry before creating or rebinding a key.","reverseSort": "Reverse sort direction","total": "Total keys", "active": "Active keys", "today": "Today’s spend", "month": "Last 30 days", "allKeys": "All current keys", "activeScope": "Stored status: active", "todayScope": "Today in server timezone", "monthScope": "Rolling 30 days", "statsScope": "All current keys. Today uses the server timezone; 30 days is a rolling interval.", "statsFailed": "Global statistics could not be loaded completely. Retry.", "vendor": "Provider", "allVendors": "All providers", "clearFilters": "Clear filters", "collecting": "Loading and validating the complete collection…", "listFailed": "The collection is incomplete or changing. Retry; partial results are hidden.", "usageFailed": "Key usage failed to load. Refresh to retry.", "statusFor": "Enable {name}", "endpoint": "API base URL", "trend": "Usage over the last 7 days", "detailFailed": "Details failed to load", "noHistory": "No usage in the last 7 days", "selectKey": "Select a key to view details", "sort": "Sort", "quotaLimit": "Quota limit", "ccsHidden": "CCS import is disabled by this site"},
   userConsole: {
     wallet: 'Wallet',
