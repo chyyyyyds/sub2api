@@ -7,6 +7,7 @@ import admin from './admin'
 import misc from './misc'
 import userConsole from './userConsole'
 import wallet from './wallet'
+import profileV1 from './profileV1'
 
 export default {
   ...landing,
@@ -18,4 +19,5 @@ export default {
   ...misc,
   ...userConsole,
   ...wallet,
+  ...profileV1,
 }

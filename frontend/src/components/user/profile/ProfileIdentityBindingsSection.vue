@@ -13,25 +13,29 @@
     </div>
 
     <div :class="props.embedded ? 'space-y-4' : 'divide-y divide-gray-100 dark:divide-dark-700'">
-      <div v-if="props.embedded">
+      <div v-if="props.embedded" class="up-bindings-heading">
+        <span class="up-section-icon"><Icon name="link" size="md" /></span>
+        <div>
         <p class="text-sm font-semibold text-gray-900 dark:text-white">
           {{ t('profile.authBindings.title') }}
         </p>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           {{ t('profile.authBindings.description') }}
         </p>
+        </div>
       </div>
 
       <div
         v-for="item in providerItems"
         :key="item.provider"
         :class="rowClass"
+        class="up-binding-row"
       >
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div class="flex min-w-0 flex-1 items-start gap-4">
+        <div class="up-binding-layout flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="up-binding-body flex min-w-0 flex-1 items-start gap-4">
             <div
               :class="providerIconClass(item.provider)"
-              class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold"
+              class="up-binding-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold"
             >
               <Icon
                 v-if="item.provider === 'email'"
@@ -42,7 +46,7 @@
               <span v-else>{{ providerInitial(item.provider) }}</span>
             </div>
 
-            <div class="min-w-0 flex-1 space-y-3">
+            <div class="up-binding-copy min-w-0 flex-1 space-y-3">
               <div class="flex flex-wrap items-center gap-2">
                 <h3 class="font-medium text-gray-900 dark:text-white">
                   {{ item.label }}
@@ -90,12 +94,13 @@
               <div
                 v-if="item.provider === 'email' && showEmailForm"
                 data-testid="profile-binding-email-form"
-                class="grid gap-2 sm:grid-cols-[minmax(0,1.4fr)_auto]"
+                class="up-email-form grid gap-2 sm:grid-cols-[minmax(0,1.4fr)_auto]"
               >
                 <input
                   v-model.trim="emailBindingForm.email"
                   data-testid="profile-binding-email-input"
                   type="email"
+                  :aria-label="t('profile.authBindings.emailPlaceholder')"
                   class="input"
                   :placeholder="t('profile.authBindings.emailPlaceholder')"
                   :disabled="isSendingEmailCode || isBindingEmail"
@@ -105,11 +110,11 @@
                   data-testid="profile-binding-email-send-code"
                   type="button"
                   class="btn btn-secondary btn-sm"
-                  :disabled="isSendingEmailCode || isBindingEmail"
+                  :disabled="isSendingEmailCode || isBindingEmail || emailCooldown > 0"
                   @click="sendEmailCode"
                 >
                   {{
-                    isSendingEmailCode
+                    emailCooldown > 0 ? `${emailCooldown}s` : isSendingEmailCode
                       ? t('common.loading')
                       : t('profile.authBindings.sendCodeAction')
                   }}
@@ -119,6 +124,8 @@
                   data-testid="profile-binding-email-code-input"
                   type="text"
                   inputmode="numeric"
+                  :aria-label="t('profile.authBindings.codePlaceholder')"
+                  autocomplete="one-time-code"
                   maxlength="6"
                   class="input"
                   :placeholder="t('profile.authBindings.codePlaceholder')"
@@ -129,6 +136,8 @@
                   v-model="emailBindingForm.password"
                   data-testid="profile-binding-email-password-input"
                   type="password"
+                  autocomplete="current-password"
+                  :aria-label="t('profile.currentPassword')"
                   class="input"
                   :placeholder="emailPasswordPlaceholder"
                   :disabled="isBindingEmail"
@@ -151,7 +160,7 @@
             </div>
           </div>
 
-          <div class="flex shrink-0 flex-wrap items-center gap-3">
+          <div class="up-binding-actions flex shrink-0 flex-wrap items-center gap-3">
             <button
               v-if="item.provider === 'email' && compact"
               data-testid="profile-binding-email-toggle"
@@ -170,6 +179,7 @@
               :data-testid="`profile-binding-${item.provider}-action`"
               type="button"
               class="btn btn-primary btn-sm"
+              :disabled="bindingProvider !== null"
               @click="startBinding(item.provider)"
             >
               {{ t('profile.authBindings.bindAction', { providerName: item.label }) }}
@@ -196,7 +206,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { useProfileLifecycle } from './useProfileLifecycle'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import {
@@ -243,12 +254,16 @@ const props = withDefaults(
 )
 
 const { t } = useI18n()
+const isActive = useProfileLifecycle()
 const route = useRoute()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
 const localUser = ref<User | null>(null)
 const isSendingEmailCode = ref(false)
+const emailCooldown = ref(0)
+let emailTimer: ReturnType<typeof setInterval> | undefined
+const bindingProvider = ref<UserAuthProvider | null>(null)
 const isBindingEmail = ref(false)
 const isEmailBindingFormDirty = ref(false)
 const isEmailFormExpanded = ref(!props.compact)
@@ -562,28 +577,40 @@ function toggleEmailForm(): void {
   isEmailFormExpanded.value = !isEmailFormExpanded.value
 }
 
-function startBinding(provider: UserAuthProvider): void {
+async function startBinding(provider: UserAuthProvider): Promise<void> {
+  if (!isActive() || bindingProvider.value || !providerItems.value.some(item => item.provider === provider && item.canBind)) return
   if (provider === 'email') {
     return
   }
-  startOAuthBinding(provider, {
+  bindingProvider.value = provider
+  try {
+  await startOAuthBinding(provider, {
     redirectTo: route.fullPath || '/profile',
     wechatOAuthSettings: provider === 'wechat' ? wechatOAuthSettings.value : null,
   })
+  } catch {
+    if (isActive()) appStore.showError(t('common.tryAgain'))
+  } finally { bindingProvider.value = null }
 }
 
 function applyUpdatedUser(user: User): void {
+  if (!isActive()) return
   localUser.value = user
   authStore.user = user
 }
 
 async function handleUnbind(provider: BindableProvider, providerLabel: string): Promise<void> {
+  if (!isActive() || unbindingProvider.value) return
+  if (!providerItems.value.some(item => item.provider === provider && item.canUnbind)) return
+  if (!window.confirm(t('profileV1.unbindConfirm', { providerName: providerLabel }))) return
   unbindingProvider.value = provider
   try {
     const user = await unbindAuthIdentity(provider)
+    if (!isActive()) return
     applyUpdatedUser(user)
     appStore.showSuccess(t('profile.authBindings.unbindSuccess', { providerName: providerLabel }))
   } catch (error) {
+    if (!isActive()) return
     appStore.showError((error as { message?: string }).message || t('common.tryAgain'))
   } finally {
     unbindingProvider.value = null
@@ -622,6 +649,7 @@ function validateEmailBindingForm(requireCode: boolean): boolean {
 }
 
 async function sendEmailCode(): Promise<void> {
+  if (!isActive() || isSendingEmailCode.value || isBindingEmail.value || emailCooldown.value > 0) return
   if (!validateEmailBindingForm(false)) {
     return
   }
@@ -630,8 +658,13 @@ async function sendEmailCode(): Promise<void> {
   isSendingEmailCode.value = true
   try {
     await sendEmailBindingCode(emailBindingForm.email)
+    if (!isActive()) return
+    emailCooldown.value = 60
+    if (emailTimer) clearInterval(emailTimer)
+    emailTimer = setInterval(() => { if (--emailCooldown.value <= 0) { clearInterval(emailTimer); emailTimer = undefined } }, 1000)
     appStore.showSuccess(t('profile.authBindings.codeSentTo', { email: emailBindingForm.email }))
   } catch (error) {
+    if (!isActive()) return
     appStore.showError((error as { message?: string }).message || t('auth.sendCodeFailed'))
   } finally {
     isSendingEmailCode.value = false
@@ -639,6 +672,7 @@ async function sendEmailCode(): Promise<void> {
 }
 
 async function bindEmail(): Promise<void> {
+  if (!isActive() || isBindingEmail.value || isSendingEmailCode.value) return
   if (!validateEmailBindingForm(true)) {
     return
   }
@@ -651,7 +685,9 @@ async function bindEmail(): Promise<void> {
       verify_code: emailBindingForm.verifyCode,
       password: emailBindingForm.password,
     })
+    if (!isActive()) return
     const replacingBoundEmail = emailBound.value
+    if (!isActive()) return
     applyUpdatedUser(user)
     resetEmailBindingForm(user)
     if (compact.value) {
@@ -663,9 +699,11 @@ async function bindEmail(): Promise<void> {
         : t('profile.authBindings.bindSuccess')
     )
   } catch (error) {
+    if (!isActive()) return
     appStore.showError((error as { message?: string }).message || t('common.tryAgain'))
   } finally {
     isBindingEmail.value = false
   }
 }
+onBeforeUnmount(() => { if (emailTimer) clearInterval(emailTimer); emailBindingForm.password = ''; emailBindingForm.verifyCode = '' })
 </script>

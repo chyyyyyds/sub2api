@@ -1,9 +1,9 @@
 <template>
-  <div class="fixed inset-0 z-50 overflow-y-auto" @click.self="$emit('close')">
+  <div role="dialog" aria-modal="true" :aria-label="t('profile.totp.setupTitle')" class="up-dialog fixed inset-0 z-50 overflow-y-auto" @click.self="$emit('close')">
     <div class="flex min-h-full items-center justify-center p-4">
       <div class="fixed inset-0 bg-black/50 transition-opacity" @click="$emit('close')"></div>
 
-      <div class="relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800">
+      <div ref="dialogPanel" tabindex="-1" @keydown="dialogKeys" class="up-dialog-panel relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800">
         <!-- Header -->
         <div class="mb-6 text-center">
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -130,12 +130,13 @@
               <label class="input-label text-center block mb-3">
                 {{ t('profile.totp.enterCode') }}
               </label>
-              <div class="flex justify-center gap-2">
+              <div class="up-totp-digits flex justify-center gap-2">
                 <input
                   v-for="(_, index) in 6"
                   :key="index"
                   :ref="(el) => setInputRef(el, index)"
                   :value="code[index]"
+                  :aria-label="`${t('profile.totp.enterCode')} ${index + 1}`"
                   type="text"
                   maxlength="1"
                   inputmode="numeric"
@@ -168,6 +169,7 @@
 </template>
 
 <script setup lang="ts">
+import { useProfileDialog } from './useProfileLifecycle'
 import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -181,6 +183,7 @@ const emit = defineEmits<{
   success: []
 }>()
 
+const { panel: dialogPanel, onKeydown: dialogKeys } = useProfileDialog(() => emit('close'))
 const { t } = useI18n()
 const appStore = useAppStore()
 
@@ -229,7 +232,7 @@ watch(
   async (url) => {
     if (url) {
       try {
-        qrCodeDataUrl.value = await QRCode.toDataURL(url, {
+        const generated = await QRCode.toDataURL(url, {
           width: 200,
           margin: 2,
           color: {
@@ -237,8 +240,9 @@ watch(
             light: '#ffffff'
           }
         })
-      } catch (err) {
-        console.error('Failed to generate QR code:', err)
+        if (!disposed && setupData.value?.qr_code_url === url) qrCodeDataUrl.value = generated
+      } catch {
+        if (!disposed) appStore.showError(t('profile.totp.setupFailed'))
       }
     }
   },
@@ -316,8 +320,10 @@ const loadVerificationMethod = async () => {
   methodLoading.value = true
   try {
     const method = await totpAPI.getVerificationMethod()
+    if (disposed) return
     verificationMethod.value = method.method
   } catch (err: any) {
+    if (disposed) return
     appStore.showError(extractApiErrorMessage(err, t('common.error')))
     emit('close')
   } finally {
@@ -326,6 +332,7 @@ const loadVerificationMethod = async () => {
 }
 
 const handleSendCode = async () => {
+  if (disposed || sendingCode.value || codeCooldown.value > 0) return
   sendingCode.value = true
   try {
     await totpAPI.sendVerifyCode()
@@ -347,6 +354,7 @@ const handleSendCode = async () => {
       }
     }, 1000)
   } catch (err: any) {
+    if (disposed) return
     appStore.showError(extractApiErrorMessage(err, t('profile.totp.sendCodeFailed')))
   } finally {
     sendingCode.value = false
@@ -354,6 +362,7 @@ const handleSendCode = async () => {
 }
 
 const handleVerifyAndSetup = async () => {
+  if (disposed || setupLoading.value || !canProceedFromVerify.value) return
   setupLoading.value = true
 
   try {
@@ -361,9 +370,13 @@ const handleVerifyAndSetup = async () => {
       ? { email_code: verifyForm.value.emailCode }
       : { password: verifyForm.value.password }
 
-    setupData.value = await totpAPI.initiateSetup(request)
+    const result = await totpAPI.initiateSetup(request)
+    if (disposed) return
+    setupData.value = result
+    verifyForm.value = { emailCode: '', password: '' }
     step.value = 1
   } catch (err: any) {
+    if (disposed) return
     appStore.showError(extractApiErrorMessage(err, t('profile.totp.setupFailed')))
   } finally {
     setupLoading.value = false
@@ -372,7 +385,7 @@ const handleVerifyAndSetup = async () => {
 
 const handleVerify = async () => {
   const totpCode = code.value.join('')
-  if (totpCode.length !== 6 || !setupData.value) return
+  if (disposed || verifying.value || totpCode.length !== 6 || !setupData.value) return
 
   verifying.value = true
 
@@ -381,9 +394,11 @@ const handleVerify = async () => {
       totp_code: totpCode,
       setup_token: setupData.value.setup_token
     })
+    if (disposed) return
     appStore.showSuccess(t('profile.totp.enableSuccess'))
     emit('success')
   } catch (err: any) {
+    if (disposed) return
     appStore.showError(extractApiErrorMessage(err, t('profile.totp.verifyFailed')))
     code.value = ['', '', '', '', '', '']
     nextTick(() => {
@@ -400,6 +415,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposed = true
+  setupData.value = null
+  qrCodeDataUrl.value = ''
+  verifyForm.value = { emailCode: '', password: '' }
+  code.value = ['', '', '', '', '', '']
   if (cooldownTimer.value) {
     clearInterval(cooldownTimer.value)
     cooldownTimer.value = null

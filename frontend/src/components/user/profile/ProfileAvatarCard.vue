@@ -15,7 +15,7 @@
     <div :class="props.embedded ? 'space-y-3' : 'flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-start'">
       <div
         :class="props.embedded
-          ? 'flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 text-xl font-bold text-white shadow-lg shadow-primary-500/20'
+          ? 'up-avatar-preview flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 text-xl font-bold text-white shadow-lg shadow-primary-500/20'
           : 'flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 text-3xl font-bold text-white shadow-lg shadow-primary-500/20'"
       >
         <img
@@ -42,11 +42,12 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-          <label class="btn btn-secondary btn-sm cursor-pointer">
+          <label class="btn btn-secondary btn-sm cursor-pointer" tabindex="0" @keydown.enter.prevent="($el.querySelector('input[type=file]') as HTMLInputElement)?.click()" @keydown.space.prevent="($el.querySelector('input[type=file]') as HTMLInputElement)?.click()">
             <input
               data-testid="profile-avatar-file-input"
               type="file"
               accept="image/*"
+              :disabled="avatarSaving"
               class="hidden"
               @change="handleAvatarFileChange"
             >
@@ -57,7 +58,7 @@
             data-testid="profile-avatar-save"
             type="button"
             class="btn btn-primary btn-sm"
-            :disabled="avatarSaving || !avatarDraft"
+            :disabled="avatarSaving || avatarPreparing || !avatarDraft"
             @click="handleAvatarSave"
           >
             {{ t('common.save') }}
@@ -67,7 +68,7 @@
             data-testid="profile-avatar-delete"
             type="button"
             class="btn btn-secondary btn-sm"
-            :disabled="avatarSaving"
+            :disabled="avatarSaving || avatarPreparing"
             @click="handleAvatarDelete"
           >
             {{ t('common.delete') }}
@@ -79,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import { useProfileLifecycle } from './useProfileLifecycle'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { userAPI } from '@/api'
@@ -95,6 +97,7 @@ const props = withDefaults(defineProps<{
 })
 
 const { t } = useI18n()
+const isActive = useProfileLifecycle()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
@@ -103,6 +106,8 @@ const avatarScaleSteps = [1, 0.92, 0.84, 0.76, 0.68, 0.6, 0.52, 0.44, 0.36]
 const avatarQualitySteps = [0.92, 0.84, 0.76, 0.68, 0.6, 0.52, 0.44, 0.36]
 const avatarDraft = ref('')
 const avatarSaving = ref(false)
+const avatarPreparing = ref(false)
+let fileSequence = 0
 
 const displayName = computed(() => props.user?.username?.trim() || props.user?.email?.trim() || t('profile.user'))
 const avatarInitial = computed(() => displayName.value.charAt(0).toUpperCase() || 'U')
@@ -205,6 +210,8 @@ async function prepareAvatarUpload(file: File): Promise<File> {
 }
 
 async function handleAvatarFileChange(event: Event) {
+  if (avatarSaving.value || !isActive()) return
+  const sequence = ++fileSequence
   const input = event.target as HTMLInputElement | null
   const file = input?.files?.[0]
   if (input) {
@@ -214,20 +221,25 @@ async function handleAvatarFileChange(event: Event) {
     return
   }
 
+  avatarPreparing.value = true
   try {
     const preparedFile = await prepareAvatarUpload(file)
     const dataURL = await readFileAsDataURL(preparedFile)
+    if (!isActive() || sequence !== fileSequence) return
     const normalized = normalizeUploadedAvatar(dataURL)
     if (!normalized) {
       return
     }
     avatarDraft.value = normalized
   } catch (error: unknown) {
-    appStore.showError(extractApiErrorMessage(error, t('common.error')))
+    if (isActive() && sequence === fileSequence) appStore.showError(extractApiErrorMessage(error, t('common.error')))
+  } finally {
+    if (isActive() && sequence === fileSequence) avatarPreparing.value = false
   }
 }
 
 async function handleAvatarSave() {
+  if (avatarSaving.value || avatarPreparing.value || !isActive()) return
   const normalized = normalizeUploadedAvatar(avatarDraft.value)
   if (!normalized) {
     return
@@ -236,10 +248,12 @@ async function handleAvatarSave() {
   avatarSaving.value = true
   try {
     const updated = await userAPI.updateProfile({ avatar_url: normalized })
+    if (!isActive()) return
     authStore.user = updated
     avatarDraft.value = updated.avatar_url?.trim() || ''
     appStore.showSuccess(t('profile.avatar.saveSuccess'))
   } catch (error: unknown) {
+    if (!isActive()) return
     appStore.showError(extractApiErrorMessage(error, t('common.error')))
   } finally {
     avatarSaving.value = false
@@ -247,7 +261,7 @@ async function handleAvatarSave() {
 }
 
 async function handleAvatarDelete() {
-  if (avatarSaving.value) {
+  if (avatarSaving.value || avatarPreparing.value || !isActive()) {
     return
   }
   if (!avatarDraft.value.trim() && !props.user?.avatar_url?.trim()) {
@@ -258,10 +272,12 @@ async function handleAvatarDelete() {
   avatarSaving.value = true
   try {
     const updated = await userAPI.updateProfile({ avatar_url: '' })
+    if (!isActive()) return
     authStore.user = updated
     avatarDraft.value = ''
     appStore.showSuccess(t('profile.avatar.deleteSuccess'))
   } catch (error: unknown) {
+    if (!isActive()) return
     appStore.showError(extractApiErrorMessage(error, t('common.error')))
   } finally {
     avatarSaving.value = false

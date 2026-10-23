@@ -1,6 +1,6 @@
 <template>
   <div class="card">
-    <div class="flex items-start justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+    <div class="up-passkey-header flex items-start justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700">
       <div>
         <h2 class="text-lg font-medium text-gray-900 dark:text-white">
           {{ t('profile.passkey.title') }}
@@ -73,6 +73,10 @@
           <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-500"></div>
         </div>
 
+        <div v-else-if="loadFailed" class="up-error" role="alert">
+          <p>{{ t('profile.passkey.loadFailed') }}</p>
+          <button type="button" class="btn btn-secondary" @click="loadCredentials">{{ t('profileV1.retry') }}</button>
+        </div>
         <div
           v-else-if="credentials.length === 0"
           class="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500 dark:border-dark-700 dark:text-gray-400"
@@ -84,7 +88,7 @@
           <div
             v-for="credential in credentials"
             :key="credential.id"
-            class="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+            class="up-passkey-row flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
           >
             <div class="min-w-0">
               <div class="flex items-center gap-2">
@@ -130,11 +134,11 @@
     </div>
 
     <!-- 删除确认：吊销凭据需验证当前密码，防止被窃会话静默移除 Passkey -->
-    <div v-if="deleteTarget" class="fixed inset-0 z-50 overflow-y-auto">
+    <div v-if="deleteTarget" role="dialog" aria-modal="true" :aria-label="t('profile.passkey.deleteTitle')" class="up-dialog fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-full items-center justify-center p-4">
         <div class="fixed inset-0 bg-black/50 transition-opacity" @click="closeDeleteDialog"></div>
         <div
-          class="relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800"
+          ref="dialogPanel" tabindex="-1" @keydown="dialogKeys" class="up-dialog-panel relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800"
         >
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
             {{ t('profile.passkey.deleteTitle') }}
@@ -177,7 +181,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { useProfileLifecycle, useProfileDialog } from './useProfileLifecycle'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { passkeyAPI, type PasskeyCredentialSummary } from '@/api'
 import { Icon } from '@/components/icons'
@@ -186,9 +191,14 @@ import { useAppStore } from '@/stores/app'
 const props = defineProps<{ enabled: boolean }>()
 
 const { t } = useI18n()
+const isActive = useProfileLifecycle()
+const { panel: dialogPanel, onKeydown: dialogKeys } = useProfileDialog(closeDeleteDialog)
 const appStore = useAppStore()
 const supported = passkeyAPI.isSupported()
 const loading = ref(false)
+const loadFailed = ref(false)
+let loadSequence = 0
+let featureVersion = 0
 const busy = ref(false)
 const showAddForm = ref(false)
 const newName = ref('')
@@ -205,14 +215,21 @@ function extractErrorMessage(error: unknown, fallback: string): string {
 }
 
 async function loadCredentials(): Promise<void> {
+  const sequence = ++loadSequence
+  if (!isActive()) return
   if (!props.enabled) {
     credentials.value = []
     return
   }
   loading.value = true
+  loadFailed.value = false
   try {
-    credentials.value = await passkeyAPI.list()
+    const result = await passkeyAPI.list()
+    if (!isActive() || sequence !== loadSequence || !props.enabled) return
+    credentials.value = result
   } catch (error) {
+    if (!isActive() || sequence !== loadSequence || !props.enabled) return
+    loadFailed.value = true
     // 字符串错误码在 reason 字段（code 是数字状态码）；
     // 设置变更竞态下后端仍可能返回 PASSKEY_DISABLED，静默处理
     const reason = (error as { reason?: string }).reason
@@ -220,19 +237,22 @@ async function loadCredentials(): Promise<void> {
       appStore.showError(t('profile.passkey.loadFailed'))
     }
   } finally {
-    loading.value = false
+    if (isActive() && sequence === loadSequence) loading.value = false
   }
 }
 
 async function addPasskey(): Promise<void> {
-  if (newPassword.value.length === 0) return
+  if (busy.value || !props.enabled || !supported || !isActive() || newPassword.value.length === 0) return
+  const version = featureVersion
   busy.value = true
   try {
     await passkeyAPI.register(newName.value.trim(), newPassword.value)
+    if (!isActive() || !props.enabled || version !== featureVersion) return
     appStore.showSuccess(t('profile.passkey.added'))
     cancelAdd()
     await loadCredentials()
   } catch (error) {
+    if (!isActive() || !props.enabled || version !== featureVersion) return
     if (!(error instanceof DOMException && error.name === 'NotAllowedError')) {
       appStore.showError(extractErrorMessage(error, t('profile.passkey.addFailed')))
     }
@@ -248,14 +268,18 @@ function cancelAdd(): void {
 }
 
 async function renamePasskey(credential: PasskeyCredentialSummary): Promise<void> {
+  if (busy.value || !props.enabled || !isActive()) return
   const name = window.prompt(t('profile.passkey.renamePrompt'), credential.name)?.trim()
   if (!name || name === credential.name) return
+  const version = featureVersion
   busy.value = true
   try {
     await passkeyAPI.rename(credential.id, name)
+    if (!isActive() || !props.enabled || version !== featureVersion) return
     credential.name = name
     appStore.showSuccess(t('profile.passkey.renamed'))
   } catch {
+    if (!isActive() || !props.enabled || version !== featureVersion) return
     appStore.showError(t('profile.passkey.renameFailed'))
   } finally {
     busy.value = false
@@ -263,25 +287,31 @@ async function renamePasskey(credential: PasskeyCredentialSummary): Promise<void
 }
 
 function deletePasskey(credential: PasskeyCredentialSummary): void {
+  if (busy.value || !props.enabled || !isActive()) return
   deleteTarget.value = credential
   deletePassword.value = ''
 }
 
 function closeDeleteDialog(): void {
+  if (busy.value) return
   deleteTarget.value = null
   deletePassword.value = ''
 }
 
 async function confirmDelete(): Promise<void> {
   const credential = deleteTarget.value
-  if (!credential || deletePassword.value.length === 0) return
+  if (busy.value || !props.enabled || !isActive() || !credential || deletePassword.value.length === 0) return
+  const version = featureVersion
   busy.value = true
   try {
     await passkeyAPI.remove(credential.id, deletePassword.value)
+    if (!isActive() || !props.enabled || version !== featureVersion) return
     credentials.value = credentials.value.filter((item) => item.id !== credential.id)
     appStore.showSuccess(t('profile.passkey.deleted'))
-    closeDeleteDialog()
+    deleteTarget.value = null
+    deletePassword.value = ''
   } catch (error) {
+    if (!isActive() || !props.enabled || version !== featureVersion) return
     // 密码错误等失败保持对话框打开，允许重试
     appStore.showError(extractErrorMessage(error, t('profile.passkey.deleteFailed')))
   } finally {
@@ -300,8 +330,11 @@ function formatDate(value: string): string {
 watch(
   () => props.enabled,
   () => {
+    featureVersion++
+    if (!props.enabled) { cancelAdd(); deleteTarget.value = null; deletePassword.value = ''; loading.value = false }
     void loadCredentials()
   },
   { immediate: true }
 )
+onBeforeUnmount(() => { newPassword.value = ''; deletePassword.value = ''; credentials.value = [] })
 </script>

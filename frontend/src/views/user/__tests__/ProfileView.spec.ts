@@ -73,7 +73,7 @@ describe('ProfileView', () => {
     })
   })
 
-  it('renders the simplified single-column profile shell without separate stat cards', async () => {
+  it('renders the responsive profile composition with all security controls', async () => {
     const wrapper = mount(ProfileView, {
       global: {
         stubs: {
@@ -82,6 +82,7 @@ describe('ProfileView', () => {
           ProfileInfoCard: { template: '<div data-testid="profile-info-card" />' },
           ProfileBalanceNotifyCard: { template: '<div data-testid="profile-balance-notify-card" />' },
           ProfilePasswordForm: { template: '<div data-testid="profile-password-form" />' },
+          ProfilePasskeyCard: { template: '<div data-testid="profile-passkey-card" />' },
           ProfileTotpCard: { template: '<div data-testid="profile-totp-card" />' },
           Icon: true
         }
@@ -96,4 +97,47 @@ describe('ProfileView', () => {
     expect(wrapper.get('[data-testid="profile-shell"]').html()).toContain('profile-password-form')
     expect(wrapper.get('[data-testid="profile-shell"]').html()).toContain('profile-totp-card')
   })
+  function render() {
+    return mount(ProfileView, { global: { stubs: {
+      AppLayout: { template: '<div class="user-console"><slot /></div>' }, Icon: true,
+      ProfileInfoCard: true, ProfileBalanceNotifyCard: true, ProfilePasswordForm: true,
+      ProfileTotpCard: true, ProfilePasskeyCard: true,
+    } } })
+  }
+  it('首次读取完成之前不挂载可修改表单', async () => {
+    let resolve!: () => void
+    refreshUserMock.mockReturnValue(new Promise<void>(yes => { resolve = yes }))
+    const w = render(); await flushPromises()
+    expect(w.findComponent({ name: 'ProfileInfoCard' }).exists()).toBe(false)
+    expect(w.get('[role="status"]').text()).toBe('common.loading')
+    resolve(); await flushPromises(); expect(w.findComponent({ name: 'ProfileInfoCard' }).exists()).toBe(true); w.unmount()
+  })
+  it('资料读取失败撤下表单并可重试', async () => {
+    refreshUserMock.mockRejectedValueOnce(new Error('offline'))
+    const w = render(); await flushPromises()
+    expect(w.get('[role="alert"]').text()).toContain('profileV1.loadFailed')
+    expect(w.findComponent({ name: 'ProfileInfoCard' }).exists()).toBe(false)
+    await w.get('button').trigger('click'); await flushPromises()
+    expect(refreshUserMock).toHaveBeenCalledTimes(2); expect(w.findComponent({ name: 'ProfileInfoCard' }).exists()).toBe(true); w.unmount()
+  })
+  it.each([null, 'reject'])('功能设置失败不开放绑定入口：%s', async (result) => {
+    if (result === 'reject') fetchPublicSettingsMock.mockRejectedValue(new Error('denied'))
+    else fetchPublicSettingsMock.mockResolvedValue(null)
+    const w = render(); await flushPromises(); expect(w.get('[role="alert"]').text()).toContain('profileV1.settingsFailed')
+    expect(w.findComponent({ name: 'ProfileInfoCard' }).exists()).toBe(false); w.unmount()
+  })
+  it('功能开关决定余额提醒和 Passkey 注册能力', async () => {
+    fetchPublicSettingsMock.mockResolvedValue({ balance_low_notify_enabled: true, passkey_enabled: true, dingtalk_oauth_enabled: true })
+    const w = render(); await flushPromises()
+    expect(w.getComponent({ name: 'ProfileBalanceNotifyCard' }).exists()).toBe(true)
+    expect(w.getComponent({ name: 'ProfilePasskeyCard' }).attributes('enabled')).toBe('true')
+    expect(w.getComponent({ name: 'ProfileInfoCard' }).attributes('dingtalkenabled')).toBe('true'); w.unmount()
+  })
+  it('管理员使用相同共享资料组合且保留原角色', async () => {
+    authState.user!.role = 'admin'
+    const w = render(); await flushPromises()
+    expect(w.getComponent({ name: 'ProfileInfoCard' }).props('user').role).toBe('admin')
+    expect(w.find('.up-security-grid').exists()).toBe(true); w.unmount()
+  })
+
 })

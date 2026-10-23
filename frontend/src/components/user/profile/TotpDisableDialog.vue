@@ -1,9 +1,9 @@
 <template>
-  <div class="fixed inset-0 z-50 overflow-y-auto" @click.self="$emit('close')">
+  <div role="dialog" aria-modal="true" :aria-label="t('profile.totp.disableTitle')" class="up-dialog fixed inset-0 z-50 overflow-y-auto" @click.self="$emit('close')">
     <div class="flex min-h-full items-center justify-center p-4">
       <div class="fixed inset-0 bg-black/50 transition-opacity" @click="$emit('close')"></div>
 
-      <div class="relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800">
+      <div ref="dialogPanel" tabindex="-1" @keydown="dialogKeys" class="up-dialog-panel relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800">
         <!-- Header -->
         <div class="mb-6">
           <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -83,6 +83,7 @@
 </template>
 
 <script setup lang="ts">
+import { useProfileDialog } from './useProfileLifecycle'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -94,6 +95,7 @@ const emit = defineEmits<{
   success: []
 }>()
 
+const { panel: dialogPanel, onKeydown: dialogKeys } = useProfileDialog(() => emit('close'))
 const { t } = useI18n()
 const appStore = useAppStore()
 
@@ -120,8 +122,10 @@ const loadVerificationMethod = async () => {
   methodLoading.value = true
   try {
     const method = await totpAPI.getVerificationMethod()
+    if (disposed) return
     verificationMethod.value = method.method
   } catch (err: any) {
+    if (disposed) return
     appStore.showError(extractApiErrorMessage(err, t('common.error')))
     emit('close')
   } finally {
@@ -130,6 +134,7 @@ const loadVerificationMethod = async () => {
 }
 
 const handleSendCode = async () => {
+  if (disposed || sendingCode.value || codeCooldown.value > 0) return
   sendingCode.value = true
   try {
     await totpAPI.sendVerifyCode()
@@ -151,6 +156,7 @@ const handleSendCode = async () => {
       }
     }, 1000)
   } catch (err: any) {
+    if (disposed) return
     appStore.showError(extractApiErrorMessage(err, t('profile.totp.sendCodeFailed')))
   } finally {
     sendingCode.value = false
@@ -158,7 +164,7 @@ const handleSendCode = async () => {
 }
 
 const handleDisable = async () => {
-  if (!canSubmit.value) return
+  if (disposed || loading.value || !canSubmit.value) return
 
   loading.value = true
 
@@ -168,9 +174,11 @@ const handleDisable = async () => {
       : { password: form.value.password }
 
     await totpAPI.disable(request)
+    if (disposed) return
     appStore.showSuccess(t('profile.totp.disableSuccess'))
     emit('success')
   } catch (err: any) {
+    if (disposed) return
     appStore.showError(extractApiErrorMessage(err, t('profile.totp.disableFailed')))
   } finally {
     loading.value = false
@@ -183,6 +191,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposed = true
+  form.value = { emailCode: '', password: '' }
   if (cooldownTimer.value) {
     clearInterval(cooldownTimer.value)
     cooldownTimer.value = null

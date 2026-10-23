@@ -14,6 +14,10 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
       </div>
 
+      <div v-else-if="loadFailed" class="up-error" role="alert">
+        <p>{{ t('profileV1.statusFailed') }}</p>
+        <button type="button" class="btn btn-secondary" @click="loadStatus">{{ t('profileV1.retry') }}</button>
+      </div>
       <!-- Feature disabled globally -->
       <div v-else-if="status && !status.feature_enabled" class="flex items-center gap-4 py-4">
         <div class="flex-shrink-0 rounded-full bg-gray-100 p-3 dark:bg-dark-700">
@@ -32,7 +36,7 @@
       </div>
 
       <!-- 2FA Enabled -->
-      <div v-else-if="status?.enabled" class="flex items-center justify-between">
+      <div v-else-if="status?.enabled" class="up-security-state flex items-center justify-between">
         <div class="flex items-center gap-4">
           <div class="flex-shrink-0 rounded-full bg-green-100 p-3 dark:bg-green-900/30">
             <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -58,7 +62,7 @@
       </div>
 
       <!-- 2FA Not Enabled -->
-      <div v-else class="flex items-center justify-between">
+      <div v-else class="up-security-state flex items-center justify-between">
         <div class="flex items-center gap-4">
           <div class="flex-shrink-0 rounded-full bg-gray-100 p-3 dark:bg-dark-700">
             <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -101,6 +105,7 @@
 </template>
 
 <script setup lang="ts">
+import { useProfileLifecycle } from './useProfileLifecycle'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { totpAPI } from '@/api'
@@ -109,18 +114,23 @@ import TotpSetupModal from './TotpSetupModal.vue'
 import TotpDisableDialog from './TotpDisableDialog.vue'
 
 const { t } = useI18n()
+const isActive = useProfileLifecycle()
 
 const loading = ref(true)
+const loadFailed = ref(false)
 const status = ref<TotpStatus | null>(null)
 const showSetupModal = ref(false)
 const showDisableDialog = ref(false)
 
 const loadStatus = async () => {
+  if (!isActive()) return
   loading.value = true
+  loadFailed.value = false
   try {
-    status.value = await totpAPI.getStatus()
-  } catch (error) {
-    console.error('Failed to load TOTP status:', error)
+    const result = await totpAPI.getStatus()
+    if (isActive()) status.value = result
+  } catch {
+    if (isActive()) loadFailed.value = true
   } finally {
     loading.value = false
   }

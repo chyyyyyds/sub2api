@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { useProfileLifecycle } from './useProfileLifecycle'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -54,6 +55,7 @@ const props = withDefaults(defineProps<{
 })
 
 const { t } = useI18n()
+const isActive = useProfileLifecycle()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
@@ -67,6 +69,7 @@ watch(() => props.initialUsername, (val) => {
 })
 
 const handleUpdateProfile = async () => {
+  if (loading.value || !isActive()) return
   if (!username.value.trim()) {
     appStore.showError(t('profile.usernameRequired'))
     return
@@ -78,11 +81,13 @@ const handleUpdateProfile = async () => {
     const updatedUser = await userAPI.updateProfile({
       username: submittedUsername
     })
+    if (!isActive()) return
     if (username.value === submittedUsername) username.value = updatedUser.username
     savedUsername = updatedUser.username
     authStore.user = updatedUser
     appStore.showSuccess(t('profile.updateSuccess'))
   } catch (error: unknown) {
+    if (!isActive()) return
     appStore.showError(extractApiErrorMessage(error, t('profile.updateFailed')))
   } finally {
     loading.value = false

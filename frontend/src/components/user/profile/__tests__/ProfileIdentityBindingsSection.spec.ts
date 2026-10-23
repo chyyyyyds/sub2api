@@ -126,6 +126,7 @@ describe('ProfileIdentityBindingsSection', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it('renders provider binding states and provider-specific bind actions', () => {
@@ -691,6 +692,7 @@ describe('ProfileIdentityBindingsSection', () => {
   })
 
   it('shows third-party binding details and unbinds a connected provider', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     userApiMocks.unbindAuthIdentity.mockResolvedValue(
       createUser({
         email_bound: true,
@@ -789,4 +791,38 @@ describe('ProfileIdentityBindingsSection', () => {
     expect(wrapper.find('[data-testid="profile-binding-linuxdo-action"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="profile-binding-oidc-action"]').exists()).toBe(false)
   })
+  it('取消解绑确认不会发送请求', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const w = mountEmailBindingSection(createUser({ linuxdo_bound: true, auth_bindings: { linuxdo: { bound: true, can_unbind: true } } }))
+    await w.get('[data-testid="profile-binding-linuxdo-unbind"]').trigger('click'); await flushPromises()
+    expect(userApiMocks.unbindAuthIdentity).not.toHaveBeenCalled(); w.unmount()
+  })
+  it('邮箱验证码发送保留倒计时且卸载清理', async () => {
+    vi.useFakeTimers(); userApiMocks.sendEmailBindingCode.mockResolvedValue(undefined)
+    const w = mountEmailBindingSection(createUser()); await w.get('[data-testid="profile-binding-email-send-code"]').trigger('click'); await flushPromises()
+    expect(w.get('[data-testid="profile-binding-email-send-code"]').text()).toBe('60s')
+    vi.advanceTimersByTime(1000); await flushPromises(); expect(w.get('[data-testid="profile-binding-email-send-code"]').text()).toBe('59s')
+    const timers = vi.getTimerCount(); w.unmount(); expect(vi.getTimerCount()).toBe(timers - 1); vi.clearAllTimers(); vi.useRealTimers()
+  })
+  it('邮箱验证码发送失败可以重试，不启动冷却', async () => {
+    userApiMocks.sendEmailBindingCode.mockRejectedValue({ message: '邮件服务不可用' })
+    const w = mountEmailBindingSection(createUser()); await w.get('[data-testid="profile-binding-email-send-code"]').trigger('click'); await flushPromises()
+    expect(w.get('[data-testid="profile-binding-email-send-code"]').text()).toBe('Send code')
+    expect(w.get('[data-testid="profile-binding-email-send-code"]').attributes('disabled')).toBeUndefined(); w.unmount()
+  })
+  it('邮箱更新失败保持原绑定状态', async () => {
+    userApiMocks.bindEmailIdentity.mockRejectedValue({ message: '验证码无效或过期' })
+    const user = createUser({ email_bound: true }); const w = mountEmailBindingSection(user)
+    await w.get('[data-testid="profile-binding-email-input"]').setValue('new@example.test'); await w.get('[data-testid="profile-binding-email-code-input"]').setValue('111111'); await w.get('[data-testid="profile-binding-email-password-input"]').setValue('test-only')
+    await w.get('[data-testid="profile-binding-email-submit"]').trigger('click'); await flushPromises()
+    expect(w.get('[data-testid="profile-binding-email-status"]').text()).toBe('Bound'); expect(w.text()).toContain('alice@example.com'); w.unmount()
+  })
+  it('卸载后忽略邮箱绑定迟到响应', async () => {
+    let resolve!: (u: User) => void; userApiMocks.bindEmailIdentity.mockReturnValue(new Promise<User>(yes => { resolve = yes }))
+    const auth = useAuthStore(); auth.user = createUser(); const original = auth.user
+    const w = mountEmailBindingSection(original); await w.get('[data-testid="profile-binding-email-input"]').setValue('new@example.test'); await w.get('[data-testid="profile-binding-email-code-input"]').setValue('111111'); await w.get('[data-testid="profile-binding-email-password-input"]').setValue('test-only')
+    await w.get('[data-testid="profile-binding-email-submit"]').trigger('click'); w.unmount(); resolve(createUser({ email: 'new@example.test' })); await flushPromises()
+    expect(auth.user?.email).toBe('alice@example.com')
+  })
+
 })

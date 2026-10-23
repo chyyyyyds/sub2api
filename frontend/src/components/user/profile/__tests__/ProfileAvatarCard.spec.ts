@@ -259,4 +259,39 @@ describe('ProfileAvatarCard', () => {
     expect(authStoreState.user?.avatar_url).toBeNull()
     expect(showSuccessMock).toHaveBeenCalledWith('Avatar removed')
   })
+  it.each(['image/gif', 'text/plain'])('拒绝超大 GIF 或非图片：%s', async (type) => {
+    installAvatarCompressionMocks()
+    const w = mount(ProfileAvatarCard, { props: { user: createUser() } })
+    const input = w.get('[data-testid="profile-avatar-file-input"]')
+    Object.defineProperty(input.element, 'files', { value: [new File([new Uint8Array(21 * 1024)], 'upload', { type })] })
+    await input.trigger('change'); await flushAsyncWork()
+    expect(showErrorMock).toHaveBeenCalled(); expect(updateProfileMock).not.toHaveBeenCalled(); w.unmount()
+  })
+  it('保存失败保留预览、原头像和重试入口', async () => {
+    installAvatarCompressionMocks(); const user = createUser({ avatar_url: 'data:image/png;base64,b2xk' }); authStoreState.user = user
+    updateProfileMock.mockRejectedValue(new Error('offline'))
+    const w = mount(ProfileAvatarCard, { props: { user } }); const input = w.get('[data-testid="profile-avatar-file-input"]')
+    Object.defineProperty(input.element, 'files', { value: [new File(['new'], 'new.png', { type: 'image/png' })] })
+    await input.trigger('change'); await flushAsyncWork(); const preview = w.get('[data-testid="profile-avatar-preview"]').attributes('src')
+    await w.get('[data-testid="profile-avatar-save"]').trigger('click'); await flushAsyncWork()
+    expect(authStoreState.user).toBe(user); expect(w.get('[data-testid="profile-avatar-preview"]').attributes('src')).toBe(preview)
+    expect(w.get('[data-testid="profile-avatar-save"]').attributes('disabled')).toBeUndefined(); expect(showSuccessMock).not.toHaveBeenCalled(); w.unmount()
+  })
+  it('删除失败不清除 Store 中原头像', async () => {
+    const user = createUser({ avatar_url: 'data:image/png;base64,b2xk' }); authStoreState.user = user; updateProfileMock.mockRejectedValue(new Error('offline'))
+    const w = mount(ProfileAvatarCard, { props: { user } }); await w.get('[data-testid="profile-avatar-delete"]').trigger('click'); await flushAsyncWork()
+    expect(authStoreState.user).toBe(user); expect(w.get('[data-testid="profile-avatar-preview"]').attributes('src')).toBe(user.avatar_url); w.unmount()
+  })
+  it('删除成功采用服务端返回的真实用户', async () => {
+    const user = createUser({ avatar_url: 'data:image/png;base64,b2xk' }); const updated = createUser({ avatar_url: null }); authStoreState.user = user; updateProfileMock.mockResolvedValue(updated)
+    const w = mount(ProfileAvatarCard, { props: { user } }); await w.get('[data-testid="profile-avatar-delete"]').trigger('click'); await flushAsyncWork()
+    expect(updateProfileMock).toHaveBeenCalledWith({ avatar_url: '' }); expect(authStoreState.user).toEqual(updated); w.unmount()
+  })
+  it('卸载后忽略删除返回，不回写用户资料', async () => {
+    const user = createUser({ avatar_url: 'data:image/png;base64,b2xk' }); authStoreState.user = user; let resolve!: (u: User) => void
+    updateProfileMock.mockReturnValue(new Promise<User>(yes => { resolve = yes }))
+    const w = mount(ProfileAvatarCard, { props: { user } }); await w.get('[data-testid="profile-avatar-delete"]').trigger('click'); w.unmount(); resolve(createUser()); await flushAsyncWork()
+    expect(authStoreState.user).toBe(user); expect(showSuccessMock).not.toHaveBeenCalled()
+  })
+
 })

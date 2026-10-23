@@ -76,3 +76,31 @@ it('shows the reason a TOTP code was rejected', async () => {
   expect(mocks.showError).toHaveBeenCalledWith('Invalid TOTP code')
   expect(wrapper.emitted('success')).toBeUndefined()
 })
+
+// 以下仅验证前端调用契约，不代表真实认证器、邮件服务或后端安全联调。
+it('完成正式 TOTP 配置、验证码确认与启用回调', async () => {
+  mocks.totpAPI.initiateSetup.mockResolvedValue({ secret: 'TEST-ONLY', qr_code_url: '', setup_token: 'test-setup-token' })
+  mocks.totpAPI.enable.mockResolvedValue({ success: true })
+  const w = mount(TotpSetupModal); await flushPromises(); await w.get('input[type=password]').setValue('test-only')
+  await w.get('.btn-primary').trigger('click'); await flushPromises(); await w.get('.btn-primary').trigger('click')
+  for (const input of w.findAll('input[maxlength="1"]')) await input.setValue('1')
+  await w.get('form').trigger('submit'); await flushPromises()
+  expect(mocks.totpAPI.enable).toHaveBeenCalledWith({ totp_code: '111111', setup_token: 'test-setup-token' }); expect(w.emitted('success')).toHaveLength(1)
+})
+it.each(['email', 'password'])('按正式身份校验方式禁用 TOTP：%s', async (method) => {
+  mocks.totpAPI.getVerificationMethod.mockResolvedValue({ method }); mocks.totpAPI.disable.mockResolvedValue({ success: true })
+  const w = mount(TotpDisableDialog); await flushPromises(); await w.get('input').setValue(method === 'email' ? '111111' : 'test-only')
+  await w.get('form').trigger('submit'); await flushPromises()
+  expect(mocks.totpAPI.disable).toHaveBeenCalledWith(method === 'email' ? { email_code: '111111' } : { password: 'test-only' }); expect(w.emitted('success')).toHaveLength(1)
+})
+it('TOTP 禁用直接重复 submit 仅提交一次', async () => {
+  let resolve!: (v: unknown) => void; mocks.totpAPI.disable.mockReturnValue(new Promise(yes => { resolve = yes }))
+  const w = mount(TotpDisableDialog); await flushPromises(); await w.get('input').setValue('test-only')
+  await w.get('form').trigger('submit'); await w.get('form').trigger('submit'); expect(mocks.totpAPI.disable).toHaveBeenCalledOnce()
+  resolve({ success: true }); await flushPromises()
+})
+it('TOTP 禁用卸载后忽略返回与成功提示', async () => {
+  let resolve!: (v: unknown) => void; mocks.totpAPI.disable.mockReturnValue(new Promise(yes => { resolve = yes }))
+  const w = mount(TotpDisableDialog); await flushPromises(); await w.get('input').setValue('test-only'); await w.get('form').trigger('submit'); w.unmount()
+  resolve({ success: true }); await flushPromises(); expect(w.emitted('success')).toBeUndefined(); expect(mocks.showSuccess).not.toHaveBeenCalled()
+})

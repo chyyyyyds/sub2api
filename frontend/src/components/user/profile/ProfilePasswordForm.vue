@@ -22,7 +22,8 @@
           <input
             id="old_password"
             v-model="form.old_password"
-            type="password"
+            :type="showPasswords ? 'text' : 'password'"
+            :disabled="loading"
             required
             autocomplete="current-password"
             class="input"
@@ -36,7 +37,8 @@
           <input
             id="new_password"
             v-model="form.new_password"
-            type="password"
+            :type="showPasswords ? 'text' : 'password'"
+            :disabled="loading"
             required
             autocomplete="new-password"
             class="input"
@@ -53,13 +55,18 @@
           <input
             id="confirm_password"
             v-model="form.confirm_password"
-            type="password"
+            :type="showPasswords ? 'text' : 'password'"
+            :disabled="loading"
             required
             autocomplete="new-password"
             class="input"
           />
         </div>
 
+        <label class="up-password-visibility">
+          <input v-model="showPasswords" type="checkbox" :disabled="loading">
+          {{ t(showPasswords ? 'profileV1.hidePassword' : 'profileV1.showPassword') }}
+        </label>
         <div class="flex justify-end pt-4">
           <button type="submit" :disabled="loading" class="btn btn-primary">
             {{ loading ? t('profile.changingPassword') : t('profile.changePasswordButton') }}
@@ -71,13 +78,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useProfileLifecycle } from './useProfileLifecycle'
+import { onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { userAPI } from '@/api'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
+const isActive = useProfileLifecycle()
 const appStore = useAppStore()
 const props = withDefaults(defineProps<{
   embedded?: boolean
@@ -85,6 +94,7 @@ const props = withDefaults(defineProps<{
   embedded: false,
 })
 
+const showPasswords = ref(false)
 const loading = ref(false)
 const form = ref({
   old_password: '',
@@ -93,6 +103,8 @@ const form = ref({
 })
 
 const handleChangePassword = async () => {
+  if (loading.value || !isActive()) return
+  if (!form.value.old_password) { appStore.showError(t('auth.passwordRequired')); return }
   if (form.value.new_password !== form.value.confirm_password) {
     appStore.showError(t('profile.passwordsNotMatch'))
     return
@@ -106,12 +118,16 @@ const handleChangePassword = async () => {
   loading.value = true
   try {
     await userAPI.changePassword(form.value.old_password, form.value.new_password)
+    if (!isActive()) return
+    showPasswords.value = false
     form.value = { old_password: '', new_password: '', confirm_password: '' }
     appStore.showSuccess(t('profile.passwordChangeSuccess'))
   } catch (error: unknown) {
+    if (!isActive()) return
     appStore.showError(extractApiErrorMessage(error, t('profile.passwordChangeFailed')))
   } finally {
     loading.value = false
   }
 }
+onBeforeUnmount(() => { form.value = { old_password: '', new_password: '', confirm_password: '' } })
 </script>
