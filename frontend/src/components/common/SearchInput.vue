@@ -8,6 +8,7 @@
       type="text"
       class="input pl-10"
       :placeholder="placeholder"
+      :aria-label="ariaLabel"
     />
   </div>
 </template>
@@ -20,6 +21,8 @@ import Icon from '@/components/icons/Icon.vue'
 const props = withDefaults(defineProps<{
   modelValue: string
   placeholder?: string
+  /** 可选的输入框无障碍名称，默认不影响原调用方。 */
+  ariaLabel?: string
   debounceMs?: number
 }>(), {
   placeholder: 'Search...',

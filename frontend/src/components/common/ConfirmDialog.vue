@@ -1,5 +1,5 @@
 <template>
-  <BaseDialog :show="show" :title="title" width="narrow" @close="handleCancel">
+  <BaseDialog :trap-focus="trapFocus" :panel-class="panelClass" :show="show" :title="title" width="narrow" @close="handleCancel">
     <div class="space-y-4">
       <p class="text-sm text-gray-600 dark:text-gray-400">{{ message }}</p>
       <slot></slot>
@@ -39,6 +39,10 @@ import BaseDialog from './BaseDialog.vue'
 const { t } = useI18n()
 
 interface Props {
+  /** 可选用户弹窗主题，默认不影响其他调用方。 */
+  panelClass?: string
+  /** 可选键盘焦点环绕，默认不启用。 */
+  trapFocus?: boolean
   show: boolean
   title: string
   message: string

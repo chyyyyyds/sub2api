@@ -1,4 +1,5 @@
 export default {
+  userKeys: {"directoryFailed": "分组目录或用户倍率加载失败，请重试后再创建或调整分组。","reverseSort": "切换排序方向","total": "密钥总数", "active": "活跃密钥", "today": "今日消耗", "month": "近 30 天消耗", "allKeys": "全部当前密钥", "activeScope": "状态为已启用", "todayScope": "后端时区的今天", "monthScope": "滚动近 30 天", "statsScope": "统计全部当前密钥；今日按后端时区，近 30 天为滚动区间。", "statsFailed": "全局统计未完整加载，请重试。", "vendor": "厂商", "allVendors": "全部厂商", "clearFilters": "清除筛选", "collecting": "正在完整加载并校验匹配集合…", "listFailed": "列表未完整加载或数据持续变化，请重试；未显示部分结果。", "usageFailed": "密钥用量加载失败，可刷新重试。", "statusFor": "{name} 启用状态", "endpoint": "接入地址", "trend": "最近 7 天使用趋势", "detailFailed": "详情加载失败", "noHistory": "最近 7 天暂无使用历史", "selectKey": "选择一条密钥查看详情", "sort": "排序", "quotaLimit": "额度限制", "ccsHidden": "站点已关闭 CCS 导入"},
   userConsole: {
     wallet: '钱包',
     overview: '数据总览',

@@ -3,8 +3,12 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 import type { ApiKey } from '@/types'
-import { keysAPI } from '@/api'
+import { keysAPI, usageAPI } from '@/api'
 import KeysView from '../KeysView.vue'
+import { collectKeys } from '../keysConsole'
+vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }) }))
+// 集合完整性由 keysConsole.spec 单独验证，此处隔离页面列表与全局统计读取。
+vi.mock('../keysConsole', async () => ({ ...await vi.importActual('../keysConsole'), collectKeys: vi.fn().mockResolvedValue([]) }))
 
 const {
   listKeys,
@@ -71,6 +75,7 @@ vi.mock('@/api', () => ({
   },
   usageAPI: {
     getDashboardApiKeysUsage,
+    getMyApiKeyDailyUsage: vi.fn().mockResolvedValue({ items: [] }),
   },
   userGroupsAPI: {
     getAvailable: getAvailableGroups,
@@ -157,7 +162,7 @@ const TablePageLayoutStub = {
 const DataTableStub = {
   name: 'DataTable',
   props: { columns: Array, data: Array, selectedKeys: Array, selectable: Boolean },
-  emits: ['sort', 'update:selectedKeys'],
+  emits: ['sort', 'update:selectedKeys', 'rowClick'],
   template: `
     <div>
       <div data-test="columns">{{ columns.map((col) => col.key).join(',') }}</div>
@@ -173,7 +178,7 @@ const DataTableStub = {
           <slot name="cell-id" :value="row.id" :row="row" />
         </div>
         <slot name="cell-name" :value="row.name" :row="row" />
-        <slot name="cell-actions" :row="row" />
+        <slot name="cell-status" :row="row" /><slot name="cell-actions" :row="row" />
         <div data-test="current-concurrency">
           <slot name="cell-current_concurrency" :value="row.current_concurrency" :row="row" />
         </div>
@@ -192,7 +197,7 @@ const DataTableStub = {
 const SelectStub = {
   name: 'Select',
   props: ['modelValue', 'options'],
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'change'],
   template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"></select>',
 }
 
@@ -269,6 +274,7 @@ const getButtonByText = (wrapper: VueWrapper, text: string) => {
 describe('user KeysView column settings', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.mocked(collectKeys).mockResolvedValue([])
 
     listKeys.mockReset()
     updateKey.mockReset()
@@ -291,7 +297,8 @@ describe('user KeysView column settings', () => {
       pages: 1,
     })
     getPublicSettings.mockResolvedValue({})
-    getDashboardApiKeysUsage.mockResolvedValue({ stats: {} })
+    getDashboardApiKeysUsage.mockImplementation(async (ids: number[]) => ({ stats: Object.fromEntries(ids.map(id => [id, { api_key_id:id, today_actual_cost:id/100, total_actual_cost:id/10 }])) }))
+    vi.mocked(usageAPI.getMyApiKeyDailyUsage).mockResolvedValue({ items: [], days: 7, start_date: '', end_date: '' })
     getAvailableGroups.mockResolvedValue([])
     getUserGroupRates.mockResolvedValue({})
     isCurrentStep.mockReturnValue(false)
@@ -340,12 +347,12 @@ describe('user KeysView column settings', () => {
     expect(visibleColumnKeys(wrapper)).toEqual([
       'name',
       'key',
+      'vendor',
       'group',
       'current_concurrency',
-      'usage',
-      'expires_at',
+      'today',
+      'month',
       'status',
-      'created_at',
       'actions',
     ])
     expect(visibleColumnKeys(wrapper)).not.toContain('rate_limit')
@@ -380,7 +387,7 @@ describe('user KeysView column settings', () => {
       table.vm.$emit('sort', 'created_at', 'asc')
     }
     await flushPromises()
-    expect(table.props('selectedKeys')).toEqual([])
+    expect(wrapper.findComponent({ name: 'DataTable' }).props('selectedKeys')).toEqual([])
     expect(wrapper.find('[data-test="bulk-edit-keys"]').exists()).toBe(false)
     wrapper.unmount()
   })
@@ -410,7 +417,7 @@ describe('user KeysView column settings', () => {
     listKeys.mockResolvedValue({ items: [], total: 0, pages: 0 })
     await wrapper.get('button[title="Refresh"]').trigger('click')
     await flushPromises()
-    expect(table.props('selectedKeys')).toEqual([])
+    expect(wrapper.findComponent({ name: 'DataTable' }).props('selectedKeys')).toEqual([])
     wrapper.unmount()
   })
 
@@ -423,9 +430,9 @@ describe('user KeysView column settings', () => {
 
     expect(visibleColumnKeys(wrapper)).toContain('rate_limit')
     expect(localStorage.getItem('api-key-hidden-columns')).toBe(
-      JSON.stringify(['id', 'last_used_at', 'last_used_ip'])
+      JSON.stringify(['id', 'usage', 'expires_at', 'last_used_at', 'last_used_ip'])
     )
-    expect(localStorage.getItem('api-key-column-settings-version')).toBe('3')
+    expect(localStorage.getItem('api-key-column-settings-version')).toBe('4')
   })
 
   it('shows the API key ID column when toggled', async () => {
@@ -467,18 +474,19 @@ describe('user KeysView column settings', () => {
     expect(visibleColumnKeys(wrapper)).toEqual([
       'name',
       'key',
+      'vendor',
       'current_concurrency',
-      'usage',
+      'today',
+      'month',
       'rate_limit',
-      'expires_at',
       'status',
       'last_used_at',
       'actions',
     ])
     expect(localStorage.getItem('api-key-hidden-columns')).toBe(
-      JSON.stringify(['group', 'created_at', 'last_used_ip', 'id'])
+      JSON.stringify(['group', 'created_at', 'last_used_ip', 'id', 'usage', 'expires_at'])
     )
-    expect(localStorage.getItem('api-key-column-settings-version')).toBe('3')
+    expect(localStorage.getItem('api-key-column-settings-version')).toBe('4')
   })
 
   it('does not include always-visible columns in the toggleable menu', async () => {
@@ -487,7 +495,7 @@ describe('user KeysView column settings', () => {
     await wrapper.get('button[title="Column Settings"]').trigger('click')
     await nextTick()
 
-    const columnMenuText = wrapper.text()
+    const columnMenuText = wrapper.get('.uk-column-menu').text()
     expect(columnMenuText).toContain('API Key')
     expect(columnMenuText).toContain('ID')
     expect(columnMenuText).toContain('Current Concurrency')
@@ -528,9 +536,9 @@ describe('user KeysView column settings', () => {
     await flushPromises()
 
     const selects = wrapper.findAllComponents({ name: 'Select' })
-    await selects[0].vm.$emit('update:modelValue', 42)
+    await selects[1].vm.$emit('update:modelValue', 42)
     await flushPromises()
-    await selects[1].vm.$emit('update:modelValue', 'active')
+    await selects[2].vm.$emit('update:modelValue', 'active')
     await flushPromises()
 
     await wrapper.get('[data-test="page-2"]').trigger('click')
@@ -545,7 +553,7 @@ describe('user KeysView column settings', () => {
     table.vm.$emit('sort', key, order)
     await flushPromises()
 
-    expect(table.props('selectedKeys')).toEqual([])
+    expect(wrapper.findComponent({ name: 'DataTable' }).props('selectedKeys')).toEqual([])
     expect(listKeys).toHaveBeenLastCalledWith(
       1,
       50,
@@ -593,7 +601,7 @@ describe('user KeysView column settings', () => {
       expect(optionIds(wrapper)).toEqual([3, 4, 5, 6])
       await chooseProvider(wrapper, 'other')
       expect(optionIds(wrapper)).toEqual([7, 8, 9, 10, 11, 12])
-      expect(wrapper.findAllComponents({ name: 'Select' })[0].props('options')).toHaveLength(14)
+      expect(wrapper.findAllComponents({ name: 'Select' })[1].props('options')).toHaveLength(14)
     })
 
     it('clears the previous group on provider change and submits only the newly selected group', async () => {
@@ -654,4 +662,160 @@ describe('user KeysView column settings', () => {
       expect(optionIds(wrapper)).toHaveLength(12)
     })
   })
+  it('默认每页 10 条、无厂商与单组均调用真实服务端分页参数', async () => {
+    const wrapper = await mountView()
+    expect(listKeys).toHaveBeenCalledWith(1,10,expect.objectContaining({group_id:undefined}),expect.anything())
+    const group = wrapper.findAllComponents({name:'Select'})[1]
+    group.vm.$emit('update:modelValue', 42)
+    await flushPromises()
+    expect(listKeys).toHaveBeenLastCalledWith(1,10,expect.objectContaining({group_id:42}),expect.anything())
+    wrapper.unmount()
+  })
+
+  it('厂商完整集合含历史组，过滤后重算分页，换组不扩大创建授权', async () => {
+    const all = Array.from({length:25},(_,i)=>({...createApiKey(),id:i+1,name:`Key ${i}`,group_id:i%2?99:1,group:{id:i%2?99:1,name:i%2?'Historical':'Current',platform:'openai',rate_multiplier:i%2?2:1}})) as ApiKey[]
+    vi.mocked(collectKeys).mockResolvedValue(all)
+    getAvailableGroups.mockResolvedValue([{id:1,name:'Current',platform:'openai',rate_multiplier:1}])
+    const wrapper = await mountView()
+    const vendor = wrapper.findAllComponents({name:'Select'})[0]
+    vendor.vm.$emit('update:modelValue','openai'); vendor.vm.$emit('change','openai')
+    await flushPromises()
+    const table=wrapper.findComponent({name:'DataTable'})
+    expect(table.props('data')).toHaveLength(10)
+    expect(wrapper.findComponent({name:'Pagination'}).props('total')).toBe(25)
+    wrapper.findComponent({name:'Pagination'}).vm.$emit('update:page',2)
+    await flushPromises()
+    expect(table.props('data').map((k:ApiKey)=>k.id)).toEqual([15,14,13,12,11,10,9,8,7,6])
+    const group = wrapper.findAllComponents({name:'Select'})[1]
+    expect(group.props('options').map((g:{value:number})=>g.value)).toContain(99)
+    group.vm.$emit('update:modelValue',99)
+    await flushPromises()
+    expect(wrapper.findComponent({name:'Pagination'}).props('total')).toBe(12)
+    expect(table.props('data').every((k:ApiKey)=>k.group_id===99)).toBe(true)
+    await getButtonByText(wrapper,'Create API Key').trigger('click')
+    const formGroup = wrapper.findAllComponents({name:'Select'}).find(c=>c.attributes('id')==='key-form-group')!
+    expect(formGroup.props('options').map((g:{value:number})=>g.value)).not.toContain(99)
+    wrapper.unmount()
+  })
+
+  it('全局统计超过 100 条时分批，不能只统计当前 10 行', async () => {
+    vi.mocked(collectKeys).mockResolvedValue(Array.from({length:205},(_,i)=>({...createApiKey(),id:i+1})))
+    const wrapper=await mountView()
+    const cards=wrapper.findAll('.uk-stats strong')
+    expect(cards[0].text()).toBe('205')
+    expect(cards[2].text()).toBe('$211.1500')
+    expect(cards[3].text()).toBe('$2111.5000')
+    const batches=getDashboardApiKeysUsage.mock.calls.map(c=>c[0])
+    expect(batches.some(ids=>ids.length===100)).toBe(true)
+    expect(batches.every(ids=>ids.length<=100)).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('厂商集合失败时清空列表与 total，重试可恢复', async () => {
+    const wrapper=await mountView()
+    vi.mocked(collectKeys).mockRejectedValueOnce(new Error('failed'))
+    const vendor=wrapper.findAllComponents({name:'Select'})[0]
+    vendor.vm.$emit('update:modelValue','openai');vendor.vm.$emit('change','openai')
+    await flushPromises()
+    expect(wrapper.findComponent({name:'DataTable'}).props('data')).toEqual([])
+    expect(wrapper.find('.uk-error[role=alert]').exists()).toBe(true)
+    vi.mocked(collectKeys).mockResolvedValueOnce([])
+    await wrapper.get('.uk-error button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.uk-error[role=alert]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('启停走 toggleStatus，过期和额度耗尽不冒充手动禁用', async () => {
+    vi.mocked(keysAPI.toggleStatus).mockResolvedValue({...createApiKey(),status:'inactive'})
+    const wrapper=await mountView()
+    await wrapper.get('[role=switch]').trigger('click')
+    await flushPromises()
+    expect(keysAPI.toggleStatus).toHaveBeenCalledWith(1,'inactive')
+    wrapper.unmount()
+    listKeys.mockResolvedValue({items:[{...createApiKey(),status:'expired'}],total:1,page:1,page_size:10,pages:1})
+    const expired=await mountView()
+    expect(expired.get('[role=switch]').attributes('disabled')).toBeDefined()
+    expect(expired.get('.uk-status small').text()).toBe('Expired')
+    expired.unmount()
+  })
+
+  it('正式编辑保留高级 DTO、清除有效期与限额，并执行正式删除', async () => {
+    const source={...createApiKey(),group_id:1}
+    listKeys.mockResolvedValue({items:[source],total:1,page:1,page_size:10,pages:1})
+    updateKey.mockResolvedValue(source)
+    const wrapper=await mountView()
+    await getButtonByText(wrapper,'common.edit').trigger('click')
+    const vm=wrapper.vm as unknown as {formData:Record<string,unknown>}
+    Object.assign(vm.formData,{name:'Updated',enable_quota:true,quota:17.5,enable_ip_restriction:true,ip_whitelist:'127.0.0.1\n10.0.0.0/8',ip_blacklist:'203.0.113.1',enable_rate_limit:true,rate_limit_5h:1,rate_limit_1d:2,rate_limit_7d:3,enable_expiration:false})
+    await wrapper.get('#key-form').trigger('submit');await flushPromises()
+    expect(updateKey).toHaveBeenLastCalledWith(1,expect.objectContaining({name:'Updated',quota:17.5,ip_whitelist:['127.0.0.1','10.0.0.0/8'],ip_blacklist:['203.0.113.1'],rate_limit_5h:1,rate_limit_1d:2,rate_limit_7d:3,expires_at:''}))
+    await getButtonByText(wrapper,'common.edit').trigger('click')
+    Object.assign(vm.formData,{enable_quota:false,enable_ip_restriction:false,enable_rate_limit:false})
+    await wrapper.get('#key-form').trigger('submit');await flushPromises()
+    expect(updateKey).toHaveBeenLastCalledWith(1,expect.objectContaining({quota:0,ip_whitelist:[],ip_blacklist:[],rate_limit_5h:0,rate_limit_1d:0,rate_limit_7d:0}))
+    vi.mocked(keysAPI.delete).mockResolvedValue({message:'ok'})
+    await getButtonByText(wrapper,'common.delete').trigger('click')
+    wrapper.findAllComponents({name:'ConfirmDialog'}).find(c=>c.props('title')==='keys.deleteKey')!.vm.$emit('confirm')
+    await flushPromises();expect(keysAPI.delete).toHaveBeenCalledWith(1)
+    wrapper.unmount()
+  })
+
+  it('切换详情时忽略上一条迟到响应', async () => {
+    let resolveOld!:(value:unknown)=>void
+    vi.mocked(usageAPI.getMyApiKeyDailyUsage).mockImplementationOnce(()=>new Promise(resolve=>{resolveOld=resolve as (value:unknown)=>void}))
+    listKeys.mockResolvedValue({items:[createApiKey(),{...createApiKey(),id:2,name:'second'}],total:2,page:1,page_size:10,pages:1})
+    const wrapper=await mountView()
+    wrapper.findComponent({name:'DataTable'}).vm.$emit('rowClick',{...createApiKey(),id:2,name:'second'})
+    await flushPromises()
+    resolveOld({items:[{date:'old-data',requests:10,actual_cost:99}]})
+    await flushPromises()
+    expect(wrapper.get('.uk-detail-heading h2').text()).toBe('second')
+    expect(wrapper.get('.uk-trend').text()).not.toContain('old-data')
+    wrapper.unmount()
+  })
+
+  it('正式创建校验自定义 Key，并提交完整高级字段、额度和有效期', async () => {
+    getAvailableGroups.mockResolvedValue([{id:1,name:'Allowed',platform:'openai',rate_multiplier:1}])
+    const wrapper=await mountView()
+    await getButtonByText(wrapper,'Create API Key').trigger('click')
+    const vm=wrapper.vm as unknown as {formData:Record<string,unknown>}
+    Object.assign(vm.formData,{name:'Created',group_id:1,use_custom_key:true,custom_key:'bad',quota:5.5,enable_ip_restriction:true,ip_whitelist:'127.0.0.1',ip_blacklist:'203.0.113.1',enable_rate_limit:true,rate_limit_5h:1,rate_limit_1d:2,rate_limit_7d:3,enable_expiration:true,expiration_preset:'7',expiration_date:new Date(Date.now()+6.5*86400000).toISOString()})
+    await wrapper.get('#key-form').trigger('submit');await flushPromises()
+    expect(keysAPI.create).not.toHaveBeenCalled()
+    Object.assign(vm.formData,{custom_key:'fixture_custom_key_123456'})
+    await wrapper.get('#key-form').trigger('submit');await flushPromises()
+    expect(keysAPI.create).toHaveBeenCalledWith('Created',1,'fixture_custom_key_123456',['127.0.0.1'],['203.0.113.1'],5.5,7,{rate_limit_5h:1,rate_limit_1d:2,rate_limit_7d:3})
+    wrapper.unmount()
+  })
+
+  it('快速变更筛选时忽略迟到的列表，不污染新结果或总数', async () => {
+    const wrapper=await mountView()
+    let finish!:(value:unknown)=>void
+    listKeys.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve}))
+    const search=wrapper.findComponent({name:'SearchInput'})
+    search.vm.$emit('update:modelValue','old');search.vm.$emit('search');await nextTick()
+    listKeys.mockResolvedValueOnce({items:[{...createApiKey(),id:2,name:'new result'}],total:1,page:1,page_size:10,pages:1})
+    search.vm.$emit('update:modelValue','new');search.vm.$emit('search');await flushPromises()
+    finish({items:[{...createApiKey(),name:'old result'}],total:99,page:1,page_size:10,pages:10});await flushPromises()
+    expect(wrapper.findComponent({name:'DataTable'}).props('data')[0].name).toBe('new result')
+    expect(wrapper.findComponent({name:'Pagination'}).props('total')).toBe(1)
+    wrapper.unmount()
+  })
+
+  it('目录或倍率失败时显示独立错误，主刷新重试并恢复授权目录', async () => {
+    getAvailableGroups.mockRejectedValueOnce(new Error('directory unavailable'))
+    getUserGroupRates.mockRejectedValueOnce(new Error('rates unavailable'))
+    const wrapper=await mountView()
+    expect(wrapper.find('.uk-directory-error').exists()).toBe(true)
+    getAvailableGroups.mockResolvedValue([{id:1,name:'Restored',platform:'openai',rate_multiplier:1}])
+    getUserGroupRates.mockResolvedValue({1:0.5})
+    await wrapper.get('button[title="Refresh"]').trigger('click');await flushPromises()
+    expect(getAvailableGroups).toHaveBeenCalledTimes(2)
+    expect(getUserGroupRates).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('.uk-directory-error').exists()).toBe(false)
+    expect(wrapper.findAllComponents({name:'Select'})[1].props('options').some((g:{label:string})=>g.label==='Restored · 0.5×')).toBe(true)
+    wrapper.unmount()
+  })
+
 })

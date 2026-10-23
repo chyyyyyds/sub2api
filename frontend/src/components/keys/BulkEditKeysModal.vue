@@ -1,5 +1,5 @@
 <template>
-  <BaseDialog
+  <BaseDialog :trap-focus="trapFocus" :panel-class="panelClass"
     :show="show"
     :title="t('keys.bulkEdit.title')"
     width="normal"
@@ -163,6 +163,10 @@ type IPField = 'ip_whitelist' | 'ip_blacklist'
 type EditableField = LimitField | IPField | 'group_id' | 'status' | 'expires_at'
 
 const props = defineProps<{
+  /** 可选用户弹窗主题。 */
+  panelClass?: string
+  /** 可选键盘焦点环绕，默认不启用。 */
+  trapFocus?: boolean
   show: boolean
   selectedKeys: SelectedKey[]
   groups: Group[]

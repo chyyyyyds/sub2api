@@ -1,5 +1,5 @@
 <template>
-  <BaseDialog
+  <BaseDialog :trap-focus="trapFocus" :panel-class="panelClass"
     :show="show"
     :title="t('keys.useKeyModal.title')"
     width="wide"
@@ -283,6 +283,10 @@ import {
 } from '@/utils/codexCatalogConfig'
 
 interface Props {
+  /** 可选用户弹窗主题，默认不影响其他调用方。 */
+  panelClass?: string
+  /** 可选键盘焦点环绕，默认不启用。 */
+  trapFocus?: boolean
   show: boolean
   apiKey: string
   baseUrl: string

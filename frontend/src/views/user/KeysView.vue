@@ -1,28 +1,24 @@
 <template>
   <AppLayout>
-    <TablePageLayout>
+    <div class="uk-console"><div class="uk-grid"><div class="uk-primary">
+      <div class="uk-stats" :aria-busy="summaryLoading">
+        <article v-for="card in summaryCards" :key="card.label"><span class="uk-stat-icon"><Icon :name="card.icon" size="lg" /></span><div><span>{{ card.label }}</span><strong>{{ summaryLoading ? '…' : card.value }}</strong><small>{{ card.detail }}</small></div></article>
+      </div>
+      <p class="uk-scope">{{ t('userKeys.statsScope') }}</p>
+      <div v-if="summaryError" class="uk-error" role="alert">{{ t('userKeys.statsFailed') }}<button class="btn btn-secondary" @click="refreshSummary">{{ t('userAnalytics.retry') }}</button></div>
+    <TablePageLayout class="uk-table-panel">
       <template #filters>
         <div class="flex flex-col gap-3">
-          <div class="flex flex-wrap items-center gap-3">
-            <SearchInput
-              v-model="filterSearch"
-              :placeholder="t('keys.searchPlaceholder')"
-              class="w-full sm:w-64"
-              @search="onFilterChange"
-            />
-            <Select
-              :model-value="filterGroupId"
-              class="w-40"
-              :options="groupFilterOptions"
-              @update:model-value="onGroupFilterChange"
-            />
-            <Select
-              :model-value="filterStatus"
-              class="w-40"
-              :options="statusFilterOptions"
-              @update:model-value="onStatusFilterChange"
-            />
+          <div class="uk-filters">
+            <SearchInput v-model="filterSearch" :placeholder="t('keys.searchPlaceholder')" :aria-label="t('keys.searchPlaceholder')" @search="onFilterChange" />
+            <Select v-model="filterVendor" :options="vendorFilterOptions" dropdown-class="uk-select-menu" :aria-label="t('userKeys.vendor')" @change="onVendorChange" />
+            <Select :model-value="filterGroupId" :options="groupFilterOptions" dropdown-class="uk-select-menu" :aria-label="t('keys.group')" @update:model-value="onGroupFilterChange" />
+            <Select :model-value="filterStatus" :options="statusFilterOptions" dropdown-class="uk-select-menu" :aria-label="t('common.status')" @update:model-value="onStatusFilterChange" />
+            <button class="btn btn-secondary" @click="clearFilters"><Icon name="refresh" size="sm" />{{ t('userKeys.clearFilters') }}</button>
           </div>
+          <p v-if="loading && filterVendor" class="uk-scope" role="status">{{ t('userKeys.collecting') }}</p>
+          <div v-if="groupsFailed || ratesFailed" class="uk-error uk-directory-error" role="alert">{{ t('userKeys.directoryFailed') }}<button class="btn btn-secondary" @click="retryDirectory">{{ t('userAnalytics.retry') }}</button></div>
+          <div v-if="listFailed" class="uk-error" role="alert">{{ t('userKeys.listFailed') }}<button class="btn btn-secondary" @click="loadApiKeys()">{{ t('userAnalytics.retry') }}</button></div>
           <EndpointPopover
             v-if="publicSettings?.api_base_url || (publicSettings?.custom_endpoints?.length ?? 0) > 0"
             :api-base-url="publicSettings?.api_base_url || ''"
@@ -50,7 +46,7 @@
       <template #actions>
         <div class="flex justify-end gap-3">
           <button
-            @click="loadApiKeys"
+            @click="refreshKeys"
             :disabled="loading"
             class="btn btn-secondary"
             :title="t('common.refresh')"
@@ -70,7 +66,7 @@
             </button>
             <div
               v-if="showColumnDropdown"
-              class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+              class="uk-column-menu absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
             >
               <button
                 v-for="col in toggleableColumns"
@@ -89,15 +85,17 @@
               </button>
             </div>
           </div>
-          <button @click="showCreateModal = true" class="btn btn-primary" data-tour="keys-create-btn">
-            <Icon name="plus" size="md" class="mr-2" />
-            {{ t('keys.createKey') }}
-          </button>
+          <label class="uk-sort">{{ t('userKeys.sort') }}<select v-model="sortState.sort_by" @change="handleSort(sortState.sort_by, sortState.sort_order)"><option v-for="col in sortOptions" :key="col.key" :value="col.key">{{ col.label }}</option></select></label><button class="btn btn-secondary" type="button" :aria-label="t('userKeys.reverseSort')" @click="handleSort(sortState.sort_by, sortState.sort_order === 'asc' ? 'desc' : 'asc')"><Icon name="chevronDown" size="sm" :class="{ 'rotate-180': sortState.sort_order === 'asc' }" /></button>
         </div>
       </template>
 
       <template #table>
         <DataTable
+          :key="`${sortState.sort_by}:${sortState.sort_order}`"
+          table-only
+          :sticky-actions-column="false"
+          clickable-rows
+          @rowClick="selectDetail"
           :columns="columns"
           :data="apiKeys"
           :loading="loading"
@@ -107,8 +105,8 @@
           :selection-label="(key: ApiKey) => t('keys.bulkEdit.selectKey', { name: key.name })"
           @update:selected-keys="handleSelectionChange"
           :server-side-sort="true"
-          default-sort-key="created_at"
-          default-sort-order="desc"
+          :default-sort-key="sortState.sort_by"
+          :default-sort-order="sortState.sort_order"
           @sort="handleSort"
         >
           <template #cell-id="{ value }">
@@ -143,7 +141,7 @@
 
           <template #cell-name="{ value, row }">
             <div class="flex items-center gap-1.5">
-              <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+              <button type="button" class="uk-key-name" :aria-pressed="detailKey?.id === row.id" @click.stop="selectDetail(row)">{{ value }}</button>
               <Icon
                 v-if="row.ip_whitelist?.length > 0 || row.ip_blacklist?.length > 0"
                 name="shield"
@@ -154,13 +152,16 @@
             </div>
           </template>
 
+          <template #cell-vendor="{ row }"><span class="uk-vendor"><PlatformIcon v-if="row.group?.platform" :platform="row.group.platform" size="sm" />{{ row.group?.platform ? platformDisplayName(keyVendor(row)) : t('keys.noGroup') }}</span></template>
+          <template #cell-today="{ row }"><span :title="money(usageStats[row.id]?.today_actual_cost, 8)">{{ money(usageStats[row.id]?.today_actual_cost) }}</span></template>
+          <template #cell-month="{ row }"><span :title="money(usageStats[row.id]?.total_actual_cost, 8)">{{ money(usageStats[row.id]?.total_actual_cost) }}</span></template>
           <template #cell-group="{ row }">
             <div class="group/dropdown relative">
               <button
                 :ref="(el) => setGroupButtonRef(row.id, el)"
                 @click="openGroupSelector(row)"
                 class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
-                :title="t('keys.clickToChangeGroup')"
+                :title="row.group ? `${row.group.name} · ${userGroupRates[row.group.id] ?? row.group.rate_multiplier}x · ${t('keys.clickToChangeGroup')}` : t('keys.clickToChangeGroup')"
               >
                 <GroupBadge
                   v-if="row.group"
@@ -177,7 +178,6 @@
                 <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{
                   t('keys.noGroup')
                 }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('keys.selectGroup') }}</span>
                 <svg
                   class="h-3.5 w-3.5 text-gray-400 opacity-60 transition-opacity group-hover/dropdown:opacity-100"
                   fill="none"
@@ -360,17 +360,7 @@
             <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{ t('keys.noExpiration') }}</span>
           </template>
 
-          <template #cell-status="{ value }">
-            <span :class="[
-              'badge',
-              value === 'active' ? 'badge-success' :
-              value === 'quota_exhausted' ? 'badge-warning' :
-              value === 'expired' ? 'badge-danger' :
-              'badge-gray'
-            ]">
-              {{ t('keys.status.' + value) }}
-            </span>
-          </template>
+          <template #cell-status="{ row }"><div class="uk-status"><button type="button" role="switch" :aria-checked="effectiveKeyStatus(row, now.getTime()) === 'active'" :aria-label="t('userKeys.statusFor', { name: row.name })" :disabled="statusPending.has(row.id) || ['expired', 'quota_exhausted'].includes(effectiveKeyStatus(row, now.getTime()))" :class="{ on: effectiveKeyStatus(row, now.getTime()) === 'active' }" @click.stop="toggleKeyStatus(row)"><span /></button><small>{{ t('keys.status.' + effectiveKeyStatus(row, now.getTime())) }}</small></div></template>
 
           <template #cell-last_used_at="{ value }">
             <span v-if="value" class="text-sm text-gray-500 dark:text-dark-400">
@@ -390,57 +380,7 @@
             <span class="text-sm text-gray-500 dark:text-dark-400">{{ formatDateTime(value) }}</span>
           </template>
 
-          <template #cell-actions="{ row }">
-            <div class="flex items-center gap-1">
-              <!-- Use Key Button -->
-              <button
-                @click="openUseKeyModal(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
-              >
-                <Icon name="terminal" size="sm" />
-                <span class="text-xs">{{ t('keys.useKey') }}</span>
-              </button>
-              <!-- Import to CC Switch Button -->
-              <button
-                v-if="!publicSettings?.hide_ccs_import_button"
-                @click="importToCcswitch(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
-              >
-                <Icon name="upload" size="sm" />
-                <span class="text-xs">{{ t('keys.importToCcSwitch') }}</span>
-              </button>
-              <!-- Toggle Status Button -->
-              <button
-                @click="toggleKeyStatus(row)"
-                :class="[
-                  'flex flex-col items-center gap-0.5 rounded-lg p-1.5 transition-colors',
-                  row.status === 'active'
-                    ? 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400'
-                    : 'text-gray-500 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400'
-                ]"
-              >
-                <Icon v-if="row.status === 'active'" name="ban" size="sm" />
-                <Icon v-else name="checkCircle" size="sm" />
-                <span class="text-xs">{{ row.status === 'active' ? t('keys.disable') : t('keys.enable') }}</span>
-              </button>
-              <!-- Edit Button -->
-              <button
-                @click="editKey(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
-              >
-                <Icon name="edit" size="sm" />
-                <span class="text-xs">{{ t('common.edit') }}</span>
-              </button>
-              <!-- Delete Button -->
-              <button
-                @click="confirmDelete(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-              >
-                <Icon name="trash" size="sm" />
-                <span class="text-xs">{{ t('common.delete') }}</span>
-              </button>
-            </div>
-          </template>
+          <template #cell-actions="{ row }"><UserKeyActions :hide-ccs="publicSettings?.hide_ccs_import_button" @use="openUseKeyModal(row)" @ccs="importToCcswitch(row)" @edit="editKey(row)" @delete="confirmDelete(row)" /></template>
 
           <template #empty>
             <EmptyState
@@ -464,9 +404,19 @@
         />
       </template>
     </TablePageLayout>
+    </div><aside class="uk-side">
+      <section class="uk-create"><button class="btn btn-primary" data-tour="keys-create-btn" @click="showCreateModal = true"><Icon name="plus" size="md" />{{ t('keys.createKey') }}</button></section>
+      <section class="uk-detail" :aria-busy="detailLoading">
+        <template v-if="detailKey"><div class="uk-detail-heading"><PlatformIcon v-if="detailKey.group?.platform" :platform="detailKey.group.platform" size="lg" /><div><h2>{{ detailKey.name }}</h2><small>{{ t('keys.status.' + effectiveKeyStatus(detailKey, now.getTime())) }}</small></div></div>
+          <dl><div><dt>{{ t('keys.apiKey') }}</dt><dd><code>{{ maskApiKey(detailKey.key) }}</code><button type="button" :aria-label="t('common.copy')" @click="copyToClipboard(detailKey.key, detailKey.id)"><Icon name="clipboard" size="sm" /></button></dd></div><div><dt>{{ t('userKeys.vendor') }}</dt><dd>{{ detailKey.group?.platform ? platformDisplayName(keyVendor(detailKey)) : t('keys.noGroup') }}</dd></div><div><dt>{{ t('keys.group') }}</dt><dd><GroupBadge v-if="detailKey.group" :name="detailKey.group.name" :platform="detailKey.group.platform" :subscription-type="detailKey.group.subscription_type" :rate-multiplier="detailKey.group.rate_multiplier" :user-rate-multiplier="userGroupRates[detailKey.group.id]" :peak-rate-enabled="detailKey.group.peak_rate_enabled" :peak-start="detailKey.group.peak_start" :peak-end="detailKey.group.peak_end" :peak-rate-multiplier="detailKey.group.peak_rate_multiplier" /><span v-else>{{ t('keys.noGroup') }}</span></dd></div><div><dt>{{ t('userKeys.endpoint') }}</dt><dd class="uk-endpoint">{{ publicSettings?.api_base_url || fallbackOrigin }}</dd></div><div><dt>{{ t('keys.currentConcurrency') }}</dt><dd>{{ detailKey.current_concurrency ?? 0 }}</dd></div><div><dt>{{ t('userKeys.today') }}</dt><dd>{{ money(detailUsage?.today_actual_cost) }}</dd></div><div><dt>{{ t('userKeys.month') }}</dt><dd>{{ money(detailUsage?.total_actual_cost) }}</dd></div><div><dt>{{ t('keys.created') }}</dt><dd>{{ formatDateTime(detailKey.created_at) }}</dd></div></dl>
+          <UserKeyActions :hide-ccs="publicSettings?.hide_ccs_import_button" @use="openUseKeyModal(detailKey)" @ccs="importToCcswitch(detailKey)" @edit="editKey(detailKey)" @delete="confirmDelete(detailKey)" />
+          <div class="uk-trend"><h3>{{ t('userKeys.trend') }}</h3><p v-if="detailLoading" role="status">{{ t('common.loading') }}</p><div v-else-if="detailError" class="uk-error" role="alert">{{ t('userKeys.detailFailed') }}<button @click="loadDetail">{{ t('userAnalytics.retry') }}</button></div><p v-else-if="!detailDays.some(d => d.requests > 0)">{{ t('userKeys.noHistory') }}</p><template v-else><div class="uk-bars" role="img" :aria-label="t('userKeys.trend')"><span v-for="day in detailDays" :key="day.date" :style="{ height: `${Math.max(2, day.actual_cost / Math.max(...detailDays.map(d => d.actual_cost), 0.00000001) * 100)}%` }" :title="`${day.date}: ${money(day.actual_cost, 8)}`" /></div><details><summary>{{ t('userAnalytics.exactTrend') }}</summary><table><tbody><tr v-for="day in detailDays" :key="day.date"><th>{{ day.date }}</th><td>{{ money(day.actual_cost, 8) }}</td></tr></tbody></table></details></template></div>
+        </template><p v-else class="uk-detail-empty">{{ t('userKeys.selectKey') }}</p>
+      </section>
+    </aside></div></div>
 
     <!-- Create/Edit Modal -->
-    <BaseDialog
+    <BaseDialog trap-focus panel-class="uk-dialog"
       :show="showCreateModal || showEditModal"
       :title="showEditModal ? t('keys.editKey') : t('keys.createKey')"
       width="normal"
@@ -535,7 +485,7 @@
 
         <div>
           <label class="input-label" for="key-form-group">{{ t('keys.groupLabel') }}</label>
-          <Select
+          <Select dropdown-class="uk-select-menu"
             :key="showEditModal ? 'edit' : createProvider"
             id="key-form-group"
             :aria-label="t('keys.groupLabel')"
@@ -586,6 +536,7 @@
             <label class="input-label mb-0">{{ t('keys.customKeyLabel') }}</label>
             <button
               type="button"
+              role="switch" :aria-label="t('keys.customKeyLabel')" :aria-checked="formData.use_custom_key"
               @click="formData.use_custom_key = !formData.use_custom_key"
               :class="[
                 'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
@@ -602,7 +553,7 @@
           </div>
           <div v-if="formData.use_custom_key">
             <input
-              v-model="formData.custom_key"
+              v-model="formData.custom_key" :aria-label="t('keys.customKeyLabel')"
               type="text"
               class="input font-mono"
               :placeholder="t('keys.customKeyPlaceholder')"
@@ -615,7 +566,7 @@
 
         <div v-if="showEditModal">
           <label class="input-label">{{ t('keys.statusLabel') }}</label>
-          <Select
+          <Select dropdown-class="uk-select-menu"
             v-model="formData.status"
             :options="statusOptions"
             :placeholder="t('keys.selectStatus')"
@@ -628,6 +579,7 @@
             <label class="input-label mb-0">{{ t('keys.ipRestriction') }}</label>
             <button
               type="button"
+              role="switch" :aria-label="t('keys.ipRestriction')" :aria-checked="formData.enable_ip_restriction"
               @click="formData.enable_ip_restriction = !formData.enable_ip_restriction"
               :class="[
                 'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
@@ -647,7 +599,7 @@
             <div>
               <label class="input-label">{{ t('keys.ipWhitelist') }}</label>
               <textarea
-                v-model="formData.ip_whitelist"
+                v-model="formData.ip_whitelist" :aria-label="t('keys.ipWhitelist')"
                 rows="3"
                 class="input font-mono text-sm"
                 :placeholder="t('keys.ipWhitelistPlaceholder')"
@@ -658,7 +610,7 @@
             <div>
               <label class="input-label">{{ t('keys.ipBlacklist') }}</label>
               <textarea
-                v-model="formData.ip_blacklist"
+                v-model="formData.ip_blacklist" :aria-label="t('keys.ipBlacklist')"
                 rows="3"
                 class="input font-mono text-sm"
                 :placeholder="t('keys.ipBlacklistPlaceholder')"
@@ -670,10 +622,10 @@
 
         <!-- Quota Limit Section -->
         <div class="space-y-3">
-          <label class="input-label">{{ t('keys.quotaLimit') }}</label>
+          <label class="input-label">{{ t('userKeys.quotaLimit') }}</label>
           <!-- Switch commented out - always show input, 0 = unlimited
           <div class="flex items-center justify-between">
-            <label class="input-label mb-0">{{ t('keys.quotaLimit') }}</label>
+            <label class="input-label mb-0">{{ t('userKeys.quotaLimit') }}</label>
             <button
               type="button"
               @click="formData.enable_quota = !formData.enable_quota"
@@ -697,7 +649,7 @@
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
-                  v-model.number="formData.quota"
+                  v-model.number="formData.quota" :aria-label="t('userKeys.quotaLimit')"
                   type="number"
                   step="0.01"
                   min="0"
@@ -740,6 +692,7 @@
             <label class="input-label mb-0">{{ t('keys.rateLimitSection') }}</label>
             <button
               type="button"
+              role="switch" :aria-label="t('keys.rateLimitSection')" :aria-checked="formData.enable_rate_limit"
               @click="formData.enable_rate_limit = !formData.enable_rate_limit"
               :class="[
                 'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
@@ -763,7 +716,7 @@
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
-                  v-model.number="formData.rate_limit_5h"
+                  v-model.number="formData.rate_limit_5h" :aria-label="t('keys.rateLimit5h')"
                   type="number"
                   step="0.01"
                   min="0"
@@ -809,7 +762,7 @@
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
-                  v-model.number="formData.rate_limit_1d"
+                  v-model.number="formData.rate_limit_1d" :aria-label="t('keys.rateLimit1d')"
                   type="number"
                   step="0.01"
                   min="0"
@@ -855,7 +808,7 @@
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
-                  v-model.number="formData.rate_limit_7d"
+                  v-model.number="formData.rate_limit_7d" :aria-label="t('keys.rateLimit7d')"
                   type="number"
                   step="0.01"
                   min="0"
@@ -914,6 +867,7 @@
             <label class="input-label mb-0">{{ t('keys.expiration') }}</label>
             <button
               type="button"
+              role="switch" :aria-label="t('keys.expiration')" :aria-checked="formData.enable_expiration"
               @click="formData.enable_expiration = !formData.enable_expiration"
               :class="[
                 'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
@@ -964,7 +918,7 @@
             <div>
               <label class="input-label">{{ t('keys.expirationDate') }}</label>
               <input
-                v-model="formData.expiration_date"
+                v-model="formData.expiration_date" :aria-label="t('keys.expiration')"
                 type="datetime-local"
                 class="input"
               />
@@ -1025,7 +979,7 @@
       </template>
     </BaseDialog>
 
-    <BulkEditKeysModal
+    <BulkEditKeysModal trap-focus panel-class="uk-dialog"
       :show="showBulkEditModal"
       :selected-keys="selectedApiKeys"
       :groups="groups"
@@ -1034,7 +988,7 @@
     />
 
     <!-- Delete Confirmation Dialog -->
-    <ConfirmDialog
+    <ConfirmDialog trap-focus panel-class="uk-dialog"
       :show="showDeleteDialog"
       :title="t('keys.deleteKey')"
       :message="t('keys.deleteConfirmMessage', { name: selectedKey?.name })"
@@ -1046,7 +1000,7 @@
     />
 
     <!-- Reset Quota Confirmation Dialog -->
-    <ConfirmDialog
+    <ConfirmDialog trap-focus panel-class="uk-dialog"
       :show="showResetQuotaDialog"
       :title="t('keys.resetQuotaTitle')"
       :message="t('keys.resetQuotaConfirmMessage', { name: selectedKey?.name, used: selectedKey?.quota_used?.toFixed(4) })"
@@ -1058,7 +1012,7 @@
     />
 
     <!-- Reset Rate Limit Confirmation Dialog -->
-    <ConfirmDialog
+    <ConfirmDialog trap-focus panel-class="uk-dialog"
       :show="showResetRateLimitDialog"
       :title="t('keys.resetRateLimitTitle')"
       :message="t('keys.resetRateLimitConfirmMessage', { name: selectedKey?.name })"
@@ -1070,7 +1024,7 @@
     />
 
     <!-- Use Key Modal -->
-    <UseKeyModal
+    <UseKeyModal trap-focus panel-class="uk-dialog uk-use-dialog"
       :show="showUseKeyModal"
       :api-key="selectedKey?.key || ''"
       :base-url="publicSettings?.api_base_url || ''"
@@ -1081,7 +1035,7 @@
     />
 
     <!-- CCS Client Selection Dialog for Antigravity -->
-    <BaseDialog
+    <BaseDialog trap-focus panel-class="uk-dialog"
       :show="showCcsClientSelect"
       :title="t('keys.ccsClientSelect.title')"
       width="narrow"
@@ -1204,7 +1158,13 @@
 	import { useAppStore } from '@/stores/app'
 	import { useOnboardingStore } from '@/stores/onboarding'
 	import { useClipboard } from '@/composables/useClipboard'
-import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
+import { useRoute } from 'vue-router'
+import { listPlatforms, platformDisplayName } from '@/constants/platformCatalog'
+import { collectKeys, filterAndSortKeys, keyVendor, effectiveKeyStatus } from './keysConsole'
+import UserKeyActions from '@/components/keys/UserKeyActions.vue'
+import { money } from '@/components/user/analytics/analytics'
+import type { ApiKeyDailyUsagePoint } from '@/api/usage'
+import '@/styles/user-keys.css'
 
 const { t } = useI18n()
 import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
@@ -1266,8 +1226,11 @@ const allColumns = computed<Column[]>(() => [
   { key: 'name', label: t('common.name'), sortable: true },
   { key: 'id', label: t('keys.id'), sortable: true },
   { key: 'key', label: t('keys.apiKey'), sortable: false },
+  { key: 'vendor', label: t('userKeys.vendor'), sortable: false },
   { key: 'group', label: t('keys.group'), sortable: true },
   { key: 'current_concurrency', label: t('keys.currentConcurrency'), sortable: true },
+  { key: 'today', label: t('userKeys.today'), sortable: false },
+  { key: 'month', label: t('userKeys.month'), sortable: false },
   { key: 'usage', label: t('keys.usage'), sortable: false },
   { key: 'rate_limit', label: t('keys.rateLimitColumn'), sortable: false },
   { key: 'expires_at', label: t('keys.expiresAt'), sortable: true },
@@ -1276,20 +1239,21 @@ const allColumns = computed<Column[]>(() => [
   { key: 'last_used_ip', label: t('keys.lastUsedIP'), sortable: false },
   { key: 'created_at', label: t('keys.created'), sortable: true },
   { key: 'actions', label: t('common.actions'), sortable: false }
-])
+].map(column => ({ ...column, class: `uk-col-${column.key}` })))
 
 const ALWAYS_VISIBLE_COLUMNS = new Set(['name', 'actions'])
-const DEFAULT_HIDDEN_COLUMNS = ['id', 'rate_limit', 'last_used_at', 'last_used_ip']
+const DEFAULT_HIDDEN_COLUMNS = ['id', 'usage', 'rate_limit', 'expires_at', 'last_used_at', 'last_used_ip']
 const HIDDEN_COLUMNS_KEY = 'api-key-hidden-columns'
 const COLUMN_SETTINGS_VERSION_KEY = 'api-key-column-settings-version'
-const COLUMN_SETTINGS_VERSION = 3
+const COLUMN_SETTINGS_VERSION = 4
 const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
   2: ['last_used_ip'],
-  3: ['id']
+  3: ['id'],
+  4: ['usage', 'expires_at']
 }
 
 const toggleableColumns = computed(() =>
-  allColumns.value.filter((col) => !ALWAYS_VISIBLE_COLUMNS.has(col.key))
+  allColumns.value.filter((col) => col.key !== 'created_at' && !ALWAYS_VISIBLE_COLUMNS.has(col.key))
 )
 
 const hiddenColumns = reactive<Set<string>>(new Set())
@@ -1353,7 +1317,7 @@ const toggleColumn = (key: string) => {
 const isColumnVisible = (key: string) => !hiddenColumns.has(key)
 
 const columns = computed<Column[]>(() =>
-  allColumns.value.filter((col) => ALWAYS_VISIBLE_COLUMNS.has(col.key) || !hiddenColumns.has(col.key))
+  allColumns.value.filter((col) => col.key !== 'created_at' && (ALWAYS_VISIBLE_COLUMNS.has(col.key) || !hiddenColumns.has(col.key)))
 )
 
 const apiKeys = ref<ApiKey[]>([])
@@ -1373,6 +1337,8 @@ const handleBulkUpdated = (succeededIds: number[]) => {
 }
 
 const groups = ref<Group[]>([])
+const groupsFailed = ref(false)
+const ratesFailed = ref(false)
 const loading = ref(false)
 const submitting = ref(false)
 const now = ref(new Date())
@@ -1382,7 +1348,7 @@ const userGroupRates = ref<Record<number, number>>({})
 
 const pagination = ref({
   page: 1,
-  page_size: getPersistedPageSize(),
+  page_size: 10,
   total: 0,
   pages: 0
 })
@@ -1392,6 +1358,8 @@ const sortState = ref({
 })
 
 // Filter state
+const route = useRoute()
+const filterVendor = ref('')
 const filterSearch = ref('')
 const filterStatus = ref('')
 const filterGroupId = ref<string | number>('')
@@ -1480,11 +1448,26 @@ const shouldSubmitEditStatus = (key: ApiKey, status: 'active' | 'inactive') => {
 }
 
 // Filter dropdown options
+// 展示目录可包含历史关联，授权目录 groups 独立用于创建和编辑。
+const catalogKeys = ref<ApiKey[]>([])
+const displayGroups = computed(() => {
+  const map = new Map(groups.value.map(g => [g.id, g]))
+  for (const key of [...catalogKeys.value, ...apiKeys.value]) if (key.group) map.set(key.group.id, key.group as Group)
+  return [...map.values()]
+})
 const groupFilterOptions = computed(() => [
   { value: '', label: t('keys.allGroups') },
-  { value: 0, label: t('keys.noGroup') },
-  ...groups.value.map((g) => ({ value: g.id, label: g.name }))
+  ...(!filterVendor.value ? [{ value: 0, label: t('keys.noGroup') }] : []),
+  ...displayGroups.value.filter(g => !filterVendor.value || g.platform === filterVendor.value).map(g => ({ value: g.id, label: `${g.name} · ${userGroupRates.value[g.id] ?? g.rate_multiplier}×` }))
 ])
+const vendorFilterOptions = computed(() => [{ value: '', label: t('userKeys.allVendors') }, ...[...new Set([...listPlatforms().map(p => p.id), ...displayGroups.value.map(g => g.platform)])].map(value => ({ value, label: platformDisplayName(value) }))])
+const onVendorChange = () => {
+  const chosen = displayGroups.value.find(g => g.id === Number(filterGroupId.value))
+  if (filterVendor.value && filterGroupId.value !== '' && chosen && chosen.platform !== filterVendor.value) filterGroupId.value = ''
+  onFilterChange()
+}
+const clearFilters = () => { filterVendor.value = ''; filterGroupId.value = ''; filterStatus.value = ''; filterSearch.value = ''; onFilterChange() }
+const sortOptions = computed(() => allColumns.value.filter(col => col.sortable))
 
 const statusFilterOptions = computed(() => [
   { value: '', label: t('keys.allStatus') },
@@ -1497,7 +1480,7 @@ const statusFilterOptions = computed(() => [
 const onFilterChange = () => {
   selectedIds.value = []
   pagination.value.page = 1
-  loadApiKeys()
+  loadApiKeys(true)
 }
 
 const onGroupFilterChange = (value: string | number | boolean | null) => {
@@ -1583,76 +1566,150 @@ const isAbortError = (error: unknown) => {
   return name === 'AbortError' || code === 'ERR_CANCELED'
 }
 
-const loadApiKeys = async () => {
+const listFailed = ref(false)
+const statusPending = reactive(new Set<number>())
+let collection: ApiKey[] | null = null
+let collectionSignature = ''
+let disposed = false
+const loadApiKeys = async (reuse = false) => {
+  const selectedDetailId = detailKey.value?.id
   abortController?.abort()
   const controller = new AbortController()
   abortController = controller
   const { signal } = controller
-  loading.value = true
+  detailVersion++; detailKey.value = null; detailDays.value = []; detailUsage.value = null; detailLoading.value = false
+  loading.value = true; listFailed.value = false; apiKeys.value = []; usageStats.value = {}; pagination.value.total = 0; pagination.value.pages = 0
+  if (!reuse) { collection = null; catalogKeys.value = []; void refreshSummary() }
   try {
-    // Build filters
-    const filters: {
-      search?: string
-      status?: string
-      group_id?: number | string
-      sort_by?: string
-      sort_order?: 'asc' | 'desc'
-    } = {}
-    if (filterSearch.value) filters.search = filterSearch.value
-    if (filterStatus.value) filters.status = filterStatus.value
-    if (filterGroupId.value !== '') filters.group_id = filterGroupId.value
-    filters.sort_by = sortState.value.sort_by
-    filters.sort_order = sortState.value.sort_order
-
-    const response = await keysAPI.list(pagination.value.page, pagination.value.page_size, filters, {
-      signal
-    })
-    if (signal.aborted) return
-    apiKeys.value = response.items
-    handleSelectionChange(selectedIds.value)
-    pagination.value.total = response.total
-    pagination.value.pages = response.pages
-
-    // Load usage stats for all API keys in the list
-    if (response.items.length > 0) {
-      const keyIds = response.items.map((k) => k.id)
-      try {
-        const usageResponse = await usageAPI.getDashboardApiKeysUsage(keyIds, { signal })
-        if (signal.aborted) return
-        usageStats.value = usageResponse.stats
-      } catch (e) {
-        if (!isAbortError(e)) {
-          console.error('Failed to load usage stats:', e)
-        }
+    const filters = { search: filterSearch.value || undefined, status: filterStatus.value || undefined, group_id: filterGroupId.value === '' ? undefined : filterGroupId.value, ...sortState.value }
+    let response
+    if (!filterVendor.value) {
+      // 默认与单分组继续使用正式服务端筛选和分页。
+      response = await keysAPI.list(pagination.value.page, pagination.value.page_size, filters, { signal })
+    } else {
+      const signature = JSON.stringify([filters.search, filters.status])
+      if (!collection || collectionSignature !== signature) {
+        const all = await collectKeys({ search: filters.search, status: filters.status }, signal)
+        if (signal.aborted || disposed) return
+        collection = all; collectionSignature = signature
+        catalogKeys.value = all
       }
+      const matches = filterAndSortKeys(collection, filterVendor.value, filters)
+      const total = matches.length
+      pagination.value.page = Math.min(pagination.value.page, Math.max(1, Math.ceil(total / pagination.value.page_size)))
+      response = { items: matches.slice((pagination.value.page - 1) * pagination.value.page_size, pagination.value.page * pagination.value.page_size), total, pages: Math.ceil(total / pagination.value.page_size) }
     }
+    if (signal.aborted || disposed) return
+    if (pagination.value.page > 1 && response.items.length === 0 && response.total > 0) { pagination.value.page = 1; void loadApiKeys(true); return }
+    apiKeys.value = response.items; handleSelectionChange(selectedIds.value)
+    pagination.value.total = response.total; pagination.value.pages = response.pages
+    if (response.items.length) {
+      try {
+        const stats = await usageAPI.getDashboardApiKeysUsage(response.items.map(k => k.id), { signal })
+        if (!signal.aborted && !disposed) usageStats.value = stats.stats
+      } catch (error) { if (!signal.aborted && !disposed) appStore.showError(t('userKeys.usageFailed')); if (isAbortError(error)) return }
+    }
+    if (signal.aborted || disposed) return
+    detailKey.value = response.items.find(k => k.id === selectedDetailId) || response.items[0] || null
+    void loadDetail()
   } catch (error) {
-    if (isAbortError(error)) {
-      return
-    }
-    appStore.showError(t('keys.failedToLoad'))
-  } finally {
-    if (abortController === controller) {
-      loading.value = false
-    }
-  }
+    if (signal.aborted || disposed || isAbortError(error)) return
+    collection = null; listFailed.value = true; detailKey.value = null
+    appStore.showError(t('userKeys.listFailed'))
+  } finally { if (abortController === controller && !disposed) loading.value = false }
 }
 
-const loadGroups = async () => {
+// 全局统计与列表分页独立。消费只汇总完整当前密钥集合，每批不超过接口的 100 个 ID。
+const summaryLoading = ref(false)
+const summaryError = ref(false)
+const summary = ref<{ total: number; active: number; today: number; month: number } | null>(null)
+let summaryController: AbortController | null = null
+const summaryCards = computed(() => [
+  { label: t('userKeys.total'), value: summary.value?.total.toLocaleString() ?? '—', detail: t('userKeys.allKeys'), icon: 'key' as const },
+  { label: t('userKeys.active'), value: summary.value?.active.toLocaleString() ?? '—', detail: t('userKeys.activeScope'), icon: 'checkCircle' as const },
+  { label: t('userKeys.today'), value: money(summary.value?.today), detail: t('userKeys.todayScope'), icon: 'creditCard' as const },
+  { label: t('userKeys.month'), value: money(summary.value?.month), detail: t('userKeys.monthScope'), icon: 'chart' as const }
+])
+const refreshSummary = async () => {
+  summaryController?.abort()
+  const controller = new AbortController(); summaryController = controller
+  summaryLoading.value = true; summaryError.value = false; summary.value = null
+  const timer = setTimeout(() => controller.abort(), 30000)
   try {
-    groups.value = await userGroupsAPI.getAvailable()
-  } catch (error) {
-    console.error('Failed to load groups:', error)
+    const all = await collectKeys({}, controller.signal)
+    let today = 0, month = 0
+    for (let offset = 0; offset < all.length; offset += 100) {
+      const batch = all.slice(offset, offset + 100)
+      const response = await usageAPI.getDashboardApiKeysUsage(batch.map(k => k.id), { signal: controller.signal })
+      controller.signal.throwIfAborted()
+      for (const key of batch) {
+        const item = response.stats[key.id]
+        if (!item || !Number.isFinite(item.today_actual_cost) || !Number.isFinite(item.total_actual_cost)) throw new Error('incomplete stats')
+        today += item.today_actual_cost; month += item.total_actual_cost
+      }
+    }
+    if (controller.signal.aborted || disposed) return
+    catalogKeys.value = all
+    summary.value = { total: all.length, active: all.filter(k => k.status === 'active').length, today, month }
+  } catch { if (summaryController === controller && !disposed) summaryError.value = true }
+  finally { clearTimeout(timer); if (summaryController === controller && !disposed) summaryLoading.value = false }
+}
+
+const fallbackOrigin = window.location.origin
+const detailKey = ref<ApiKey | null>(null)
+const detailUsage = ref<BatchApiKeyUsageStats | null>(null)
+const detailDays = ref<ApiKeyDailyUsagePoint[]>([])
+const detailLoading = ref(false)
+const detailError = ref(false)
+let detailVersion = 0
+const selectDetail = (key: ApiKey) => { detailKey.value = key; void loadDetail() }
+const loadDetail = async () => {
+  const version = ++detailVersion
+  const key = detailKey.value
+  detailUsage.value = null; detailDays.value = []; detailError.value = false; detailLoading.value = !!key
+  if (!key) return
+  try {
+    const [usage, daily] = await Promise.all([usageAPI.getDashboardApiKeysUsage([key.id]), usageAPI.getMyApiKeyDailyUsage(key.id, 7)])
+    if (version !== detailVersion || disposed) return
+    if (!usage.stats[key.id]) throw new Error('missing usage')
+    detailUsage.value = usage.stats[key.id]; detailDays.value = daily.items
+  } catch { if (version === detailVersion && !disposed) detailError.value = true }
+  finally { if (version === detailVersion && !disposed) detailLoading.value = false }
+}
+
+let groupRequestVersion = 0
+let rateRequestVersion = 0
+const loadGroups = async () => {
+  const version = ++groupRequestVersion
+  groupsFailed.value = false
+  try {
+    const result = await userGroupsAPI.getAvailable()
+    if (version !== groupRequestVersion || disposed) return
+    groups.value = result
+  } catch {
+    if (version !== groupRequestVersion || disposed) return
+    groupsFailed.value = true
+    console.error('Failed to load groups')
   }
 }
 
 const loadUserGroupRates = async () => {
+  const version = ++rateRequestVersion
+  ratesFailed.value = false
   try {
-    userGroupRates.value = await userGroupsAPI.getUserGroupRates()
-  } catch (error) {
-    console.error('Failed to load user group rates:', error)
+    const result = await userGroupsAPI.getUserGroupRates()
+    if (version !== rateRequestVersion || disposed) return
+    userGroupRates.value = result
+  } catch {
+    if (version !== rateRequestVersion || disposed) return
+    ratesFailed.value = true
+    console.error('Failed to load user group rates')
   }
 }
+
+// 目录和倍率独立重试，不能把接口失败误当作没有创建权限。
+const retryDirectory = () => Promise.allSettled([loadGroups(), loadUserGroupRates()])
+const refreshKeys = () => { void retryDirectory(); void loadPublicSettings(); void loadApiKeys() }
 
 const loadPublicSettings = async () => {
   try {
@@ -1675,14 +1732,14 @@ const closeUseKeyModal = () => {
 const handlePageChange = (page: number) => {
   selectedIds.value = []
   pagination.value.page = page
-  loadApiKeys()
+  loadApiKeys(true)
 }
 
 const handlePageSizeChange = (pageSize: number) => {
   selectedIds.value = []
   pagination.value.page_size = pageSize
   pagination.value.page = 1
-  loadApiKeys()
+  loadApiKeys(true)
 }
 
 const handleSort = (key: string, order: 'asc' | 'desc') => {
@@ -1690,7 +1747,7 @@ const handleSort = (key: string, order: 'asc' | 'desc') => {
   sortState.value.sort_by = key
   sortState.value.sort_order = order
   pagination.value.page = 1
-  loadApiKeys()
+  loadApiKeys(true)
 }
 
 const editKey = (key: ApiKey) => {
@@ -1720,16 +1777,11 @@ const editKey = (key: ApiKey) => {
 }
 
 const toggleKeyStatus = async (key: ApiKey) => {
-  const newStatus = key.status === 'active' ? 'inactive' : 'active'
-  try {
-    await keysAPI.toggleStatus(key.id, newStatus)
-    appStore.showSuccess(
-      newStatus === 'active' ? t('keys.keyEnabledSuccess') : t('keys.keyDisabledSuccess')
-    )
-    loadApiKeys()
-  } catch (error) {
-    appStore.showError(t('keys.failedToUpdateStatus'))
-  }
+  if (statusPending.has(key.id) || ['expired', 'quota_exhausted'].includes(effectiveKeyStatus(key))) return
+  statusPending.add(key.id)
+  try { await keysAPI.toggleStatus(key.id, key.status === 'active' ? 'inactive' : 'active'); appStore.showSuccess(t('keys.keyUpdatedSuccess')); await loadApiKeys() }
+  catch { appStore.showError(t('keys.failedToUpdateStatus')) }
+  finally { statusPending.delete(key.id) }
 }
 
 const openGroupSelector = (key: ApiKey) => {
@@ -2078,7 +2130,18 @@ function formatResetTime(resetAt: string | null): string {
   return `${mins}m`
 }
 
+watch(() => route.query, query => {
+  const vendor = typeof query.vendor === 'string' ? query.vendor : typeof query.platform === 'string' ? query.platform : ''
+  filterVendor.value = /^[a-z][a-z0-9_]*$/.test(vendor) ? vendor : ''
+  const group = query.group_id ?? query.group
+  filterGroupId.value = typeof group === 'string' && /^\d+$/.test(group) ? Number(group) : ''
+  if (!disposed) onFilterChange()
+}, { deep: true })
 onMounted(() => {
+  const vendor = String(route.query.vendor || route.query.platform || '')
+  filterVendor.value = /^[a-z][a-z0-9_]*$/.test(vendor) ? vendor : ''
+  const group = route.query.group_id ?? route.query.group
+  filterGroupId.value = typeof group === 'string' && /^\d+$/.test(group) ? Number(group) : ''
   loadSavedColumns()
   loadApiKeys()
   loadGroups()
@@ -2089,6 +2152,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  disposed = true; detailVersion++; abortController?.abort(); summaryController?.abort(); collection = null; catalogKeys.value = []; detailKey.value = null
   document.removeEventListener('click', closeGroupSelector)
   if (resetTimer) clearInterval(resetTimer)
 })

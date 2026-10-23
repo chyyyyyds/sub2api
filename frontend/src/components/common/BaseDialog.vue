@@ -71,6 +71,8 @@ interface Props {
   zIndex?: number
   /** 可选展示类，仅由用户专用弹窗传入，默认不改变共享弹窗主题。 */
   panelClass?: string
+  /** 仅调用方按需启用首尾焦点环绕，默认保持现有调用行为。 */
+  trapFocus?: boolean
 }
 
 interface Emits {
@@ -113,6 +115,12 @@ const handleClose = () => {
 }
 
 const handleEscape = (event: KeyboardEvent) => {
+  if (props.show && props.trapFocus && event.key === 'Tab' && [...openDialogs].pop() === dialogId) {
+    const nodes = Array.from(dialogRef.value?.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]') ?? []).filter(node => node.getClientRects().length > 0)
+    const first = nodes[0], last = nodes[nodes.length - 1]
+    if (first && event.shiftKey && (document.activeElement === first || !dialogRef.value?.contains(document.activeElement))) { event.preventDefault(); last.focus() }
+    else if (last && !event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+  }
   if (props.show && props.closeOnEscape && event.key === 'Escape' && [...openDialogs].pop() === dialogId) {
     emit('close')
   }
