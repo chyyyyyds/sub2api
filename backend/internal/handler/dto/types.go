@@ -507,24 +507,37 @@ type ProxyAccountSummary struct {
 }
 
 type RedeemCode struct {
-	ID        int64      `json:"id"`
-	Code      string     `json:"code"`
-	Type      string     `json:"type"`
-	Value     float64    `json:"value"`
-	Status    string     `json:"status"`
-	UsedBy    *int64     `json:"used_by"`
-	UsedAt    *time.Time `json:"used_at"`
-	CreatedAt time.Time  `json:"created_at"`
+	// ID 兑换记录编号。
+	ID int64 `json:"id"`
+	// Code 兑换码敏感内容，钱包页面禁止展示。
+	Code string `json:"code"`
+	// Type 资产类型，普通用户兑换入口仅接受 balance。
+	Type string `json:"type"`
+	// Value 资产变化值，单位由类型决定。
+	Value float64 `json:"value"`
+	// Status 兑换码状态。
+	Status string `json:"status"`
+	// UsedBy 实际兑换用户，未使用时为空。
+	UsedBy *int64 `json:"used_by"`
+	// UsedAt 实际使用时间，未使用时为空。
+	UsedAt *time.Time `json:"used_at"`
+	// CreatedAt 创建时间。
+	CreatedAt time.Time `json:"created_at"`
+	// ExpiresAt 兑换码到期时间。
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	GroupID      *int64 `json:"group_id"`
-	ValidityDays int    `json:"validity_days"`
+	// GroupID 订阅关联分组编号。
+	GroupID *int64 `json:"group_id"`
+	// ValidityDays 订阅权益变动天数，负数表示扣减。
+	ValidityDays int `json:"validity_days"`
 
 	// Notes is only populated for admin_balance/admin_concurrency types
 	// so users can see why they were charged or credited
 	Notes *string `json:"notes,omitempty"`
 
-	User  *User  `json:"user,omitempty"`
+	// User 关联用户信息，按接口权限返回。
+	User *User `json:"user,omitempty"`
+	// Group 关联分组信息。
 	Group *Group `json:"group,omitempty"`
 }
 

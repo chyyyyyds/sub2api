@@ -26,20 +26,22 @@ func NewRedeemHandler(redeemService *service.RedeemService) *RedeemHandler {
 
 // RedeemRequest represents the redeem code request payload
 type RedeemRequest struct {
-	Code string `json:"code" binding:"required"`
-}
-
-// RedeemResponse represents the redeem response
-type RedeemResponse struct {
-	Message        string   `json:"message"`
-	Type           string   `json:"type"`
-	Value          float64  `json:"value"`
-	NewBalance     *float64 `json:"new_balance,omitempty"`
-	NewConcurrency *int     `json:"new_concurrency,omitempty"`
+	// Code 余额兑换码，由服务端校验类型和状态。
+	Code string `json:"code" binding:"required" example:"BALANCE-CODE"`
 }
 
 // Redeem handles redeeming a code
 // POST /api/v1/redeem
+// @Summary 普通用户兑换余额
+// @Description 仅接受余额兑换码，返回实际兑换记录；账户余额从用户资料接口刷新。
+// @Tags Redeem
+// @Accept json
+// @Produce json
+// @Param request body RedeemRequest true "余额兑换请求"
+// @Success 200 {object} dto.RedeemCode "兑换成功记录"
+// @Failure 400 {object} response.Response "非余额兑换码或请求无效"
+// @Security BearerAuth
+// @Router /redeem [post]
 func (h *RedeemHandler) Redeem(c *gin.Context) {
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {

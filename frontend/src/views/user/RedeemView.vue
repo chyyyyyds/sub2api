@@ -1,546 +1,212 @@
 <template>
-  <AppLayout>
-    <div class="mx-auto max-w-2xl space-y-6">
-      <!-- Current Balance Card -->
-      <div class="card overflow-hidden">
-        <div class="bg-gradient-to-br from-primary-500 to-primary-600 px-6 py-8 text-center">
-          <div
-            class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm"
-          >
-            <Icon name="creditCard" size="xl" class="text-white" />
-          </div>
-          <p class="text-sm font-medium text-primary-100">{{ t('redeem.currentBalance') }}</p>
-          <p class="mt-2 text-4xl font-bold text-white">
-            ${{ user?.balance?.toFixed(2) || '0.00' }}
-          </p>
-          <p class="mt-2 text-sm text-primary-100">
-            {{ t('redeem.concurrency') }}: {{ user?.concurrency || 0 }} {{ t('redeem.requests') }}
-          </p>
+  <AppLayout v-if="!authStore.isSimpleMode">
+    <div class="uw-wallet">
+      <section class="uw-hero" :aria-label="t('redeem.currentBalance')">
+        <div class="uw-hero-icon"><Icon name="creditCard" size="xl" /></div>
+        <p>{{ t('redeem.currentBalance') }}</p>
+        <strong data-testid="wallet-balance">{{ money(authStore.user?.balance) }}</strong>
+        <span>{{ t('redeem.concurrency') }}: {{ authStore.user?.concurrency ?? '—' }} {{ t('redeem.requests') }}</span>
+        <i class="uw-arc uw-left" aria-hidden="true"></i><i class="uw-arc uw-right" aria-hidden="true"></i>
+      </section>
+      <section class="uw-panel uw-code">
+        <div class="uw-heading">
+          <h2><Icon name="gift" size="md" />{{ t('userWallet.code') }}</h2>
+          <button type="button" class="uw-link" @click="highlightStore">{{ t('userWallet.help') }}</button>
         </div>
-      </div>
-
-      <!-- Redeem Form -->
-      <div class="card">
-        <div class="p-6">
-          <form @submit.prevent="handleRedeem" class="space-y-5">
-            <div>
-              <label for="code" class="input-label">
-                {{ t('redeem.redeemCodeLabel') }}
-              </label>
-              <div class="relative mt-1">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                  <Icon name="gift" size="md" class="text-gray-400 dark:text-dark-500" />
-                </div>
-                <input
-                  id="code"
-                  v-model="redeemCode"
-                  type="text"
-                  required
-                  :placeholder="t('redeem.redeemCodePlaceholder')"
-                  :disabled="submitting"
-                  class="input py-3 pl-12 text-lg"
-                />
-              </div>
-              <p class="input-hint">
-                {{ t('redeem.redeemCodeHint') }}
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              :disabled="!redeemCode || submitting"
-              class="btn btn-primary w-full py-3"
-            >
-              <svg
-                v-if="submitting"
-                class="-ml-1 mr-2 h-5 w-5 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              <Icon v-else name="checkCircle" size="md" class="mr-2" />
-              {{ submitting ? t('redeem.redeeming') : t('redeem.redeemButton') }}
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <!-- Success Message -->
-      <transition name="fade">
-        <div
-          v-if="redeemResult"
-          class="card border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-900/20"
-        >
-          <div class="p-6">
-            <div class="flex items-start gap-4">
-              <div
-                class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30"
-              >
-                <Icon name="checkCircle" size="md" class="text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div class="flex-1">
-                <h3 class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  {{ t('redeem.redeemSuccess') }}
-                </h3>
-                <div class="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                  <p>{{ redeemResult.message }}</p>
-                  <div class="mt-3 space-y-1">
-                    <p v-if="redeemResult.type === 'balance'" class="font-medium">
-                      {{ t('redeem.added') }}: ${{ redeemResult.value.toFixed(2) }}
-                    </p>
-                    <p v-else-if="redeemResult.type === 'concurrency'" class="font-medium">
-                      {{ t('redeem.added') }}: {{ redeemResult.value }}
-                      {{ t('redeem.concurrentRequests') }}
-                    </p>
-                    <p v-else-if="redeemResult.type === 'subscription'" class="font-medium">
-                      {{ t('redeem.subscriptionAssigned') }}
-                      <span v-if="redeemResult.group_name"> - {{ redeemResult.group_name }}</span>
-                      <span v-if="redeemResult.validity_days">
-                        ({{
-                          t('redeem.subscriptionDays', { days: redeemResult.validity_days })
-                        }})</span
-                      >
-                    </p>
-                    <p v-if="redeemResult.new_balance !== undefined">
-                      {{ t('redeem.newBalance') }}:
-                      <span class="font-semibold">${{ redeemResult.new_balance.toFixed(2) }}</span>
-                    </p>
-                    <p v-if="redeemResult.new_concurrency !== undefined">
-                      {{ t('redeem.newConcurrency') }}:
-                      <span class="font-semibold"
-                        >{{ redeemResult.new_concurrency }} {{ t('redeem.requests') }}</span
-                      >
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <form :aria-busy="submitting" @submit.prevent="handleRedeem">
+          <label for="code" class="sr-only">{{ t('redeem.redeemCodeLabel') }}</label>
+          <div class="uw-input"><Icon name="gift" size="md" /><input id="code" v-model="redeemCode" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" :placeholder="t('redeem.redeemCodePlaceholder')" :disabled="submitting" aria-describedby="wallet-code-hint" /></div>
+          <p id="wallet-code-hint" class="sr-only">{{ t('userWallet.balanceOnly') }}</p>
+          <button class="uw-primary" type="submit" :disabled="!redeemCode.trim() || submitting"><Icon :name="submitting ? 'refresh' : 'arrowRight'" size="md" :class="{ 'animate-spin': submitting }" />{{ submitting ? t('redeem.redeeming') : t('userWallet.redeem') }}</button>
+        </form>
+        <p v-if="redeemAmount !== null" class="uw-notice uw-success" role="status">{{ t('userWallet.success', { amount: money(redeemAmount) }) }}</p>
+        <div v-if="errorMessage" class="uw-notice uw-error" role="alert">{{ errorMessage }} <button v-if="resultUnconfirmed" class="uw-link" type="button" :disabled="submitting || refreshingBalance || loadingHistory" @click="reconcileAssets">{{ t('userWallet.checkAssets') }}</button></div>
+        <div v-if="balanceRefreshFailed" class="uw-notice uw-warning" role="alert">{{ t('userWallet.refreshFailed') }} <button class="uw-link" type="button" :disabled="refreshingBalance || submitting" @click="refreshBalance">{{ t('userWallet.retryBalance') }}</button></div>
+      </section>
+      <section ref="storeCard" class="uw-panel uw-store" :class="{ 'uw-highlighted': storeHighlighted }" tabindex="-1" aria-labelledby="wallet-store-title">
+        <div class="uw-store-icon"><Icon name="gift" size="xl" /></div>
+        <div class="uw-store-text"><h2 id="wallet-store-title">{{ t('userWallet.getCode') }}</h2><p>{{ t('userWallet.storeDescription') }}</p></div>
+        <!-- 无明确店铺配置时禁用入口，禁止挪用订阅或余额通知 URL。 -->
+        <button type="button" class="uw-secondary" disabled>{{ t('userWallet.storeUnconfigured') }}</button>
+        <Icon name="gift" class="uw-watermark" size="xl" aria-hidden="true" />
+      </section>
+      <section class="uw-panel uw-info">
+        <h2><Icon name="infoCircle" size="md" />{{ t('redeem.aboutCodes') }}</h2>
+        <ul><li>{{ t('userWallet.once') }}</li><li>{{ t('userWallet.balanceOnly') }}</li><li>{{ t('userWallet.contact') }}<span v-if="contactInfo" class="uw-contact">{{ contactInfo }}</span><span v-else-if="settingsFailed">{{ t('userWallet.contactFailed') }} <button class="uw-link" type="button" :disabled="loadingSettings" @click="loadContact">{{ t('userWallet.retry') }}</button></span><span v-else>{{ loadingSettings ? t('common.loading') : t('userWallet.contactUnconfigured') }}</span></li><li>{{ t('userWallet.serverBalance') }}</li></ul>
+        <Icon name="gift" class="uw-watermark" size="xl" aria-hidden="true" />
+      </section>
+      <section class="uw-panel uw-recent" :aria-busy="loadingHistory" aria-labelledby="wallet-history-title">
+        <div class="uw-heading"><h2 id="wallet-history-title"><Icon name="clock" size="md" />{{ t('redeem.recentActivity') }}</h2><span class="uw-muted">{{ t('userWallet.activityCount', { total: historyTotal }) }}</span></div>
+        <p v-if="loadingHistory" class="uw-empty" role="status">{{ t('common.loading') }}</p>
+        <div v-else-if="historyFailed" class="uw-empty uw-error" role="alert">{{ t('redeem.historyLoadFailed') }} <button type="button" class="uw-link" @click="fetchHistory(requestedHistoryPage)">{{ t('userWallet.retry') }}</button></div>
+        <div v-else-if="history.length" class="uw-activities">
+          <div v-for="item in history" :key="item.id" class="uw-activity">
+            <span class="uw-activity-icon" aria-hidden="true"><Icon :name="isBalance(item.type) ? 'dollar' : item.type === 'subscription' ? 'badge' : knownType(item.type) ? 'bolt' : 'clock'" size="sm" /></span>
+            <div class="uw-activity-description"><strong>{{ activityTitle(item) }}</strong><time :datetime="item.used_at || undefined">{{ activityTime(item.used_at) }}</time></div>
+            <b :class="{ 'uw-negative': activityNegative(item), 'uw-muted': !knownType(item.type) }">{{ activityValue(item) }}</b>
           </div>
         </div>
-      </transition>
-
-      <!-- Error Message -->
-      <transition name="fade">
-        <div
-          v-if="errorMessage"
-          class="card border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20"
-        >
-          <div class="p-6">
-            <div class="flex items-start gap-4">
-              <div
-                class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30"
-              >
-                <Icon
-                  name="exclamationCircle"
-                  size="md"
-                  class="text-red-600 dark:text-red-400"
-                />
-              </div>
-              <div class="flex-1">
-                <h3 class="text-sm font-semibold text-red-800 dark:text-red-300">
-                  {{ t('redeem.redeemFailed') }}
-                </h3>
-                <p class="mt-2 text-sm text-red-700 dark:text-red-400">
-                  {{ errorMessage }}
-                </p>
-              </div>
-            </div>
-          </div>
+        <p v-else class="uw-empty">{{ t('userWallet.empty') }}</p>
+        <div class="uw-pagination">
+          <span>{{ t('pagination.pageOf', { page: historyPage, total: Math.max(1, Math.ceil(historyTotal / loadedHistoryPageSize)) }) }}</span>
+          <label>{{ t('pagination.perPage') }}<select v-model.number="historyPageSize" :disabled="loadingHistory || submitting" @change="fetchHistory(1)"><option v-for="size in [7, 20, 50]" :key="size" :value="size">{{ size }}</option></select></label>
+          <button type="button" class="uw-secondary" :disabled="loadingHistory || submitting || historyPage <= 1" @click="fetchHistory(historyPage - 1)">{{ t('pagination.previous') }}</button>
+          <button type="button" class="uw-secondary" :disabled="loadingHistory || submitting || historyPage * loadedHistoryPageSize >= historyTotal" @click="fetchHistory(historyPage + 1)">{{ t('pagination.next') }}</button>
         </div>
-      </transition>
-
-      <!-- Information Card -->
-      <div
-        class="card border-primary-200 bg-primary-50 dark:border-primary-800/50 dark:bg-primary-900/20"
-      >
-        <div class="p-6">
-          <div class="flex items-start gap-4">
-            <div
-              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30"
-            >
-              <Icon name="infoCircle" size="md" class="text-primary-600 dark:text-primary-400" />
-            </div>
-            <div class="flex-1">
-              <h3 class="text-sm font-semibold text-primary-800 dark:text-primary-300">
-                {{ t('redeem.aboutCodes') }}
-              </h3>
-              <ul
-                class="mt-2 list-inside list-disc space-y-1 text-sm text-primary-700 dark:text-primary-400"
-              >
-                <li>{{ t('redeem.codeRule1') }}</li>
-                <li>{{ t('redeem.codeRule2') }}</li>
-                <li>
-                  {{ t('redeem.codeRule3') }}
-                  <span
-                    v-if="contactInfo"
-                    class="ml-1.5 inline-flex items-center rounded-md bg-primary-200/50 px-2 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-800/40 dark:text-primary-200"
-                  >
-                    {{ contactInfo }}
-                  </span>
-                </li>
-                <li>{{ t('redeem.codeRule4') }}</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Recent Activity -->
-      <div class="card">
-        <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t('redeem.recentActivity') }}
-          </h2>
-        </div>
-        <div class="p-6">
-          <!-- Loading State -->
-          <div v-if="loadingHistory" class="flex items-center justify-center py-8">
-            <svg class="h-6 w-6 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24">
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-          </div>
-
-          <!-- History List -->
-          <div v-else-if="history.length > 0" class="space-y-3">
-            <div
-              v-for="item in history"
-              :key="item.id"
-              class="flex items-center justify-between rounded-xl bg-gray-50 p-4 dark:bg-dark-800"
-            >
-              <div class="flex items-center gap-4">
-                <div
-                  :class="[
-                    'flex h-10 w-10 items-center justify-center rounded-xl',
-                    isBalanceType(item.type)
-                      ? item.value >= 0
-                        ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                        : 'bg-red-100 dark:bg-red-900/30'
-                      : isSubscriptionType(item.type)
-                        ? 'bg-purple-100 dark:bg-purple-900/30'
-                        : item.value >= 0
-                          ? 'bg-blue-100 dark:bg-blue-900/30'
-                          : 'bg-orange-100 dark:bg-orange-900/30'
-                  ]"
-                >
-                  <!-- 余额类型图标 -->
-                  <Icon
-                    v-if="isBalanceType(item.type)"
-                    name="dollar"
-                    size="md"
-                    :class="
-                      item.value >= 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-red-600 dark:text-red-400'
-                    "
-                  />
-                  <!-- 订阅类型图标 -->
-                  <Icon
-                    v-else-if="isSubscriptionType(item.type)"
-                    name="badge"
-                    size="md"
-                    class="text-purple-600 dark:text-purple-400"
-                  />
-                  <!-- 并发类型图标 -->
-                  <Icon
-                    v-else
-                    name="bolt"
-                    size="md"
-                    :class="
-                      item.value >= 0
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-orange-600 dark:text-orange-400'
-                    "
-                  />
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ getHistoryItemTitle(item) }}
-                  </p>
-                  <p class="text-xs text-gray-500 dark:text-dark-400">
-                    {{ formatDateTime(item.used_at) }}
-                  </p>
-                </div>
-              </div>
-              <div class="text-right">
-                <p
-                  :class="[
-                    'text-sm font-semibold',
-                    isBalanceType(item.type)
-                      ? item.value >= 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-red-600 dark:text-red-400'
-                      : isSubscriptionType(item.type)
-                        ? 'text-purple-600 dark:text-purple-400'
-                        : item.value >= 0
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : 'text-orange-600 dark:text-orange-400'
-                  ]"
-                >
-                  {{ formatHistoryValue(item) }}
-                </p>
-                <p
-                  v-if="!isAdminAdjustment(item.type)"
-                  class="font-mono text-xs text-gray-400 dark:text-dark-500"
-                >
-                  {{ item.code.slice(0, 8) }}...
-                </p>
-                <p v-else class="text-xs text-gray-400 dark:text-dark-500">
-                  {{ t('redeem.adminAdjustment') }}
-                </p>
-                <!-- Display notes for admin adjustments -->
-                <p
-                  v-if="item.notes"
-                  class="mt-1 text-xs text-gray-500 dark:text-dark-400 italic max-w-[200px] truncate"
-                  :title="item.notes"
-                >
-                  {{ item.notes }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Empty State -->
-          <div v-else class="empty-state py-8">
-            <div
-              class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-dark-800"
-            >
-              <Icon name="clock" size="xl" class="text-gray-400 dark:text-dark-500" />
-            </div>
-            <p class="text-sm text-gray-500 dark:text-dark-400">
-              {{ t('redeem.historyWillAppear') }}
-            </p>
-          </div>
-          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-            <span>{{ t('common.total') }}: {{ historyTotal }} {{ t('pagination.results') }}</span>
-            <label>
-              {{ t('pagination.perPage') }}
-              <select
-                v-model="historyPageSize"
-                class="input w-20"
-                :disabled="loadingHistory || submitting"
-                @change="fetchHistory(1)"
-              >
-                <option v-for="size in [20, 50, 100]" :key="size" :value="size">{{ size }}</option>
-              </select>
-            </label>
-            <button
-              class="btn btn-secondary"
-              :disabled="loadingHistory || submitting || historyPage <= 1"
-              @click="fetchHistory(historyPage - 1)"
-            >{{ t('pagination.previous') }}</button>
-            <button
-              class="btn btn-secondary"
-              :disabled="loadingHistory || submitting || historyPage * historyPageSize >= historyTotal"
-              @click="fetchHistory(historyPage + 1)"
-            >{{ t('pagination.next') }}</button>
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
-import { useSubscriptionStore } from '@/stores/subscriptions'
 import { redeemAPI, authAPI, type RedeemHistoryItem } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTime } from '@/utils/format'
+import '@/styles/user-wallet.css'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
 const appStore = useAppStore()
-const subscriptionStore = useSubscriptionStore()
-
-const user = computed(() => authStore.user)
-
+const router = useRouter()
 const redeemCode = ref('')
 const submitting = ref(false)
-const redeemResult = ref<{
-  message: string
-  type: string
-  value: number
-  new_balance?: number
-  new_concurrency?: number
-  group_name?: string
-  validity_days?: number
-} | null>(null)
+const redeemAmount = ref<number | null>(null)
 const errorMessage = ref('')
-
-// History data
+const resultUnconfirmed = ref(false)
+const balanceRefreshFailed = ref(false)
+const refreshingBalance = ref(false)
 const history = ref<RedeemHistoryItem[]>([])
-const loadingHistory = ref(false)
 const historyPage = ref(1)
-const historyPageSize = ref(20)
+const historyPageSize = ref(7)
+const loadedHistoryPageSize = ref(7)
 const historyTotal = ref(0)
-let historyRequest = 0
-let loadedHistoryPageSize = 20
+const loadingHistory = ref(false)
+const historyFailed = ref(false)
+const requestedHistoryPage = ref(1)
 const contactInfo = ref('')
+const settingsFailed = ref(false)
+const loadingSettings = ref(false)
+const storeCard = ref<HTMLElement | null>(null)
+const storeHighlighted = ref(false)
+let historyRequest = 0
+let disposed = false
+let flashTimer: ReturnType<typeof setTimeout> | undefined
 
-// Helper functions for history display
-const isBalanceType = (type: string) => {
-  return type === 'balance' || type === 'admin_balance'
+// 与已验收顶栏使用相同 USD、两位小数格式，余额仅来自认证 Store。
+function money(value: number | null | undefined) { return typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : '—' }
+const isBalance = (type: string) => ['balance', 'admin_balance'].includes(type)
+const knownType = (type: string) => ['balance', 'admin_balance', 'concurrency', 'admin_concurrency', 'subscription'].includes(type)
+const activityNegative = (item: RedeemHistoryItem) => (item.type === 'subscription' ? item.validity_days ?? 0 : item.value) < 0
+function activityTitle(item: RedeemHistoryItem) {
+  const key = item.type === 'balance' ? 'balanceAddedRedeem' : item.type === 'admin_balance' ? item.value < 0 ? 'balanceDeductedAdmin' : 'balanceAddedAdmin' : item.type === 'concurrency' ? 'concurrencyAddedRedeem' : item.type === 'admin_concurrency' ? item.value < 0 ? 'concurrencyReducedAdmin' : 'concurrencyAddedAdmin' : ''
+  if (key) return t(`redeem.${key}`)
+  if (item.type === 'subscription') return t(activityNegative(item) ? 'userWallet.subscriptionReduced' : 'redeem.subscriptionAssigned')
+  return t('userWallet.unknownActivity', { type: item.type })
 }
-
-const isSubscriptionType = (type: string) => {
-  return type === 'subscription'
-}
-
-const isAdminAdjustment = (type: string) => {
-  return type === 'admin_balance' || type === 'admin_concurrency'
-}
-
-const getHistoryItemTitle = (item: RedeemHistoryItem) => {
-  if (item.type === 'balance') {
-    return t('redeem.balanceAddedRedeem')
-  } else if (item.type === 'admin_balance') {
-    return item.value >= 0 ? t('redeem.balanceAddedAdmin') : t('redeem.balanceDeductedAdmin')
-  } else if (item.type === 'concurrency') {
-    return t('redeem.concurrencyAddedRedeem')
-  } else if (item.type === 'admin_concurrency') {
-    return item.value >= 0 ? t('redeem.concurrencyAddedAdmin') : t('redeem.concurrencyReducedAdmin')
-  } else if (item.type === 'subscription') {
-    return t('redeem.subscriptionAssigned')
+function activityValue(item: RedeemHistoryItem) {
+  if (!knownType(item.type)) return '—'
+  if (item.type === 'subscription') {
+    // 不把金额猜作订阅天数，也不补造缺失的权益值。
+    const days = item.validity_days
+    return `${days ? `${days > 0 ? '+' : ''}${days} ${t('redeem.days')}` : '—'}${item.group?.name ? ` · ${item.group.name}` : ''}`
   }
-  return t('common.unknown')
+  if (!Number.isFinite(item.value)) return '—'
+  const sign = item.value >= 0 ? '+' : '−'
+  return isBalance(item.type) ? `${sign}${money(Math.abs(item.value))}` : `${sign}${Math.abs(item.value)} ${t('redeem.requests')}`
 }
+function activityTime(value: string | null) { return value && Number.isFinite(Date.parse(value)) ? formatDateTime(value) : '—' }
 
-const formatHistoryValue = (item: RedeemHistoryItem) => {
-  if (isBalanceType(item.type)) {
-    const sign = item.value >= 0 ? '+' : ''
-    return `${sign}$${item.value.toFixed(2)}`
-  } else if (isSubscriptionType(item.type)) {
-    // 订阅类型显示有效天数和分组名称
-    const days = item.validity_days || Math.round(item.value)
-    const groupName = item.group?.name || ''
-    return groupName ? `${days}${t('redeem.days')} - ${groupName}` : `${days}${t('redeem.days')}`
-  } else {
-    const sign = item.value >= 0 ? '+' : ''
-    return `${sign}${item.value} ${t('redeem.requests')}`
-  }
+// 每次成功兑换必须发起一次新的服务端资料读取，不用响应面值本地累加余额。
+let balanceRequest: Promise<void> | undefined
+function refreshBalance(): Promise<void> {
+  if (balanceRequest) return balanceRequest
+  refreshingBalance.value = true
+  balanceRequest = authStore.refreshUser().then(() => { if (!disposed) balanceRefreshFailed.value = false }).catch(() => { if (!disposed) balanceRefreshFailed.value = true }).finally(() => { balanceRequest = undefined; if (!disposed) refreshingBalance.value = false })
+  return balanceRequest
 }
-
-const fetchHistory = async (page = 1) => {
-  const request = ++historyRequest
-  const pageSize = historyPageSize.value
-  loadingHistory.value = true
+async function loadContact() {
+  if (loadingSettings.value) return
+  loadingSettings.value = true
   try {
-    const result = await redeemAPI.getHistory(page, pageSize)
-    if (request !== historyRequest) return
+    const settings = await authAPI.getPublicSettings()
+    if (!disposed) { contactInfo.value = settings.contact_info || ''; settingsFailed.value = false }
+  } catch { if (!disposed) settingsFailed.value = true }
+  finally { if (!disposed) loadingSettings.value = false }
+}
+async function fetchHistory(page = 1) {
+  const request = ++historyRequest
+  const size = historyPageSize.value
+  requestedHistoryPage.value = page
+  loadingHistory.value = true
+  historyFailed.value = false
+  try {
+    const result = await redeemAPI.getHistory(page, size)
+    if (disposed || request !== historyRequest) return
     history.value = result.items
     historyTotal.value = result.total
     historyPage.value = page
-    historyPageSize.value = pageSize
-    loadedHistoryPageSize = pageSize
-  } catch (error) {
-    if (request !== historyRequest) return
-    historyPageSize.value = loadedHistoryPageSize
-    appStore.showError(t('redeem.historyLoadFailed'))
-    console.error('Failed to fetch history:', error)
-  } finally {
-    if (request === historyRequest) loadingHistory.value = false
-  }
+    loadedHistoryPageSize.value = size
+  } catch {
+    if (disposed || request !== historyRequest) return
+    historyPageSize.value = loadedHistoryPageSize.value
+    history.value = []
+    historyFailed.value = true
+  } finally { if (!disposed && request === historyRequest) loadingHistory.value = false }
 }
-
-const handleRedeem = async () => {
-  if (!redeemCode.value.trim()) {
-    appStore.showError(t('redeem.pleaseEnterCode'))
-    return
-  }
-
+async function handleRedeem() {
+  // 在请求前同步置位；程序触发两次 submit 也只会发送一次。
+  if (authStore.isSimpleMode || submitting.value || !redeemCode.value.trim()) return
   submitting.value = true
   errorMessage.value = ''
-  redeemResult.value = null
-
+  resultUnconfirmed.value = false
+  redeemAmount.value = null
   try {
     const result = await redeemAPI.redeem(redeemCode.value.trim())
-
-    redeemResult.value = result
-
-    // Refresh user data to get updated balance/concurrency
-    try {
-      await authStore.refreshUser()
-    } catch (error) {
-      console.error('Failed to refresh user after redeem:', error)
-      appStore.showWarning(t('redeem.userRefreshFailed'))
-    }
-
-    // If subscription type, immediately refresh subscription status
-    if (result.type === 'subscription') {
-      try {
-        await subscriptionStore.fetchActiveSubscriptions(true) // force refresh
-      } catch (error) {
-        console.error('Failed to refresh subscriptions after redeem:', error)
-        appStore.showWarning(t('redeem.subscriptionRefreshFailed'))
-      }
-    }
-
-    // Clear the input
+    if (disposed) return
     redeemCode.value = ''
-
-    // Refresh history
-    await fetchHistory()
-
-    // Show success toast
-    appStore.showSuccess(t('redeem.codeRedeemSuccess'))
-  } catch (error: any) {
-    errorMessage.value = error.response?.data?.detail || t('redeem.failedToRedeem')
-
+    await balanceRequest
+    await refreshBalance()
+    if (disposed) return
+    if (result.type === 'balance' && Number.isFinite(result.value)) {
+      redeemAmount.value = result.value
+      appStore.showSuccess(t('redeem.codeRedeemSuccess'))
+    } else { errorMessage.value = t('userWallet.unexpectedResult') }
+    await fetchHistory(1)
+  } catch (error: unknown) {
+    if (disposed) return
+    const failure = error as { reason?: string; message?: string; status?: number; response?: { data?: { detail?: string } } }
+    resultUnconfirmed.value = failure.status === 0 || (failure.status ?? 0) >= 500
+    const errors: Record<string, string> = { REDEEM_BALANCE_ONLY: 'balanceOnlyError', REDEEM_CODE_NOT_FOUND: 'invalidCode', REDEEM_CODE_USED: 'usedCode', REDEEM_CODE_EXPIRED: 'expiredCode', REDEEM_RATE_LIMITED: 'rateLimited', REDEEM_CODE_LOCKED: 'locked' }
+    errorMessage.value = errors[failure.reason || ''] ? t(`userWallet.${errors[failure.reason || '']}`) : failure.status === 0 ? t('userWallet.networkError') : failure.message || failure.response?.data?.detail || t('redeem.failedToRedeem')
     appStore.showError(t('redeem.redeemFailed'))
-  } finally {
-    submitting.value = false
-  }
+  } finally { if (!disposed) submitting.value = false }
 }
-
-onMounted(async () => {
-  fetchHistory()
-  try {
-    const settings = await authAPI.getPublicSettings()
-    contactInfo.value = settings.contact_info || ''
-  } catch (error) {
-    console.error('Failed to load contact info:', error)
-  }
-})
+async function reconcileAssets() {
+  // 网络错误可能发生在事务提交之后，只读取事实，绝不自动重试兑换。
+  await balanceRequest
+  await Promise.all([refreshBalance(), fetchHistory(1)])
+}
+async function highlightStore() {
+  if (flashTimer) clearTimeout(flashTimer)
+  storeHighlighted.value = false
+  await nextTick()
+  if (disposed) return
+  storeHighlighted.value = true
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  storeCard.value?.focus({ preventScroll: true })
+  storeCard.value?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' })
+  flashTimer = setTimeout(() => { storeHighlighted.value = false }, 1800)
+}
+// 首次认证刷新可能晚于路由守卫，模式补齐后立即撤下钱包并沿用原重定向目标。
+watch(() => authStore.isSimpleMode, simple => {
+  if (simple) void router.replace(authStore.isAdmin ? '/admin/dashboard' : '/dashboard')
+}, { immediate: true })
+onMounted(() => { if (authStore.isSimpleMode) return; void refreshBalance(); void fetchHistory(); void loadContact() })
+onUnmounted(() => { disposed = true; historyRequest++; if (flashTimer) clearTimeout(flashTimer) })
 </script>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-</style>

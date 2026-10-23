@@ -1,0 +1,33 @@
+export default {
+  userWallet: {
+    retry: 'Retry',
+    checkAssets: 'Refresh balance and activity',
+    "code": "Redeem code",
+    "help": "How do I get a code?",
+    "redeem": "Redeem now",
+    "getCode": "Get a redeem code",
+    "storeDescription": "Buy a balance redeem code from Yunmao Consignment to top up your account",
+    "storeUnconfigured": "Yunmao store is not configured",
+    "once": "Each redeem code can only be used once",
+    "balanceOnly": "Codes in this wallet can only top up your balance",
+    "contact": "For redemption issues, contact support: ",
+    "contactFailed": "Support information failed to load",
+    "contactUnconfigured": "Support information is not configured",
+    "serverBalance": "Your balance is refreshed from the server after redemption",
+    "refreshFailed": "Balance refresh failed. The displayed balance may be out of date. Refresh to verify; do not redeem again.",
+    "retryBalance": "Refresh balance",
+    "success": "Balance code redeemed: {amount}.",
+    "empty": "No activity yet",
+    "activityCount": "{total} activities",
+    "subscriptionReduced": "Subscription reduced",
+    "unknownActivity": "Other activity ({type})",
+    "unexpectedResult": "The server returned an unexpected wallet result. Refresh your balance and contact support.",
+    "balanceOnlyError": "This wallet only accepts balance codes. Concurrency and subscription codes are not accepted.",
+    "invalidCode": "Invalid code. Check it and try again.",
+    "usedCode": "This code has already been used. Check your balance and recent activity.",
+    "expiredCode": "This code has expired.",
+    "rateLimited": "Too many failed attempts. Please try again later.",
+    "locked": "This code is being processed. Check your balance and activity shortly.",
+    "networkError": "Network request failed; redemption is unconfirmed. Refresh your balance and activity before trying again."
+}
+}

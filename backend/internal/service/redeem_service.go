@@ -22,6 +22,7 @@ var (
 	ErrInsufficientBalance = infraerrors.BadRequest("INSUFFICIENT_BALANCE", "insufficient balance")
 	ErrRedeemRateLimited   = infraerrors.TooManyRequests("REDEEM_RATE_LIMITED", "too many failed attempts, please try again later")
 	ErrRedeemCodeLocked    = infraerrors.Conflict("REDEEM_CODE_LOCKED", "redeem code is being processed, please try again")
+	ErrRedeemBalanceOnly   = infraerrors.BadRequest("REDEEM_BALANCE_ONLY", "wallet only accepts balance redeem codes")
 )
 
 const (
@@ -390,9 +391,9 @@ func unsupportedRedeemTypeError(codeType string) error {
 	return infraerrors.BadRequest("REDEEM_CODE_UNSUPPORTED_TYPE", fmt.Sprintf("unsupported redeem type: %s", codeType))
 }
 
-// Redeem 使用兑换码
+// Redeem 普通用户钱包只允许兑换余额；旧公开接口同样受此约束。
 func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
-	return s.redeem(ctx, userID, code, enforceRedeemRateLimit)
+	return s.redeem(ctx, userID, code, enforceRedeemRateLimit, RedeemTypeBalance)
 }
 
 // redeemForPaymentFulfillment is restricted to trusted payment fulfillment.
@@ -400,7 +401,7 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 // redeem failure counter. All code validation and transactional updates remain
 // identical to the public redemption path.
 func (s *RedeemService) redeemForPaymentFulfillment(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
-	return s.redeem(ContextSkipRedeemAffiliate(ctx), userID, code, bypassRedeemRateLimit)
+	return s.redeem(ContextSkipRedeemAffiliate(ctx), userID, code, bypassRedeemRateLimit, "")
 }
 
 // RedeemForAdminFulfillment is restricted to trusted admin fulfillment.
@@ -408,10 +409,10 @@ func (s *RedeemService) redeemForPaymentFulfillment(ctx context.Context, userID 
 // redeem failure counter. Unlike payment fulfillment, the normal redeem-level
 // affiliate rebate remains enabled.
 func (s *RedeemService) RedeemForAdminFulfillment(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
-	return s.redeem(ctx, userID, code, bypassRedeemRateLimit)
+	return s.redeem(ctx, userID, code, bypassRedeemRateLimit, "")
 }
 
-func (s *RedeemService) redeem(ctx context.Context, userID int64, code string, rateLimitPolicy redeemRateLimitPolicy) (*RedeemCode, error) {
+func (s *RedeemService) redeem(ctx context.Context, userID int64, code string, rateLimitPolicy redeemRateLimitPolicy, requiredType string) (*RedeemCode, error) {
 	if rateLimitPolicy == enforceRedeemRateLimit {
 		if err := s.checkRedeemRateLimit(ctx, userID); err != nil {
 			return nil, err
@@ -459,6 +460,12 @@ func (s *RedeemService) redeem(ctx context.Context, userID int64, code string, r
 		}
 	default:
 		return nil, unsupportedRedeemTypeError(redeemCode.Type)
+	}
+
+	// 在原兑换码锁内、事务及任何资产变动之前检查不可变类型。
+	// 管理员禁止修改兑换码核心类型；内部履约显式不传限制，仍复用下方原事务。
+	if requiredType != "" && redeemCode.Type != requiredType {
+		return nil, ErrRedeemBalanceOnly
 	}
 
 	// 获取用户信息

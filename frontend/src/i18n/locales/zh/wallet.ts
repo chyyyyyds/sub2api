@@ -1,0 +1,33 @@
+export default {
+  userWallet: {
+    retry: '重试',
+    checkAssets: '刷新余额与活动',
+    "code": "兑换码",
+    "help": "如何获取兑换码？",
+    "redeem": "立即兑换",
+    "getCode": "点我获取兑换码",
+    "storeDescription": "前往云猫寄售购买余额兑换码，兑换后增加账户余额",
+    "storeUnconfigured": "云猫寄售店铺尚未配置",
+    "once": "每个兑换码只能使用一次",
+    "balanceOnly": "兑换码仅用于充值账户余额",
+    "contact": "如有兑换问题，请联系客服：",
+    "contactFailed": "客服信息加载失败",
+    "contactUnconfigured": "暂未配置客服信息",
+    "serverBalance": "兑换成功后从服务器刷新余额",
+    "refreshFailed": "余额信息刷新失败，当前显示可能尚未更新。请刷新余额确认，勿重复兑换。",
+    "retryBalance": "刷新余额",
+    "success": "余额兑换成功：{amount}。",
+    "empty": "暂无活动",
+    "activityCount": "共 {total} 条活动",
+    "subscriptionReduced": "订阅权益扣减",
+    "unknownActivity": "其他活动（{type}）",
+    "unexpectedResult": "服务端返回了不符合钱包约定的结果，请刷新余额并联系客服核实。",
+    "balanceOnlyError": "钱包仅支持余额兑换码，并发或订阅兑换码无法在此使用。",
+    "invalidCode": "兑换码无效，请检查后重试。",
+    "usedCode": "此兑换码已使用，请检查余额与最近活动。",
+    "expiredCode": "此兑换码已过期。",
+    "rateLimited": "失败次数过多，请稍后再试。",
+    "locked": "兑换码正在处理中，请稍后查看余额与活动。",
+    "networkError": "网络连接失败，兑换结果尚未确认。请先刷新余额和最近活动，避免重复操作。"
+}
+}
