@@ -255,6 +255,9 @@ func (s *RedeemService) CreateCode(ctx context.Context, code *RedeemCode) error 
 		return errors.New("redeem code is required")
 	}
 	code.Code = strings.TrimSpace(code.Code)
+	if err := ValidateRedeemCodeStorageLength(code.Code); err != nil {
+		return err
+	}
 	if code.Code == "" {
 		return errors.New("code is required")
 	}
@@ -273,6 +276,14 @@ func (s *RedeemService) CreateCode(ctx context.Context, code *RedeemCode) error 
 
 	if err := s.redeemRepo.Create(ctx, code); err != nil {
 		return fmt.Errorf("create redeem code: %w", err)
+	}
+	return nil
+}
+
+// ValidateRedeemCodeStorageLength 对齐 Ent MaxLen(32) 的字节约束，不静默截断。
+func ValidateRedeemCodeStorageLength(code string) error {
+	if len(code) > 32 {
+		return infraerrors.BadRequest("REDEEM_CODE_TOO_LONG", "兑换码不能超过 32 个 UTF-8 字节")
 	}
 	return nil
 }

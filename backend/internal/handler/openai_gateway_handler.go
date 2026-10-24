@@ -3469,9 +3469,12 @@ func (h *OpenAIGatewayHandler) submitUsageRecordTask(parent context.Context, tas
 }
 
 func (h *OpenAIGatewayHandler) submitOpenAIUsageRecordTask(parent context.Context, result *service.OpenAIForwardResult, task service.UsageRecordTask) {
-	// Money-critical bills never drop on pool overflow: media, search surcharge, voice.
+	// 已确认真实 Token 的文本账务也属于资金关键任务；满队列时同步降级，不能按采样丢弃。
+	// 这只封住队列溢出窗口，不替代持久事件，不能保证进程崩溃后的恢复。
 	if result != nil && (result.ImageCount > 0 || result.VideoCount > 0 ||
-		result.SearchCount > 0 || result.WebSearchCalls > 0 || result.AudioUsage != nil) {
+		result.SearchCount > 0 || result.WebSearchCalls > 0 || result.AudioUsage != nil ||
+		result.Usage.InputTokens > 0 || result.Usage.OutputTokens > 0 ||
+		result.Usage.CacheReadInputTokens > 0 || result.Usage.CacheCreationInputTokens > 0) {
 		h.submitMandatoryUsageRecordTask(parent, task)
 		return
 	}

@@ -46,7 +46,8 @@ type GenerateRedeemCodesRequest struct {
 // CreateAndRedeemCodeRequest represents creating a fixed code and redeeming it for a target user.
 // Type 为 omitempty 而非 required 是为了向后兼容旧版调用方（不传 type 时默认 balance）。
 type CreateAndRedeemCodeRequest struct {
-	Code          string     `json:"code" binding:"required,min=3,max=128"`
+	// Code 为固定兑换码，最多 32 个 UTF-8 字节，与持久化约束一致。
+	Code          string     `json:"code" binding:"required,min=3,max=32" maxLength:"32" example:"ORDER-20261024"`
 	Type          string     `json:"type" binding:"omitempty,oneof=balance concurrency subscription invitation"` // 不传时默认 balance（向后兼容）
 	Value         float64    `json:"value" binding:"required"`
 	UserID        int64      `json:"user_id" binding:"required,gt=0"`
@@ -174,6 +175,11 @@ func (h *RedeemHandler) CreateAndRedeem(c *gin.Context) {
 	var req CreateAndRedeemCodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	// Validator 的 max 计算字符数，Ent MaxLen 计算字节数，补齐多字节边界。
+	if err := service.ValidateRedeemCodeStorageLength(req.Code); err != nil {
+		response.ErrorFrom(c, err)
 		return
 	}
 	req.Code = strings.TrimSpace(req.Code)

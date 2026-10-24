@@ -26,8 +26,8 @@ func NewRedeemHandler(redeemService *service.RedeemService) *RedeemHandler {
 
 // RedeemRequest represents the redeem code request payload
 type RedeemRequest struct {
-	// Code 余额兑换码，由服务端校验类型和状态。
-	Code string `json:"code" binding:"required" example:"BALANCE-CODE"`
+	// Code 余额兑换码，最多 32 个 UTF-8 字节，由服务端校验类型和状态。
+	Code string `json:"code" binding:"required,max=32" maxLength:"32" example:"BALANCE-CODE"`
 }
 
 // Redeem handles redeeming a code
@@ -55,6 +55,10 @@ func (h *RedeemHandler) Redeem(c *gin.Context) {
 		return
 	}
 
+	if err := service.ValidateRedeemCodeStorageLength(req.Code); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
 	result, err := h.redeemService.Redeem(c.Request.Context(), subject.UserID, req.Code)
 	if err != nil {
 		response.ErrorFrom(c, err)
