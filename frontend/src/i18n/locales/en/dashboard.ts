@@ -348,7 +348,7 @@ export default {
     totalCost: 'Total Cost',
     standardCost: 'Standard',
     actualCost: 'Actual',
-    accountCost: 'Cost',
+    accountCost: 'Estimated procurement cost',
     userBilled: 'User billed',
     accountBilled: 'Account billed',
     resetNow: 'Now',

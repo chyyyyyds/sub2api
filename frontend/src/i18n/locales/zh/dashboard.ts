@@ -353,7 +353,7 @@ export default {
     totalCost: '总消费',
     standardCost: '标准',
     actualCost: '实际',
-    accountCost: '成本',
+    accountCost: '采购成本估算',
     userBilled: '用户扣费',
     accountBilled: '账号计费',
     resetNow: '现在',
