@@ -392,6 +392,17 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 	return true, nil
 }
 
+// atomicUsageBillingAdapter 复用既有命令、幂等键和提交后缓存逻辑，仅替换持久化边界。
+type atomicUsageBillingAdapter struct {
+	UsageBillingRepository
+	atomic AtomicUsageBillingRepository
+	usage  *UsageLog
+}
+
+func (r *atomicUsageBillingAdapter) Apply(ctx context.Context, cmd *UsageBillingCommand) (*UsageBillingApplyResult, error) {
+	return r.atomic.ApplyWithUsage(ctx, cmd, r.usage)
+}
+
 func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, deps *billingDeps, result *UsageBillingApplyResult) {
 	if p == nil || p.Cost == nil || deps == nil {
 		return

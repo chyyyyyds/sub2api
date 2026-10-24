@@ -21,7 +21,7 @@ const openAIRawStreamTruncatedUpstreamMessage = "Upstream Chat Completions strea
 // `HTTP 200 + usage 0/0`：客户端拿到半截回答，网关既不报错也不计入 SLA，
 // Ops 侧完全不可见。
 //
-// 三种终止信号任一出现即认为上游"讲完了"，只是尾巴可能丢失，不作截断处理：
+// 普通 EOF 兼容三种结束方式；实际读取失败只接受 DONE 或 finish_reason。
 //
 //   - [DONE]        —— OpenAI CC 协议标准哨兵
 //   - usage chunk   —— include_usage 生效时的末尾用量帧（网关强制打开）
@@ -63,9 +63,14 @@ func (t *openAIRawStreamTerminalState) ObserveDataLine(payload string) {
 	}
 }
 
-// Terminated 表示上游给出过终止信号。
+// Terminated 表示普通 EOF 下可兼容的结束信号；usage 本身不能掩盖传输异常。
 func (t *openAIRawStreamTerminalState) Terminated() bool {
 	return t != nil && (t.sawDone || t.sawUsage || t.sawFinishReason)
+}
+
+// Completed 表示回答已明确结束，与收到累计用量独立判断。
+func (t *openAIRawStreamTerminalState) Completed() bool {
+	return t != nil && (t.sawDone || t.sawFinishReason)
 }
 
 // IsTruncated 判定上游是否在任何终止信号之前结束。clientOutputStarted 用于放行

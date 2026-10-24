@@ -11,6 +11,22 @@ import (
 const channelMonitorV2PlatformSQL = `lower(` + usageLogEffectivePlatformExpr + `)`
 const channelMonitorV2ModelSQL = `COALESCE(NULLIF(TRIM(ul.requested_model), ''), NULLIF(TRIM(ul.model), ''), 'unknown')`
 
+// 正费用代表已结算，不代表回答完整；失败流保留 Token 财务事实，但不增加成功和延迟样本。
+// 关联限定同一 Key，防止外部关联 ID 相同的不同用户互相污染。
+const channelMonitorV2LogicalSuccessSQL = usageLogSuccessFilterUL + ` AND NOT EXISTS (
+  SELECT 1 FROM (
+    SELECT e.status_code, e.error_type
+    FROM ops_error_logs e
+    WHERE e.api_key_id = ul.api_key_id AND NOT e.is_count_tokens
+      AND e.created_at >= ul.created_at - INTERVAL '90 minutes'
+      AND e.created_at < ul.created_at + INTERVAL '90 minutes'
+      AND ((NULLIF(e.client_request_id, '') IS NOT NULL AND ul.request_id = 'client:' || e.client_request_id)
+        OR (NULLIF(e.request_id, '') IS NOT NULL AND ul.request_id = 'local:' || e.request_id))
+    ORDER BY e.created_at DESC, e.id DESC LIMIT 1
+  ) final_outcome
+  WHERE COALESCE(final_outcome.status_code, 0) >= 400 OR final_outcome.error_type = 'cyber_policy'
+)`
+
 // Tiered retention balances UI windows against storage:
 //
 //	1m facts  → short (late writes + rebuild rollups)
@@ -171,15 +187,15 @@ INSERT INTO channel_monitor_v2_metrics_1m (
 )
 SELECT date_trunc('minute', ul.created_at), %s, COALESCE(ul.group_id, 0), %s,
        COUNT(DISTINCT COALESCE(NULLIF(ul.request_id, ''), 'usage:' || ul.id::text))
-         FILTER (WHERE COALESCE(ul.request_type, 0) NOT IN (4, 6) AND ` + usageLogSuccessFilterUL + `),
+         FILTER (WHERE COALESCE(ul.request_type, 0) NOT IN (4, 6) AND ` + channelMonitorV2LogicalSuccessSQL + `),
        COALESCE(SUM(ul.input_tokens) FILTER (WHERE ` + usageLogSuccessFilterUL + `), 0),
        COALESCE(SUM(ul.output_tokens) FILTER (WHERE ` + usageLogSuccessFilterUL + `), 0),
        COALESCE(SUM(ul.cache_creation_tokens) FILTER (WHERE ` + usageLogSuccessFilterUL + `), 0),
        COALESCE(SUM(ul.cache_read_tokens) FILTER (WHERE ` + usageLogSuccessFilterUL + `), 0),
-       COALESCE(SUM(ul.first_token_ms) FILTER (WHERE ul.first_token_ms IS NOT NULL AND ` + usageLogSuccessFilterUL + `), 0),
-       COUNT(ul.first_token_ms) FILTER (WHERE ` + usageLogSuccessFilterUL + `),
-       COALESCE(SUM(ul.duration_ms) FILTER (WHERE ul.duration_ms IS NOT NULL AND ` + usageLogSuccessFilterUL + `), 0),
-       COUNT(ul.duration_ms) FILTER (WHERE ` + usageLogSuccessFilterUL + `), NOW()
+       COALESCE(SUM(ul.first_token_ms) FILTER (WHERE ul.first_token_ms IS NOT NULL AND ` + channelMonitorV2LogicalSuccessSQL + `), 0),
+       COUNT(ul.first_token_ms) FILTER (WHERE ` + channelMonitorV2LogicalSuccessSQL + `),
+       COALESCE(SUM(ul.duration_ms) FILTER (WHERE ul.duration_ms IS NOT NULL AND ` + channelMonitorV2LogicalSuccessSQL + `), 0),
+       COUNT(ul.duration_ms) FILTER (WHERE ` + channelMonitorV2LogicalSuccessSQL + `), NOW()
 FROM usage_logs ul
 LEFT JOIN groups g ON g.id = ul.group_id
 LEFT JOIN accounts a ON a.id = ul.account_id
@@ -194,15 +210,15 @@ INSERT INTO channel_monitor_v2_user_metrics_1m (
 )
 SELECT date_trunc('minute', ul.created_at), %s, COALESCE(ul.group_id, 0), %s, ul.user_id,
        COUNT(DISTINCT COALESCE(NULLIF(ul.request_id, ''), 'usage:' || ul.id::text))
-         FILTER (WHERE COALESCE(ul.request_type, 0) NOT IN (4, 6) AND ` + usageLogSuccessFilterUL + `),
+         FILTER (WHERE COALESCE(ul.request_type, 0) NOT IN (4, 6) AND ` + channelMonitorV2LogicalSuccessSQL + `),
        COALESCE(SUM(ul.input_tokens) FILTER (WHERE ` + usageLogSuccessFilterUL + `), 0),
        COALESCE(SUM(ul.output_tokens) FILTER (WHERE ` + usageLogSuccessFilterUL + `), 0),
        COALESCE(SUM(ul.cache_creation_tokens) FILTER (WHERE ` + usageLogSuccessFilterUL + `), 0),
        COALESCE(SUM(ul.cache_read_tokens) FILTER (WHERE ` + usageLogSuccessFilterUL + `), 0),
-       COALESCE(SUM(ul.first_token_ms) FILTER (WHERE ul.first_token_ms IS NOT NULL AND ` + usageLogSuccessFilterUL + `), 0),
-       COUNT(ul.first_token_ms) FILTER (WHERE ` + usageLogSuccessFilterUL + `),
-       COALESCE(SUM(ul.duration_ms) FILTER (WHERE ul.duration_ms IS NOT NULL AND ` + usageLogSuccessFilterUL + `), 0),
-       COUNT(ul.duration_ms) FILTER (WHERE ` + usageLogSuccessFilterUL + `), NOW()
+       COALESCE(SUM(ul.first_token_ms) FILTER (WHERE ul.first_token_ms IS NOT NULL AND ` + channelMonitorV2LogicalSuccessSQL + `), 0),
+       COUNT(ul.first_token_ms) FILTER (WHERE ` + channelMonitorV2LogicalSuccessSQL + `),
+       COALESCE(SUM(ul.duration_ms) FILTER (WHERE ul.duration_ms IS NOT NULL AND ` + channelMonitorV2LogicalSuccessSQL + `), 0),
+       COUNT(ul.duration_ms) FILTER (WHERE ` + channelMonitorV2LogicalSuccessSQL + `), NOW()
 FROM usage_logs ul
 LEFT JOIN groups g ON g.id = ul.group_id
 LEFT JOIN accounts a ON a.id = ul.account_id
@@ -222,7 +238,7 @@ CROSS JOIN LATERAL (VALUES (0::bigint), (ul.user_id)) audience(user_id)
 CROSS JOIN LATERAL (VALUES ('ttft'::text, ul.first_token_ms), ('duration'::text, ul.duration_ms)) latency(metric, value_ms)
 WHERE ul.created_at >= $1 AND ul.created_at < $2
   AND audience.user_id IS NOT NULL AND latency.value_ms IS NOT NULL AND latency.value_ms >= 0
-  AND ` + usageLogSuccessFilterUL + `
+  AND ` + channelMonitorV2LogicalSuccessSQL + `
 GROUP BY 1, 2, 3, 4, 5, 6, 7`
 
 func channelMonitorV2HistogramBoundSQL(column string) string {
@@ -241,13 +257,14 @@ ELSE 2147483647 END`
 // Error dedup lookback: request_id branch is bounded by chunk start minus 90
 // minutes so candidate_ids never forces a full-history scan of ops_error_logs.
 const channelMonitorV2ErrorAggregationSQL = `
-WITH dedup AS (
+WITH source AS MATERIALIZED (
   WITH candidate_ids AS MATERIALIZED (
     SELECT DISTINCT request_id
     FROM ops_error_logs
     WHERE created_at >= $1 AND created_at < $2 AND NULLIF(request_id, '') IS NOT NULL
   )
-  SELECT DISTINCT ON (COALESCE(NULLIF(current_error.request_id, ''), 'error:' || current_error.id::text))
+  SELECT current_error.id, current_error.created_at,
+    COALESCE(NULLIF(current_error.request_id, ''), 'error:' || current_error.id::text) AS request_key,
     date_trunc('minute', current_error.created_at) AS bucket_start,
     -- Composite groups are a routing layer: resolve the concrete account
     -- platform (mirrors usageLogEffectivePlatformExpr on the usage side) so
@@ -265,7 +282,7 @@ WITH dedup AS (
     lower(CONCAT_WS(' ', current_error.error_type, current_error.error_source, current_error.error_message, current_error.upstream_error_message, current_error.upstream_error_detail, current_error.error_body)) AS text,
     (CASE WHEN jsonb_typeof(current_error.upstream_errors) = 'array' THEN jsonb_array_length(current_error.upstream_errors) > 0 ELSE FALSE END
       OR current_error.error_owner = 'provider' OR current_error.upstream_status_code IS NOT NULL) AS upstream_affected,
-    CASE WHEN jsonb_typeof(current_error.upstream_errors) = 'array' THEN jsonb_array_length(current_error.upstream_errors) ELSE 0 END AS upstream_attempts
+    CASE WHEN jsonb_typeof(current_error.upstream_errors) = 'array' THEN current_error.upstream_errors ELSE '[]'::jsonb END AS upstream_events
   FROM ops_error_logs current_error
   LEFT JOIN groups g ON g.id = current_error.group_id
   LEFT JOIN accounts a ON a.id = current_error.account_id
@@ -278,8 +295,16 @@ WITH dedup AS (
       )
     )
     AND NOT current_error.is_count_tokens
-    AND (COALESCE(current_error.status_code, 0) >= 400 OR current_error.error_type = 'cyber_policy')
-  ORDER BY COALESCE(NULLIF(current_error.request_id, ''), 'error:' || current_error.id::text), current_error.created_at DESC, current_error.id DESC
+), dedup AS (
+  SELECT DISTINCT ON (request_key) * FROM source
+  ORDER BY request_key, created_at DESC, id DESC
+), upstream_facts AS (
+  -- 同一请求的多个日志可以是累计快照或独立尝试；按 attempt_id/原始事件去重后合并。
+  SELECT request_key, BOOL_OR(upstream_affected) AS upstream_affected,
+    COUNT(DISTINCT COALESCE(NULLIF(event #>> '{procurement,attempt_id}', ''), event::text))
+      FILTER (WHERE event IS NOT NULL) AS upstream_attempts
+  FROM source LEFT JOIN LATERAL jsonb_array_elements(upstream_events) events(event) ON TRUE
+  GROUP BY request_key
 ), classified AS (
   SELECT *, CASE
     -- Keep in lockstep with service.ClassifyChannelMonitorV2Error needles.
@@ -302,10 +327,15 @@ WITH dedup AS (
     ELSE 'other' END AS category
   FROM dedup
   WHERE bucket_start >= $1 AND bucket_start < $2
+    AND (COALESCE(status_code, 0) >= 400 OR error_type = 'cyber_policy')
 ), metric_rows AS (
   INSERT INTO channel_monitor_v2_metrics_1m (bucket_start, platform, group_id, model, error_requests, upstream_affected_requests, upstream_attempt_count, computed_at)
-  SELECT bucket_start, platform, group_id, model, COUNT(*), COUNT(*) FILTER (WHERE upstream_affected), SUM(upstream_attempts), NOW()
-  FROM classified GROUP BY 1,2,3,4
+  SELECT bucket_start, platform, group_id, model,
+    COUNT(*) FILTER (WHERE COALESCE(status_code, 0) >= 400 OR error_type = 'cyber_policy'),
+    COUNT(*) FILTER (WHERE upstream_facts.upstream_affected), SUM(upstream_facts.upstream_attempts), NOW()
+  FROM dedup JOIN upstream_facts USING (request_key)
+  WHERE bucket_start >= $1 AND bucket_start < $2
+  GROUP BY 1,2,3,4
   ON CONFLICT (bucket_start, platform, group_id, model) DO UPDATE SET
     error_requests = EXCLUDED.error_requests, upstream_affected_requests = EXCLUDED.upstream_affected_requests,
     upstream_attempt_count = EXCLUDED.upstream_attempt_count, computed_at = NOW()

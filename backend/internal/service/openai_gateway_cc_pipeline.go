@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
 )
 
@@ -251,10 +253,14 @@ func (s *OpenAIGatewayService) sendCCUpstreamRequest(
 	if account.ProxyID != nil && account.Proxy != nil {
 		proxyURL = account.Proxy.URL()
 	}
+	// 每次实际采购独立编号；只记录网络阶段与用量，不保存认证头或请求正文。
+	attempt, trace := beginCCProcurementAttempt(c, account.ID, gjson.GetBytes(body, "model").String())
+	upstreamReq = upstreamReq.WithContext(httptrace.WithClientTrace(upstreamReq.Context(), trace))
 	resp, err := s.doOpenAIUpstream(upstreamReq, proxyURL, account)
 	if err != nil {
 		return nil, s.handleOpenAIUpstreamTransportError(ctx, c, account, err, false)
 	}
+	attempt.setStage("response_headers")
 	return resp, nil
 }
 

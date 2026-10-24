@@ -20,6 +20,18 @@ func NewUsageBillingRepository(_ *dbent.Client, sqlDB *sql.DB) service.UsageBill
 }
 
 func (r *usageBillingRepository) Apply(ctx context.Context, cmd *service.UsageBillingCommand) (_ *service.UsageBillingApplyResult, err error) {
+	return r.apply(ctx, cmd, nil)
+}
+
+// ApplyWithUsage 复用原表和插入器，不回填历史，也不改变原幂等指纹。
+func (r *usageBillingRepository) ApplyWithUsage(ctx context.Context, cmd *service.UsageBillingCommand, usage *service.UsageLog) (*service.UsageBillingApplyResult, error) {
+	if cmd == nil || usage == nil || strings.TrimSpace(usage.RequestID) != strings.TrimSpace(cmd.RequestID) || usage.APIKeyID != cmd.APIKeyID || usage.UserID != cmd.UserID || usage.AccountID != cmd.AccountID {
+		return nil, errors.New("usage billing log identity mismatch")
+	}
+	return r.apply(ctx, cmd, usage)
+}
+
+func (r *usageBillingRepository) apply(ctx context.Context, cmd *service.UsageBillingCommand, usage *service.UsageLog) (_ *service.UsageBillingApplyResult, err error) {
 	if cmd == nil {
 		return &service.UsageBillingApplyResult{}, nil
 	}
@@ -42,6 +54,22 @@ func (r *usageBillingRepository) Apply(ctx context.Context, cmd *service.UsageBi
 		}
 	}()
 
+	result, err := r.applyWithinTx(ctx, tx, cmd, usage)
+	if err != nil {
+		return nil, err
+	}
+	if !result.Applied {
+		return result, nil
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	tx = nil
+	return result, nil
+}
+
+// applyWithinTx 供隔离持久事件验证复用原资金语义；调用方负责提交和回滚。
+func (r *usageBillingRepository) applyWithinTx(ctx context.Context, tx *sql.Tx, cmd *service.UsageBillingCommand, usage *service.UsageLog) (*service.UsageBillingApplyResult, error) {
 	applied, err := r.claimUsageBillingKey(ctx, tx, cmd)
 	if err != nil {
 		return nil, err
@@ -54,11 +82,17 @@ func (r *usageBillingRepository) Apply(ctx context.Context, cmd *service.UsageBi
 	if err := r.applyUsageBillingEffects(ctx, tx, cmd, result); err != nil {
 		return nil, err
 	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
+	if usage != nil {
+		// 日志插入失败会回滚资金和 dedup；历史已有日志但无 dedup 时拒绝自动补扣。
+		inserted, insertErr := (&usageLogRepository{}).createSingle(ctx, tx, usage)
+		if insertErr != nil {
+			return nil, insertErr
+		}
+		if !inserted {
+			return nil, service.ErrUsageBillingRequestConflict
+		}
 	}
-	tx = nil
+
 	return result, nil
 }
 

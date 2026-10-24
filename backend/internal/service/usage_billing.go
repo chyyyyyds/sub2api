@@ -229,3 +229,9 @@ type UsageBillingRepository interface {
 	CaptureBatchImageBalance(ctx context.Context, cmd *BatchImageBalanceHoldCommand) (*BatchImageBalanceHoldResult, error)
 	ReleaseBatchImageBalance(ctx context.Context, cmd *BatchImageBalanceHoldCommand) (*BatchImageBalanceHoldResult, error)
 }
+
+// AtomicUsageBillingRepository 将资金效果与真实用量日志在同一事务提交。
+// 可选接口保持其他平台及既有仓储替身兼容，OpenAI 正式仓储优先使用。
+type AtomicUsageBillingRepository interface {
+	ApplyWithUsage(ctx context.Context, cmd *UsageBillingCommand, usage *UsageLog) (*UsageBillingApplyResult, error)
+}

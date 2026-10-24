@@ -507,6 +507,12 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		quotaPlatform = PlatformFromAPIKey(apiKey)
 	}
 
+	// 正式仓储将 usage 与余额、Key 配额、dedup 一起提交，避免已扣费无账单。
+	billingRepo := s.usageBillingRepo
+	atomicRepo, atomicBilling := billingRepo.(AtomicUsageBillingRepository)
+	if atomicBilling {
+		billingRepo = &atomicUsageBillingAdapter{UsageBillingRepository: billingRepo, atomic: atomicRepo, usage: usageLog}
+	}
 	_, billingErr := applyUsageBilling(ctx, requestID, usageLog, &postUsageBillingParams{
 		Cost:                       cost,
 		User:                       user,
@@ -519,14 +525,20 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		APIKeyService:              input.APIKeyService,
 		Platform:                   quotaPlatform,
 		SimpleModeKeyRateLimitOnly: simpleModeKeyRateLimitOnly,
-	}, s.billingDeps(), s.usageBillingRepo)
+	}, s.billingDeps(), billingRepo)
 
 	if billingErr != nil {
+		if atomicBilling {
+			// 事务失败不能写入占住唯一键的零费用行；向调用者保留明确失败。
+			return billingErr
+		}
 		usageLog.ActualCost = 0
 		writeUsageLogBestEffort(ctx, s.usageLogRepo, usageLog, "service.openai_gateway")
 		return billingErr
 	}
-	writeUsageLogBestEffort(ctx, s.usageLogRepo, usageLog, "service.openai_gateway")
+	if !atomicBilling {
+		writeUsageLogBestEffort(ctx, s.usageLogRepo, usageLog, "service.openai_gateway")
+	}
 
 	return nil
 }
