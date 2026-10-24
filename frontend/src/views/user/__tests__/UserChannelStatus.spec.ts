@@ -4,6 +4,7 @@ import { defineComponent, reactive } from 'vue'
 import { channels, coverage, group, key, matrix, plaza, row } from './channelStatusFixtures'
 import type { MonitorMatrixResponse } from '@/api/channelMonitorV2'
 import UserChannelStatus from '../UserChannelStatus.vue'
+import Select from '@/components/common/Select.vue'
 
 const mock = vi.hoisted(() => ({ channels: vi.fn(), groups: vi.fn(), rates: vi.fn(), plaza: vi.fn(), keys: vi.fn(), matrix: vi.fn(), snapshot: vi.fn(), push: vi.fn(), app: {} as { cachedPublicSettings: Record<string, unknown> } }))
 vi.mock('@/api/channels', () => ({ default: { getAvailable: mock.channels } }))
@@ -147,16 +148,16 @@ describe('新版普通用户渠道状态业务和生命周期', () => {
     const wrapper = createView(); await settle()
     let resolveOld!: (value: MonitorMatrixResponse) => void
     mock.matrix.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
-    await wrapper.get('select').setValue('7d')
+    wrapper.findAllComponents(Select)[0].vm.$emit('update:modelValue', '7d'); await settle()
     const oldSignal = mock.matrix.mock.calls.at(-1)![3] as AbortSignal
     expect(card(wrapper).text()).not.toContain('96.0')
-    await wrapper.get('select').setValue('30d'); await settle()
+    wrapper.findAllComponents(Select)[0].vm.$emit('update:modelValue', '30d'); await settle()
     expect(oldSignal.aborted).toBe(true)
     resolveOld(matrix([row(1, 'openai', 'model-X', 'warning')]))
     await settle()
     expect(card(wrapper).text()).toContain('userMonitor.ranges.30d')
     expect(card(wrapper).get('.um-health').text()).toContain('healthy')
-    await wrapper.get('select').setValue('90m'); await settle()
+    wrapper.findAllComponents(Select)[0].vm.$emit('update:modelValue', '90m'); await settle()
     expect(mock.matrix.mock.calls.at(-1)![0].range).toBe('90m')
   })
   it('重复刷新、卸载取消请求并清理定时器；迟到结果不复活界面', async () => {

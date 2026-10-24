@@ -1,8 +1,10 @@
 <template>
   <AppLayout>
     <div class="uc-analytics ua-requests">
-      <div class="ua-toolbar"><UserDateRangePicker v-model:start-date="startDate" v-model:end-date="endDate" @change="onDateRangeChange" /><button class="ua-button ua-refresh" type="button" :aria-label="t('common.refresh')" :disabled="loading || errorLoading" @click="refreshData"><Icon name="refresh" size="sm" /></button></div>
-      <p class="ua-scope">{{ t('userAnalytics.naturalDays') }} · {{ analyticsTimezone() }} · {{ t('userAnalytics.successStatsScope') }}</p>
+      <div class="ua-range-header">
+        <p class="ua-scope">{{ t('userAnalytics.naturalDays') }} · {{ analyticsTimezone() }} · {{ t('userAnalytics.successStatsScope') }}</p>
+        <div class="ua-toolbar"><UserDateRangePicker v-model:start-date="startDate" v-model:end-date="endDate" @change="onDateRangeChange" /><button class="ua-button ua-refresh" type="button" :aria-label="t('common.refresh')" :disabled="loading || errorLoading" @click="refreshData"><Icon name="refresh" size="sm" /></button></div>
+      </div>
       <div v-if="statsFailed || logsFailed || errorsFailed" class="ua-error" role="alert">{{ t('userAnalytics.loadFailed') }}<button class="ua-button" type="button" @click="refreshData">{{ t('userAnalytics.retry') }}</button></div>
       <UserAnalyticsStats :stats="usageStats" :loading="statsLoading" />
       <section class="ua-panel ua-filter-panel">
@@ -177,6 +179,7 @@ import UserAnalyticsStats from '@/components/user/analytics/UserAnalyticsStats.v
 import UserRequestDetail from '@/components/user/analytics/UserRequestDetail.vue'
 import { analyticsTimezone, naturalDayRange } from '@/components/user/analytics/analytics'
 import '@/styles/user-analytics.css'
+import '@/styles/stage7d-visual.css'
 import UsageTable from '@/components/admin/usage/UsageTable.vue'
 import Icon from '@/components/icons/Icon.vue'
 import UserErrorRequestsTable from '@/components/user/UserErrorRequestsTable.vue'

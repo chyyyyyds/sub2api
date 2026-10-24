@@ -1,7 +1,10 @@
 /* V1.1 用户统计页专用；不修改全局主题、共享图表默认值或管理员样式。 */
 .user-console .uc-analytics { --ua-panel:#0d1721; --ua-line:#25394b; --ua-muted:#9bafc2; --ua-text:#e9f1f8; color:var(--ua-text); font-size:14px; }
-.user-console .uc-analytics .ua-toolbar { display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:-76px; margin-bottom:22px; min-height:52px; position:relative; pointer-events:none; }
+.user-console .uc-analytics .ua-toolbar { display:flex; justify-content:flex-end; align-items:center; gap:10px; margin:0 0 12px; min-height:44px; position:relative; }
 .user-console .uc-analytics .ua-toolbar > * { pointer-events:auto; }
+.user-console .uc-analytics .ua-range-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px 16px; margin-bottom:12px; }
+.user-console .uc-analytics .ua-range-header .ua-toolbar { margin:0; }
+.user-console .uc-analytics .ua-range-header .ua-scope { margin:0; font-size:10px; line-height:1.5; }
 .user-console .uc-analytics .ua-scope { color:var(--ua-muted); font-size:11px; line-height:1.7; margin:0 0 12px; }
 .user-console .uc-analytics .ua-button, .user-console .uc-analytics .ua-detail-button { min-height:40px; display:inline-flex; justify-content:center; align-items:center; gap:7px; padding:8px 14px; border:1px solid #304761; border-radius:8px; background:#122333; color:#dce8f4; font-weight:600; font-size:13px; cursor:pointer; }
 .user-console .uc-analytics .ua-button:hover, .user-console .uc-analytics .ua-button[aria-pressed='true'] { border-color:#218787; background:#153743; color:#32e8d7; }

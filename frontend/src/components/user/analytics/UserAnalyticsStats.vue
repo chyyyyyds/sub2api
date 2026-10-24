@@ -1,13 +1,13 @@
 <template>
   <div class="ua-stats" :class="{ 'ua-five-stats': overview }" :aria-busy="loading">
-    <article v-if="overview" class="ua-stat ua-cyan" data-stat="balance"><span class="ua-stat-icon"><Icon name="creditCard" size="lg" /></span><div class="ua-stat-copy"><span>{{ t('userAnalytics.balance') }}</span><strong>{{ money(balance, 2) }}</strong><small>{{ t('userAnalytics.currentBalance') }}</small></div></article>
-    <article v-for="card in cards" :key="card.key" class="ua-stat" :class="card.tone" :data-stat="card.key"><span class="ua-stat-icon"><Icon :name="card.icon" size="lg" /></span><div class="ua-stat-copy"><span>{{ card.label }}</span><strong :title="card.exact">{{ loading ? '…' : card.value }}</strong><small>{{ card.detail }}</small></div></article>
+    <article v-if="overview" class="ua-stat ua-cyan" data-stat="balance"><span class="ua-stat-icon"><Icon name="wallet" size="lg" /></span><div class="ua-stat-copy"><span>{{ t('userAnalytics.balance') }}</span><strong>{{ money(balance, 2) }}</strong><small>{{ t('userAnalytics.currentBalance') }}</small></div></article>
+    <article v-for="card in cards" :key="card.key" class="ua-stat" :class="card.tone" :data-stat="card.key"><span class="ua-stat-icon"><Icon :name="card.key === 'cost' ? 'coins' : card.key === 'response' ? (overview ? 'zap' : 'timer') : card.key === 'requests' ? (overview ? 'chart' : 'file') : 'cube'" size="lg" /></span><div class="ua-stat-copy"><span>{{ card.label }}</span><strong :title="card.exact">{{ loading ? '…' : card.value }}</strong><small>{{ card.detail }}</small></div></article>
   </div>
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import Icon from '@/components/icons/Icon.vue'
+import Icon from '@/components/user/visual/ConsoleMetricIcon.vue'
 import type { UsageStatsResponse } from '@/types'
 import { duration, money, tokens } from './analytics'
 const props = defineProps<{ stats: UsageStatsResponse | null; balance?: number; overview?: boolean; loading?: boolean }>()

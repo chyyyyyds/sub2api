@@ -1,14 +1,17 @@
 <template>
   <AppLayout>
     <div class="uc-analytics ua-overview">
-      <div class="ua-toolbar"><UserDateRangePicker v-model:start-date="startDate" v-model:end-date="endDate" @change="refreshRange" /><button class="ua-button ua-refresh" type="button" :aria-label="t('common.refresh')" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" /></button></div>
-      <p class="ua-scope">{{ t('userAnalytics.naturalDays') }} · {{ analyticsTimezone() }}</p>
+      <!-- 统计口径与日期筛选同一行，位于总览卡片上方。 -->
+      <div class="ua-range-header">
+        <p class="ua-scope">{{ t('userAnalytics.naturalDays') }} · {{ analyticsTimezone() }}</p>
+        <div class="ua-toolbar"><UserDateRangePicker v-model:start-date="startDate" v-model:end-date="endDate" @change="refreshRange" /><button class="ua-button ua-refresh" type="button" :aria-label="t('common.refresh')" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" /></button></div>
+      </div>
       <div v-if="failed || realtimeFailed || balanceFailed" class="ua-error" role="alert">{{ t('userAnalytics.loadFailed') }}<button class="ua-button" type="button" @click="refreshAll">{{ t('userAnalytics.retry') }}</button></div>
       <UserAnalyticsStats :stats="stats" :balance="balanceFailed ? undefined : user?.balance" :loading="loading" overview />
       <div class="ua-overview-mid"><UserTokenTrend v-model:granularity="granularity" :trend="trend" :loading="loading" @update:granularity="refreshRange" /><UserDistributionPanel :title="t('userAnalytics.modelDistribution')" :name-label="t('usage.model')" :items="models" :loading="loading" /></div>
       <div class="ua-overview-bottom">
-        <UserDistributionPanel :title="t('userAnalytics.groupDistribution')" :name-label="t('admin.usage.group')" :items="groups" :loading="loading" />
-        <UserDistributionPanel :title="t('usage.endpointDistribution')" :name-label="t('usage.endpoint')" :items="endpoints" :loading="loading" />
+        <UserDistributionPanel variant="group" :title="t('userAnalytics.groupDistribution')" :name-label="t('admin.usage.group')" :items="groups" :loading="loading" />
+        <UserDistributionPanel variant="endpoint" :title="t('usage.endpointDistribution')" :name-label="t('usage.endpoint')" :items="endpoints" :loading="loading" />
         <section class="ua-panel ua-performance"><h3>{{ t('userAnalytics.performance') }}</h3><p>{{ t('userAnalytics.avgResponse') }}</p><strong class="ua-response">{{ loading ? '…' : stats?.total_requests ? duration(stats.average_duration_ms) : '—' }}</strong><small>{{ t('userAnalytics.selectedRange') }}</small><div class="ua-perf-grid"><div><strong>{{ realtime?.rpm ?? '—' }}</strong><span>RPM</span></div><div><strong>{{ realtime?.tpm?.toLocaleString() ?? '—' }}</strong><span>TPM</span></div><div><strong>{{ cacheRate }}</strong><span>{{ t('userAnalytics.cacheReadShare') }}</span></div></div><p class="ua-scope">{{ t('userAnalytics.performanceScope') }}</p><p class="ua-scope">{{ t('userAnalytics.noPerformanceTrend') }}</p></section>
       </div>
     </div>
@@ -28,6 +31,7 @@ import UserDistributionPanel from '@/components/user/analytics/UserDistributionP
 import UserTokenTrend from '@/components/user/analytics/UserTokenTrend.vue'
 import { analyticsTimezone, duration, naturalDayRange, type DistributionItem } from '@/components/user/analytics/analytics'
 import '@/styles/user-analytics.css'
+import '@/styles/stage7d-visual.css'
 const { t } = useI18n()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)

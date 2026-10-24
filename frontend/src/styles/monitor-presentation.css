@@ -1,0 +1,67 @@
+/* Stage7D-E：全部规则限定渠道页，不影响共享布局及密钥分组控件。 */
+.user-console.user-console .um-console .um-summary { grid-template-columns:minmax(0,1fr) minmax(340px,1fr); }
+.user-console.user-console .um-console .um-summary-metrics { width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; }
+.user-console.user-console .um-console .um-summary-metrics > div { padding:0 10px; border-right:1px solid #294052; }
+.user-console.user-console .um-console .um-summary-metrics > div:last-child { border-right:0; }
+.user-console.user-console .um-console .um-summary-metrics > div:nth-child(2) svg { color:#ffc65a; background:#382b22; box-shadow:0 0 18px #e5a3412b; }
+.user-console.user-console .um-console .um-summary-metrics > div:nth-child(3) svg { color:#4ee7bc; background:#12362e; box-shadow:0 0 18px #15d8a52b; }
+.user-console.user-console .um-console .um-summary-note { font-size:11px; line-height:1.65; color:#a3b7cb; margin-top:-5px; }
+
+/* 单卡保留原型密度；多卡桌面为三列，较窄屏幕自然降为两列或单列。 */
+.user-console.user-console .um-console .um-model-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.user-console.user-console .um-console .um-model-grid:has(> article:only-child) { grid-template-columns:minmax(0,min(100%,450px)); }
+.user-console.user-console .um-console .um-model { max-width:none; padding:16px; background:linear-gradient(145deg,#101c28,#0a141e); border-color:#2c3d4b; border-radius:13px; }
+.user-console.user-console .um-console .um-model.selected { border-color:#355467; }
+.user-console.user-console .um-console .um-model:hover { border-color:#377b8d; }
+.user-console.user-console .um-console .um-model-head { align-items:center; gap:10px; }
+.user-console.user-console .um-console .um-model-head > .uc-brand { display:block; width:43px; height:43px; padding:9px; flex-shrink:0; border-radius:10px; border:1px solid #334757; background:linear-gradient(145deg,#1b3446,#111d2a); }
+.user-console.user-console .um-console .um-model-heading { flex:1; min-width:0; }
+.user-console.user-console .um-console .um-model-name { display:block; max-width:100%; font-size:15px; line-height:1.5; }
+.user-console.user-console .um-console .um-model-context { margin:4px 0 0; font-size:10px; line-height:1.5; }
+.user-console.user-console .um-console .um-health { display:flex; align-items:center; gap:5px; border-radius:20px; padding:5px 8px; }
+.user-console.user-console .um-console .um-health i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.user-console.user-console .um-console .um-primary-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); margin:18px 0 12px; gap:14px; }
+.user-console.user-console .um-console .um-primary-kpis > div { min-width:0; }
+.user-console.user-console .um-console .um-primary-kpis > div + div { border-left:1px solid #233747; padding-left:14px; }
+.user-console.user-console .um-console .um-primary-kpis strong { display:block; font-size:19px; font-weight:650; line-height:1.35; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.user-console.user-console .um-console .um-primary-kpis .um-mint { color:#55e3c6; }
+.user-console.user-console .um-console .um-primary-kpis small { display:block; font-size:11px; color:#a2b6c9; margin-top:4px; }
+.user-console.user-console .um-console .um-kpi-note { display:block; font-size:10px; color:#96aabd; margin-top:3px; }
+.user-console.user-console .um-console .um-card-prices { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; padding:10px 4px; border:0; border-radius:8px; background:linear-gradient(145deg,#192c40,#142435); }
+.user-console.user-console .um-console .um-card-prices > div { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:0 7px; min-width:0; }
+.user-console.user-console .um-console .um-card-prices > div + div { border-left:1px solid #2b4055; }
+.user-console.user-console .um-console .um-card-prices span { font-size:10px; color:#a6b9cc; }
+.user-console.user-console .um-console .um-card-prices b { font-size:12px; line-height:1.5; font-weight:600; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; max-width:100%; }
+.user-console.user-console .um-console .um-card-prices .um-price-rule { font-size:11px; color:#c8d7e5; }
+.user-console.user-console .um-console .um-price-unit { margin-top:6px; font-size:10px; color:#a2b6c9; line-height:1.6; }
+
+/* 原生时间桶等宽铺满，未知缺口为灰；数量由真实查询窗口决定。 */
+.user-console.user-console .um-console :is(.um-history,.um-history-placeholder) { display:flex; height:9px; gap:2px; margin-top:14px; overflow:hidden; }
+.user-console.user-console .um-console :is(.um-history,.um-history-placeholder) span { flex:1 1 0; min-width:0; border-radius:1px; background:#3d4b5d; box-shadow:none; }
+.user-console.user-console .um-console .um-history .healthy { background:#20d4af; box-shadow:0 0 5px #13ddb840; }
+.user-console.user-console .um-console .um-history .warning { background:#edb442; }
+.user-console.user-console .um-console .um-history .critical { background:#df6b7f; }
+.user-console.user-console .um-console .um-history-caption { display:flex; justify-content:space-between; gap:8px; margin-top:6px; color:#a4b8cb; font-size:10px; line-height:1.5; }
+.user-console.user-console .um-console .um-history-caption > span:last-child { text-align:right; }
+.user-console.user-console .um-console .um-native-details { margin-top:12px; border-top:1px solid #223747; padding-top:8px; color:#a4b8cb; }
+.user-console.user-console .um-console .um-native-details summary { cursor:pointer; font-size:11px; padding:5px 0; }
+.user-console.user-console .um-console .um-native-details summary:focus-visible { outline:2px solid #19e5d2; outline-offset:3px; }
+.user-console.user-console .um-console :is(.um-availability-note,.um-interval-note) { margin-top:8px; font-size:11px; line-height:1.7; color:#a8bbce; }
+.user-console.user-console .um-console .um-native-details .um-kpis { margin:14px 0 12px; }
+.user-console.user-console .um-console .um-native-details .um-kpis strong { font-size:15px; white-space:normal; overflow-wrap:anywhere; }
+.user-console.user-console .um-console .um-model-footer { margin-top:8px; padding-top:10px; }
+
+@media (max-width:1100px) and (min-width:601px) { .user-console.user-console .um-console .um-model-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:1280px) and (min-width:1101px) {
+  .user-console.user-console .um-console .um-summary { grid-template-columns:minmax(0,1fr) 330px; gap:12px; }
+  .user-console.user-console .um-console .um-summary-title { gap:10px; }
+}
+@media (max-width:1100px) { .user-console.user-console .um-console .um-summary { grid-template-columns:minmax(0,1fr); } }
+@media (max-width:600px) {
+  .user-console.user-console .um-console .um-model-grid { grid-template-columns:minmax(0,1fr); }
+  .user-console.user-console .um-console .um-summary-metrics > div { padding:0 5px; column-gap:5px; }
+  .user-console.user-console .um-console .um-summary-metrics strong { font-size:20px; }
+  .user-console.user-console .um-console .um-summary-metrics svg { width:26px; height:26px; padding:5px; }
+  .user-console.user-console .um-console .um-summary-metrics small { font-size:10px; white-space:normal; }
+  .user-console.user-console .um-console .um-model-name { font-size:15px; }
+}

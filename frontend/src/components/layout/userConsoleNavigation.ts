@@ -18,11 +18,12 @@ export interface UserConsoleNavigationState {
   monitor: boolean
 }
 
-/** 仅声明五个入口；隐藏菜单不删除路由，也不代替现有权限守卫。 */
+/** 声明用户入口；隐藏菜单不删除路由，也不代替现有权限守卫。 */
 export function userConsoleNavigation(state: UserConsoleNavigationState) {
   if (!state.authenticated || (state.backend && !state.admin)) return []
   return [
     { path: '/dashboard', label: 'nav.dashboard', enabled: true },
+    { path: '/usage', label: 'nav.usage', enabled: !state.simple },
     { path: '/monitor', label: 'nav.channelStatus', enabled: state.monitor },
     { path: '/keys', label: 'nav.apiKeys', enabled: true },
     { path: '/redeem', label: 'userConsole.wallet', enabled: !state.simple },
@@ -30,7 +31,7 @@ export function userConsoleNavigation(state: UserConsoleNavigationState) {
   ].filter(item => item.enabled)
 }
 
-/** 数据总览与请求明细共用仪表盘主导航。 */
+/** 仪表盘与使用记录各自高亮对应的主导航。 */
 export function userConsoleActivePath(path: string): string {
-  return path === '/usage' ? '/dashboard' : path
+  return path
 }

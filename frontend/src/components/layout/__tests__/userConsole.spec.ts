@@ -51,32 +51,33 @@ async function render(path = '/dashboard', admin = false, component = AppLayout)
 }
 
 describe('Stage 1 用户外壳契约', () => {
-  it('标准模式严格保留五菜单顺序，使用原有路径', () => {
-    expect(userConsoleNavigation(state).map(item => item.path)).toEqual(['/dashboard', '/monitor', '/keys', '/redeem', '/profile'])
-    expect(userConsoleActivePath('/usage')).toBe('/dashboard')
+  it('使用记录位于仪表盘和渠道状态之间，使用原有路径', () => {
+    expect(userConsoleNavigation(state).map(item => item.path)).toEqual(['/dashboard', '/usage', '/monitor', '/keys', '/redeem', '/profile'])
+    expect(userConsoleActivePath('/usage')).toBe('/usage')
     expect(userConsoleActivePath('/keys')).toBe('/keys')
   })
   it('功能关闭、简易模式、未登录和后台模式只收窄菜单', () => {
     expect(userConsoleNavigation({ ...state, monitor: false, simple: true }).map(item => item.path)).toEqual(['/dashboard', '/keys', '/profile'])
     expect(userConsoleNavigation({ ...state, authenticated: false })).toEqual([])
     expect(userConsoleNavigation({ ...state, backend: true })).toEqual([])
-    expect(userConsoleNavigation({ ...state, backend: true, admin: true })).toHaveLength(5)
+    expect(userConsoleNavigation({ ...state, backend: true, admin: true })).toHaveLength(6)
   })
   it('外壳选择依据路由元数据，管理员角色不参与判断', () => {
     expect(isUserConsoleRoute({ meta: { requiresAdmin: false } })).toBe(true)
     expect(isUserConsoleRoute({ meta: { requiresAdmin: true } })).toBe(false)
     expect(isUserConsoleRoute({ meta: {} })).toBe(false)
   })
-  it.each([false, true])('共享页面无重复外壳，双 Tab 正确高亮（admin=%s）', async admin => {
+  it.each([false, true])('共享页面无重复外壳，仪表盘与使用记录独立高亮（admin=%s）', async admin => {
     const { wrapper, router } = await render('/dashboard', admin)
     expect(wrapper.findAll('.user-console')).toHaveLength(1)
     expect(wrapper.find('[data-test="admin-sidebar"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="business-content"]').text()).toBe('原有业务')
-    expect(wrapper.find('.uc-tabs [aria-current="page"]').text()).toBe('数据总览')
+    expect(wrapper.find('.uc-nav [aria-current="page"]').text()).toBe('仪表盘')
+    expect(wrapper.find('.uc-tabs').exists()).toBe(false)
     expect(onboarding).toHaveBeenLastCalledWith({ storageKey: admin ? 'admin_guide' : 'user_guide', autoStart: !admin })
     await router.push('/usage')
-    expect(wrapper.find('.uc-nav [aria-current="page"]').text()).toBe('仪表盘')
-    expect(wrapper.find('.uc-tabs [aria-current="page"]').text()).toBe('请求明细')
+    expect(wrapper.find('.uc-nav [aria-current="page"]').text()).toBe('使用记录')
+    expect(wrapper.find('.uc-tabs').exists()).toBe(false)
   })
   it('管理员后台 → 共享用户页 → 后台保留原有外壳与全局主题', async () => {
     document.documentElement.classList.add('dark')
@@ -117,14 +118,14 @@ describe('Stage 1 用户外壳契约', () => {
     await flushPromises()
     expect(wrapper.find('.uc-account-menu').exists()).toBe(false)
   })
-  it('响应现有功能开关及简易模式，不展示受限 Tab 和钱包快捷入口', async () => {
+  it('响应现有功能开关及简易模式，不展示受限使用记录和钱包快捷入口', async () => {
     const { wrapper, app, auth } = await render()
     app.cachedPublicSettings = { channel_monitor_enabled: false } as PublicSettings
     vi.spyOn(authAPI, 'getCurrentUser').mockResolvedValue({ data: { ...auth.user, run_mode: 'simple' } } as Awaited<ReturnType<typeof authAPI.getCurrentUser>>)
     await auth.refreshUser()
     await flushPromises()
     expect(wrapper.findAll('.uc-nav-link').map(link => link.text())).toEqual(['仪表盘', 'API 密钥', '个人资料'])
-    expect(wrapper.findAll('.uc-tabs a')).toHaveLength(1)
+    expect(wrapper.find('.uc-tabs').exists()).toBe(false)
     await wrapper.find('.uc-account').trigger('click')
     expect(wrapper.find('.uc-account-menu a[href="/redeem"]').exists()).toBe(false)
   })

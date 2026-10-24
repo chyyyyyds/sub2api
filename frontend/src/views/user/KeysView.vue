@@ -2,7 +2,7 @@
   <AppLayout>
     <div class="uk-console"><div class="uk-grid"><div class="uk-primary">
       <div class="uk-stats" :aria-busy="summaryLoading">
-        <article v-for="card in summaryCards" :key="card.label"><span class="uk-stat-icon"><Icon :name="card.icon" size="lg" /></span><div><span>{{ card.label }}</span><strong>{{ summaryLoading ? '…' : card.value }}</strong><small>{{ card.detail }}</small></div></article>
+        <article v-for="card in summaryCards" :key="card.label"><span class="uk-stat-icon"><ConsoleMetricIcon :name="card.icon === 'creditCard' ? 'layers' : card.icon === 'checkCircle' ? 'activity' : card.icon" /></span><div><span>{{ card.label }}</span><strong>{{ summaryLoading ? '…' : card.value }}</strong><small>{{ card.detail }}</small></div></article>
       </div>
       <p class="uk-scope">{{ t('userKeys.statsScope') }}</p>
       <div v-if="summaryError" class="uk-error" role="alert">{{ t('userKeys.statsFailed') }}<button class="btn btn-secondary" @click="refreshSummary">{{ t('userAnalytics.retry') }}</button></div>
@@ -152,7 +152,7 @@
             </div>
           </template>
 
-          <template #cell-vendor="{ row }"><span class="uk-vendor"><PlatformIcon v-if="row.group?.platform" :platform="row.group.platform" size="sm" />{{ row.group?.platform ? platformDisplayName(keyVendor(row)) : t('keys.noGroup') }}</span></template>
+          <template #cell-vendor="{ row }"><span class="uk-vendor"><PlatformIcon variant="key" v-if="row.group?.platform" :platform="row.group.platform" size="sm" />{{ row.group?.platform ? platformDisplayName(keyVendor(row)) : t('keys.noGroup') }}</span></template>
           <template #cell-today="{ row }"><span :title="money(usageStats[row.id]?.today_actual_cost, 8)">{{ money(usageStats[row.id]?.today_actual_cost) }}</span></template>
           <template #cell-month="{ row }"><span :title="money(usageStats[row.id]?.total_actual_cost, 8)">{{ money(usageStats[row.id]?.total_actual_cost) }}</span></template>
           <template #cell-group="{ row }">
@@ -407,7 +407,7 @@
     </div><aside class="uk-side">
       <section class="uk-create"><button class="btn btn-primary" data-tour="keys-create-btn" @click="showCreateModal = true"><Icon name="plus" size="md" />{{ t('keys.createKey') }}</button></section>
       <section class="uk-detail" :aria-busy="detailLoading">
-        <template v-if="detailKey"><div class="uk-detail-heading"><PlatformIcon v-if="detailKey.group?.platform" :platform="detailKey.group.platform" size="lg" /><div><h2>{{ detailKey.name }}</h2><small>{{ t('keys.status.' + effectiveKeyStatus(detailKey, now.getTime())) }}</small></div></div>
+        <template v-if="detailKey"><div class="uk-detail-heading"><PlatformIcon variant="key" v-if="detailKey.group?.platform" :platform="detailKey.group.platform" size="lg" /><div><h2>{{ detailKey.name }}</h2><small>{{ t('keys.status.' + effectiveKeyStatus(detailKey, now.getTime())) }}</small></div></div>
           <dl><div><dt>{{ t('keys.apiKey') }}</dt><dd><code>{{ maskApiKey(detailKey.key) }}</code><button type="button" :aria-label="t('common.copy')" @click="copyToClipboard(detailKey.key, detailKey.id)"><Icon name="clipboard" size="sm" /></button></dd></div><div><dt>{{ t('userKeys.vendor') }}</dt><dd>{{ detailKey.group?.platform ? platformDisplayName(keyVendor(detailKey)) : t('keys.noGroup') }}</dd></div><div><dt>{{ t('keys.group') }}</dt><dd><GroupBadge v-if="detailKey.group" :name="detailKey.group.name" :platform="detailKey.group.platform" :subscription-type="detailKey.group.subscription_type" :rate-multiplier="detailKey.group.rate_multiplier" :user-rate-multiplier="userGroupRates[detailKey.group.id]" :peak-rate-enabled="detailKey.group.peak_rate_enabled" :peak-start="detailKey.group.peak_start" :peak-end="detailKey.group.peak_end" :peak-rate-multiplier="detailKey.group.peak_rate_multiplier" /><span v-else>{{ t('keys.noGroup') }}</span></dd></div><div><dt>{{ t('userKeys.endpoint') }}</dt><dd class="uk-endpoint">{{ publicSettings?.api_base_url || fallbackOrigin }}</dd></div><div><dt>{{ t('keys.currentConcurrency') }}</dt><dd>{{ detailKey.current_concurrency ?? 0 }}</dd></div><div><dt>{{ t('userKeys.today') }}</dt><dd>{{ money(detailUsage?.today_actual_cost) }}</dd></div><div><dt>{{ t('userKeys.month') }}</dt><dd>{{ money(detailUsage?.total_actual_cost) }}</dd></div><div><dt>{{ t('keys.created') }}</dt><dd>{{ formatDateTime(detailKey.created_at) }}</dd></div></dl>
           <UserKeyActions :hide-ccs="publicSettings?.hide_ccs_import_button" @use="openUseKeyModal(detailKey)" @ccs="importToCcswitch(detailKey)" @edit="editKey(detailKey)" @delete="confirmDelete(detailKey)" />
           <div class="uk-trend"><h3>{{ t('userKeys.trend') }}</h3><p v-if="detailLoading" role="status">{{ t('common.loading') }}</p><div v-else-if="detailError" class="uk-error" role="alert">{{ t('userKeys.detailFailed') }}<button @click="loadDetail">{{ t('userAnalytics.retry') }}</button></div><p v-else-if="!detailDays.some(d => d.requests > 0)">{{ t('userKeys.noHistory') }}</p><template v-else><div class="uk-bars" role="img" :aria-label="t('userKeys.trend')"><span v-for="day in detailDays" :key="day.date" :style="{ height: `${Math.max(2, day.actual_cost / Math.max(...detailDays.map(d => d.actual_cost), 0.00000001) * 100)}%` }" :title="`${day.date}: ${money(day.actual_cost, 8)}`" /></div><details><summary>{{ t('userAnalytics.exactTrend') }}</summary><table><tbody><tr v-for="day in detailDays" :key="day.date"><th>{{ day.date }}</th><td>{{ money(day.actual_cost, 8) }}</td></tr></tbody></table></details></template></div>
@@ -464,7 +464,7 @@
                     class="flex h-8 w-8 items-center justify-center rounded-lg"
                     :class="platformBadgeLightClass(platform)"
                   >
-                    <PlatformIcon :platform="platform" size="lg" />
+                    <PlatformIcon variant="key" :platform="platform" size="lg" />
                   </span>
                 </span>
                 <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">{{ provider.label }}</span>
@@ -1165,6 +1165,7 @@ import UserKeyActions from '@/components/keys/UserKeyActions.vue'
 import { money } from '@/components/user/analytics/analytics'
 import type { ApiKeyDailyUsagePoint } from '@/api/usage'
 import '@/styles/user-keys.css'
+import '@/styles/stage7d-visual.css'
 
 const { t } = useI18n()
 import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
@@ -1188,7 +1189,8 @@ import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
 import { maskApiKey } from '@/utils/maskApiKey'
-import PlatformIcon from '@/components/common/PlatformIcon.vue'
+import PlatformIcon from '@/components/user/visual/ConsoleBrandMark.vue'
+import ConsoleMetricIcon from '@/components/user/visual/ConsoleMetricIcon.vue'
 import { platformBadgeLightClass } from '@/utils/platformColors'
 import { KEY_GROUP_PROVIDERS, KEY_GROUP_PROVIDER_ICONS, getKeyGroupProvider, type KeyGroupProvider } from '@/utils/keyGroupProviders'
 import {
