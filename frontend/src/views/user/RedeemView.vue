@@ -68,6 +68,7 @@ import { redeemAPI, authAPI, type RedeemHistoryItem } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTime } from '@/utils/format'
+import { money as analyticsMoney } from '@/components/user/analytics/analytics'
 import '@/styles/user-wallet.css'
 
 const { t } = useI18n()
@@ -98,8 +99,8 @@ let historyRequest = 0
 let disposed = false
 let flashTimer: ReturnType<typeof setTimeout> | undefined
 
-// 与已验收顶栏使用相同 USD、两位小数格式，余额仅来自认证 Store。
-function money(value: number | null | undefined) { return typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : '—' }
+// 与顶栏保持同源精度，小额余额展开八位，金额仅来自认证 Store。
+function money(value: number | null | undefined) { return analyticsMoney(value, 2) }
 const isBalance = (type: string) => ['balance', 'admin_balance'].includes(type)
 const knownType = (type: string) => ['balance', 'admin_balance', 'concurrency', 'admin_concurrency', 'subscription'].includes(type)
 const activityNegative = (item: RedeemHistoryItem) => (item.type === 'subscription' ? item.validity_days ?? 0 : item.value) < 0

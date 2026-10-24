@@ -55,6 +55,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { money as analyticsMoney } from '@/components/user/analytics/analytics'
 import Icon from '@/components/icons/Icon.vue'
 import ProfileAvatarCard from '@/components/user/profile/ProfileAvatarCard.vue'
 import ProfileEditForm from '@/components/user/profile/ProfileEditForm.vue'
@@ -145,9 +146,7 @@ const providerLabels = computed<Record<UserAuthProvider, string>>(() => ({
   google: 'Google'
 }))
 
-function formatCurrency(value: number): string {
-  return `$${value.toFixed(2)}`
-}
+function formatCurrency(value: number): string { return analyticsMoney(value, 2) }
 
 function normalizeProvider(value: string): UserAuthProvider | null {
   const normalized = value.trim().toLowerCase()

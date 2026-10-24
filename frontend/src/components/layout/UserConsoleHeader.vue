@@ -57,6 +57,7 @@ import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { userConsoleActivePath, userConsoleNavigation } from './userConsoleNavigation'
+import { money as analyticsMoney } from '@/components/user/analytics/analytics'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -85,7 +86,7 @@ const accountButton = ref<HTMLButtonElement | null>(null)
 const balanceButton = ref<HTMLButtonElement | null>(null)
 
 function money(value: number) {
-  return `$${(Number.isFinite(value) ? value : 0).toFixed(2)}`
+  return analyticsMoney(value, 2)
 }
 
 function closePopovers(restoreFocus = false) {

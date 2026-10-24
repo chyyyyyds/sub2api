@@ -366,6 +366,15 @@ describe('admin UsageTable tooltip', () => {
     wrapper.unmount()
   })
 
+  it.each([0.00001284, 0.00000001, 0.00000042])('keeps eight decimal places in the visible cost cell for %s', (amount) => {
+    const wrapper = mount(UsageTable, {
+      props: { data: [{ ...baseImageRow, actual_cost: amount }], loading: false, columns: [] },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true, Teleport: true } },
+    })
+    expect(wrapper.get('.font-medium.text-green-600').text()).toBe(`$${amount.toFixed(8)}`)
+    wrapper.unmount()
+  })
+
   it('uses eight decimal places for missing cost values', async () => {
     const wrapper = mount(UsageTable, {
       props: {

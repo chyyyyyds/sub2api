@@ -11,7 +11,14 @@ export interface DistributionItem {
 }
 export const analyticsPalette = ['#278aff', '#11c7b5', '#e3ad35', '#8b82d9', '#5c7793', '#db7b91']
 export const analyticsTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
-export const money = (value: number | null | undefined, digits = 4) => value == null || !Number.isFinite(value) ? '—' : `$${value.toFixed(digits)}`
+/** 小额消费展开到账务八位精度；更小的非零金额显示范围，避免误认为零消费。 */
+export function money(value: number | null | undefined, digits = 4): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  const magnitude = Math.abs(value)
+  if (magnitude > 0 && magnitude < 0.00000001) return value > 0 ? '<$0.00000001' : '>-$0.00000001'
+  const precision = magnitude > 0 && magnitude < 0.01 ? Math.max(digits, 8) : digits
+  return `$${value.toFixed(precision)}`
+}
 export const tokens = (value: number | null | undefined) => value == null ? '—' : new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
 export const duration = (value: number | null | undefined) => value == null || !Number.isFinite(value) ? '—' : value < 1000 ? `${value.toFixed(0)}ms` : `${(value / 1000).toFixed(2)}s`
 /** 按日历回退，避免夏令时使用固定毫秒数造成偏移。 */
