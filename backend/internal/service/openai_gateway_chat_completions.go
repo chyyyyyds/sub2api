@@ -457,6 +457,13 @@ func (s *OpenAIGatewayService) forwardAsChatCompletions(
 		notifyOpenAIAutoReset(*account.ParentAccountID)
 	}
 
+	if clientStream {
+		var observedUsage *OpenAIUsage
+		if result != nil {
+			observedUsage = &result.Usage
+		}
+		logOpenAIStreamUsageOutcome(ctx, account, resp.Header.Get("x-request-id"), observedUsage, handleErr)
+	}
 	return result, handleErr
 }
 
@@ -924,12 +931,7 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 		isTerminalEvent := isOpenAICompatResponsesTerminalEvent(event.Type)
 		if isTerminalEvent {
 			terminalEventType = strings.TrimSpace(event.Type)
-			if event.Usage != nil {
-				usage = copyOpenAIUsageFromResponsesUsage(event.Usage)
-			}
-			if event.Response != nil && event.Response.Usage != nil {
-				usage = copyOpenAIUsageFromResponsesUsage(event.Response.Usage)
-			}
+			// 共享解析器已校验并保留快照，不能再用缺字段的强类型零值覆盖它。
 		}
 		if strings.TrimSpace(event.Type) == "response.failed" || strings.TrimSpace(event.Type) == "error" {
 			payloadBytes := []byte(payload)
@@ -1284,14 +1286,14 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 				continue
 			}
 			if clientDisconnected {
-				return resultWithUsage(), fmt.Errorf("stream usage incomplete after timeout")
+				return resultWithUsage(), fmt.Errorf("stream usage incomplete after timeout: %w", context.DeadlineExceeded)
 			}
 			logger.L().Warn("openai chat_completions stream: data interval timeout",
 				zap.String("request_id", requestID),
 				zap.String("model", originalModel),
 				zap.Duration("interval", streamInterval),
 			)
-			return resultWithUsage(), fmt.Errorf("stream data interval timeout")
+			return resultWithUsage(), fmt.Errorf("stream data interval timeout: %w", context.DeadlineExceeded)
 
 		case <-keepaliveCh:
 			if clientDisconnected {

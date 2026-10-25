@@ -282,6 +282,13 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletionsWithStartTime(
 		addOpenAIUsage(&result.Usage, bridgeUsage)
 		result.UpstreamEndpoint = grokChatRawEndpoint
 	}
+	if clientStream {
+		var observedUsage *OpenAIUsage
+		if result != nil {
+			observedUsage = &result.Usage
+		}
+		logOpenAIStreamUsageOutcome(ctx, account, resp.Header.Get("x-request-id"), observedUsage, forwardErr)
+	}
 	return result, forwardErr
 }
 
@@ -373,7 +380,10 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 				observer.ObserveOpenAI([]byte(payload), strings.TrimSpace(gjson.Get(payload, "type").String()))
 				usageOnlyChunk := isOpenAIChatUsageOnlyStreamChunk(payload)
 				if u := extractCCStreamUsage(payload); u != nil {
-					usage = *u
+					// 空/全零的后续快照不能抹掉同次采购已确认的用量。
+					if openAIUsageHasTokens(u) || !openAIUsageHasTokens(&usage) {
+						usage = *u
+					}
 					observeCCProcurementUsage(c, usage)
 				}
 				if firstTokenMs == nil && !usageOnlyChunk {
@@ -509,11 +519,7 @@ func isOpenAIChatUsageOnlyStreamChunk(payload string) bool {
 // CC 协议中 usage 仅出现在末尾 chunk（且仅当 include_usage 生效时），
 // 但上游可能在多个 chunk 中重复——总是用最新值。
 func extractCCStreamUsage(payload string) *OpenAIUsage {
-	usageResult := gjson.Get(payload, "usage")
-	if !usageResult.Exists() || !usageResult.IsObject() {
-		return nil
-	}
-	u, ok := openAIUsageFromGJSON(usageResult)
+	u, ok := trustedOpenAIStreamUsage([]byte(payload))
 	if !ok {
 		return nil
 	}

@@ -35,14 +35,21 @@ const (
 )
 
 var (
-	integrationDB        *sql.DB
-	integrationEntClient *dbent.Client
-	integrationRedis     *redisclient.Client
+	// 专用故障夹具通过显式 stage8q 构建标签注册，不影响常规集成测试。
+	integrationStage8QMain func(*testing.M)
+	integrationDB          *sql.DB
+	integrationEntClient   *dbent.Client
+	integrationRedis       *redisclient.Client
 
 	redisNamespaceSeq uint64
 )
 
 func TestMain(m *testing.M) {
+	// 仅本轮固定隔离夹具可走此入口；不接受任意站点数据库连接字符串。
+	if integrationStage8QMain != nil && os.Getenv("STAGE8Q_FIXTURE") == "isolated-compose-only" {
+		integrationStage8QMain(m)
+		return
+	}
 	ctx := context.Background()
 
 	if err := timezone.Init("UTC"); err != nil {

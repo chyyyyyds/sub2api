@@ -392,7 +392,7 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 		if sawTerminalEvent && !sawFailedEvent {
 			s.clearOpenAIProxyStreamDisconnect(account)
 		}
-		if !sawTerminalEvent && !openAIStreamClientOutputStarted(c, clientOutputStarted) && !eventShouldFlush {
+		if !sawTerminalEvent && !openAIStreamClientOutputStarted(c, clientOutputStarted) && !eventShouldFlush && !openAIUsageHasTokens(usage) {
 			return resultWithUsage(), s.newOpenAIStreamFailoverError(
 				c,
 				account,
@@ -418,6 +418,10 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 	handleScanErr := func(scanErr error) (*openaiStreamingResult, error, bool) {
 		if scanErr == nil {
 			return nil, nil, false
+		}
+		// 已确认用量后，解析上限属于当前采购的传输失败，不能按未采购分支丢弃结果。
+		if !sawTerminalEvent && openAIUsageHasTokens(usage) && (errors.Is(scanErr, errOpenAIFirstOutputScannerLimit) || errors.Is(scanErr, bufio.ErrTooLong)) {
+			return resultWithUsage(), newOpenAIUpstreamStreamReadError(scanErr), true
 		}
 		if errors.Is(scanErr, errOpenAIFirstOutputScannerLimit) && !firstOutputProgressObserved {
 			logger.LegacyPrintf("service.openai_gateway", "SSE token exceeded guarded first-output limit: account=%d limit=%d error=%v", account.ID, openAIFirstOutputStageMaxBytes+openAIFirstOutputScannerFramingAllowance, scanErr)
@@ -458,7 +462,7 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 			sendErrorEvent("response_too_large", "Upstream response exceeded the size limit")
 			return resultWithUsage(), scanErr, true
 		}
-		if !openAIStreamClientOutputStarted(c, clientOutputStarted) && !eventShouldFlush {
+		if !openAIStreamClientOutputStarted(c, clientOutputStarted) && !eventShouldFlush && !openAIUsageHasTokens(usage) {
 			msg := "OpenAI stream disconnected before completion"
 			if errText := strings.TrimSpace(scanErr.Error()); errText != "" {
 				msg += ": " + errText
@@ -926,7 +930,7 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 				return finalizeStream()
 			}
 			if clientDisconnected {
-				return resultWithUsage(), fmt.Errorf("stream usage incomplete after timeout")
+				return resultWithUsage(), fmt.Errorf("stream usage incomplete after timeout: %w", context.DeadlineExceeded)
 			}
 			logger.LegacyPrintf("service.openai_gateway", "Stream data interval timeout: account=%d model=%s interval=%s", account.ID, originalModel, streamInterval)
 			// 处理流超时，可能标记账户为临时不可调度或错误状态
@@ -938,13 +942,13 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 			// legacy stream_timeout path so partial SSE is not dual-written.
 			if account != nil && account.Platform == PlatformGrok {
 				s.tempUnscheduleGrok(ctx, account, grokStreamIdleCooldown, "grok stream idle timeout")
-				if !openAIStreamClientOutputStarted(c, clientOutputStarted) && !eventShouldFlush {
+				if !openAIStreamClientOutputStarted(c, clientOutputStarted) && !eventShouldFlush && !openAIUsageHasTokens(usage) {
 					_ = resp.Body.Close()
 					return resultWithUsage(), grokStreamIdleFailoverError(account, streamInterval)
 				}
 			}
 			sendErrorEvent("stream_timeout", "Upstream response stream timed out")
-			return resultWithUsage(), fmt.Errorf("stream data interval timeout")
+			return resultWithUsage(), fmt.Errorf("stream data interval timeout: %w", context.DeadlineExceeded)
 
 		case <-firstOutputCh:
 			if firstOutputProgressObserved {
@@ -958,6 +962,10 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 			_ = resp.Body.Close()
 			for ev := range events {
 				markEventProcessed(ev)
+			}
+			if openAIUsageHasTokens(usage) {
+				// 超时仍是业务失败；可信用量沿原请求ID进入结算，不发起第二次采购。
+				return resultWithUsage(), fmt.Errorf("first output timeout after trusted usage: %w", context.DeadlineExceeded)
 			}
 			return resultWithUsage(), s.newOpenAIFirstOutputTimeoutError(
 				ctx, c, account, opsUpstreamProxyID(account), opsUpstreamProxyName(account),
@@ -1235,7 +1243,7 @@ func (s *OpenAIGatewayService) parseSSEUsageBytesWithType(data []byte, eventType
 	if !bytes.Contains(data, []byte(`"usage"`)) {
 		return
 	}
-	parsedUsage, ok := extractOpenAIUsageFromJSONBytes(data)
+	parsedUsage, ok := trustedOpenAIStreamUsage(data)
 	if !ok {
 		return
 	}
