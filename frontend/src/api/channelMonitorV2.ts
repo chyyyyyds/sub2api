@@ -237,6 +237,25 @@ const requestConfig = (filter: MonitorFilter, signal?: AbortSignal, extraParams:
 
 function base(admin: boolean) { return admin ? '/admin/channel-monitor-v2' : '/channel-monitor-v2' }
 
+/** 渠道状态页专属展示范围，不作为调用权限。 */
+export interface MonitorDisplayScope {
+  /** @description 已授权且选入监控的分组；空数组表示没有可展示分组。 */
+  group_ids: number[]
+  /** @description 已启用且用户可访问的平台范围。 */
+  platforms: Array<{
+    /** @description 平台标识。 */
+    platform: string
+    /** @description 配置的监控模型；空数组表示该平台全部授权模型。 */
+    models: string[]
+  }>
+}
+
+/** @param signal 页面请求的取消信号；无业务入参。 @returns 当前用户的渠道状态展示范围。 */
+export async function getDisplayScope(signal?: AbortSignal): Promise<MonitorDisplayScope> {
+  const { data } = await apiClient.get<MonitorDisplayScope>('/channel-monitor-v2/display-scope', { signal })
+  return data
+}
+
 export async function getDimensions(filter: MonitorFilter, admin = false, signal?: AbortSignal) {
   const { data } = await apiClient.get<MonitorDimensions>(`${base(admin)}/dimensions`, requestConfig(filter, signal))
   return data

@@ -8,6 +8,7 @@ import { useAppStore } from '@/stores/app'
 import type { ApiKey } from '@/types'
 import { collectKeys } from '@/views/user/keysConsole'
 import { buildCatalog, dimensionKey, indexMatrix, monitorFailure, relatedKeys, type CatalogModel, type MonitorFailure } from '@/views/user/channelStatusConsole'
+import { filterMonitoredCatalog } from '@/views/user/monitorPresentation'
 
 /** 用户页面只读适配，管理员身份访问此页也始终使用普通用户端点。 */
 export function useUserChannelStatus() {
@@ -70,16 +71,20 @@ export function useUserChannelStatus() {
         settings?.model_plaza_enabled === true ? modelPlazaAPI.getModelPlaza(withSignal) : Promise.resolve({ groups: [] }),
         collectKeys({}, request.signal),
         enabled.value ? monitorAPI.getMatrix(filter, 'platform_group_model', false, request.signal) : Promise.resolve(null),
-        enabled.value ? monitorAPI.getSnapshot(filter, false, request.signal) : Promise.resolve(null)
+        enabled.value ? monitorAPI.getSnapshot(filter, false, request.signal) : Promise.resolve(null),
+        enabled.value ? monitorAPI.getDisplayScope(request.signal) : Promise.resolve(null)
       ] as const), aborted])
       if (disposed || id !== sequence) return
       if (!results || request.signal.aborted) { catalog.value = []; keys.value = []; rates.value = {}; issues.value = ['timeout']; failure.value = 'unavailable'; return }
-      const [channels, allowed, userRates, plaza, keyResult, matrix, snapshot] = results
+      const [channels, allowed, userRates, plaza, keyResult, matrix, snapshot, scope] = results
       issues.value = results.flatMap((result, index) => result.status === 'rejected' && index < 5 ? [['channels', 'groups', 'rates', 'pricing', 'keys'][index]] : [])
       catalog.value = allowed.status === 'fulfilled' ? buildCatalog(channels.status === 'fulfilled' ? channels.value : [], allowed.value, plaza.status === 'fulfilled' ? plaza.value.groups : []) : []
+      // 仅裁剪此页面的展示目录，原渠道目录、API 密钥及模型调用授权保持不变。
+      catalog.value = filterMonitoredCatalog(catalog.value, scope.status === 'fulfilled' ? scope.value : null)
       rates.value = userRates.status === 'fulfilled' ? userRates.value : {}
       keys.value = keyResult.status === 'fulfilled' ? keyResult.value : []
       if (!enabled.value) failure.value = 'disabled'
+      else if (scope.status === 'rejected') failure.value = monitorFailure(scope.reason)
       else if (matrix.status === 'rejected') failure.value = monitorFailure(matrix.reason)
       else if (matrix.value) {
         try { rows.value = indexMatrix(matrix.value); coverage.value = matrix.value.coverage } catch { failure.value = 'unavailable' }

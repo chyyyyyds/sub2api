@@ -6,11 +6,11 @@ import type { MonitorMatrixResponse } from '@/api/channelMonitorV2'
 import UserChannelStatus from '../UserChannelStatus.vue'
 import Select from '@/components/common/Select.vue'
 
-const mock = vi.hoisted(() => ({ channels: vi.fn(), groups: vi.fn(), rates: vi.fn(), plaza: vi.fn(), keys: vi.fn(), matrix: vi.fn(), snapshot: vi.fn(), push: vi.fn(), app: {} as { cachedPublicSettings: Record<string, unknown> } }))
+const mock = vi.hoisted(() => ({ channels: vi.fn(), groups: vi.fn(), rates: vi.fn(), plaza: vi.fn(), keys: vi.fn(), matrix: vi.fn(), snapshot: vi.fn(), scope: vi.fn(), push: vi.fn(), app: {} as { cachedPublicSettings: Record<string, unknown> } }))
 vi.mock('@/api/channels', () => ({ default: { getAvailable: mock.channels } }))
 vi.mock('@/api/groups', () => ({ default: { getAvailable: mock.groups, getUserGroupRates: mock.rates } }))
 vi.mock('@/api/modelPlaza', () => ({ modelPlazaAPI: { getModelPlaza: mock.plaza } }))
-vi.mock('@/api/channelMonitorV2', () => ({ getMatrix: mock.matrix, getSnapshot: mock.snapshot }))
+vi.mock('@/api/channelMonitorV2', () => ({ getMatrix: mock.matrix, getSnapshot: mock.snapshot, getDisplayScope: mock.scope }))
 vi.mock('../keysConsole', async () => ({ ...await vi.importActual('../keysConsole'), collectKeys: mock.keys }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => mock.app }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: mock.push }) }))
@@ -36,10 +36,37 @@ beforeEach(() => {
   mock.channels.mockResolvedValue(channels()); mock.groups.mockResolvedValue([group(1), group(2), group(3, 'composite')]); mock.rates.mockResolvedValue({ 2: .085 })
   mock.plaza.mockResolvedValue({ groups: plaza() }); mock.keys.mockResolvedValue([key(1, 1), key(2, 2, 'inactive'), key(3, 3)])
   mock.matrix.mockResolvedValue(matrix()); mock.snapshot.mockResolvedValue({ config: { refresh_interval_seconds: 300 }, coverage: coverage() })
+  mock.scope.mockResolvedValue({ group_ids: [1, 2, 3], platforms: [{ platform: 'openai', models: [] }, { platform: 'gemini', models: [] }] })
 })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.useRealTimers() })
 
 describe('新版普通用户渠道状态业务和生命周期', () => {
+  it('仅展示监控范围的模型并更新数量；不改动原渠道或调用目录', async () => {
+    const source = channels()
+    mock.channels.mockResolvedValue(source)
+    mock.scope.mockResolvedValue({ group_ids: [1], platforms: [{ platform: 'openai', models: ['model-X'] }] })
+    const wrapper = createView(); await settle()
+    expect(wrapper.findAll('.um-model')).toHaveLength(1)
+    expect(wrapper.find('[data-model="no-samples"]').exists()).toBe(false)
+    expect(source[0].platforms[0].supported_models).toHaveLength(3)
+    expect(wrapper.findAll('.um-field')[1].findAll('button')).toHaveLength(1)
+    mock.scope.mockRejectedValue({ status: 503 })
+    await wrapper.get('.um-refresh').trigger('click'); await settle()
+    expect(wrapper.findAll('.um-model')).toHaveLength(0)
+    expect(wrapper.text()).toContain('userMonitor.unavailable')
+  })
+  it('广场关闭仍显示渠道价格和四个指定字段，缺失缓存显示未配置', async () => {
+    mock.app.cachedPublicSettings.model_plaza_enabled = false
+    const source = channels()
+    source[0].platforms[0].supported_models[0].pricing!.cache_write_price = null
+    mock.channels.mockResolvedValue(source)
+    const wrapper = createView(); await settle()
+    const prices = card(wrapper).get('.um-card-prices')
+    expect(prices.findAll('span').map(el => el.text())).toEqual(['monitorDisplay.input_price', 'monitorDisplay.output_price', 'monitorDisplay.cache_read_price', 'monitorDisplay.cache_write_price'])
+    expect(prices.findAll('b').map(el => el.text())).toEqual(['$0.1', '$0.4', '$0.01', 'monitorDisplay.unconfigured'])
+    expect(prices.text()).not.toContain('5 分钟')
+    expect(card(wrapper, 'no-samples').get('.um-card-prices').findAll('b').map(el => el.text())).toEqual(Array(4).fill('monitorDisplay.unconfigured'))
+  })
   it('显式三维普通用户请求；切组后同模型独立健康、倍率、关联密钥联动', async () => {
     const wrapper = createView(); await settle()
     expect(mock.matrix).toHaveBeenCalledWith(expect.objectContaining({ range: '24h' }), 'platform_group_model', false, expect.any(AbortSignal))
@@ -72,13 +99,13 @@ describe('新版普通用户渠道状态业务和生命周期', () => {
     expect(card(wrapper).get('.um-kpis strong').text()).toBe('—')
     expect(card(wrapper).findAll('.um-history .healthy')).toHaveLength(0)
   })
-  it.each(['v1', undefined])('模式为 %s 时不请求 V1、V2 或管理员监控，保留真实目录', async mode => {
+  it.each(['v1', undefined])('模式为 %s 时不请求监控接口，也不退回全量目录', async mode => {
     mock.app.cachedPublicSettings.channel_monitor_mode = mode
     const wrapper = createView(); await settle()
     expect(mock.matrix).not.toHaveBeenCalled(); expect(mock.snapshot).not.toHaveBeenCalled()
     expect(wrapper.get('[data-testid=monitor-failure]').text()).toBe('userMonitor.disabled')
-    expect(wrapper.findAll('.um-model')).toHaveLength(3)
-    expect(card(wrapper).text()).not.toContain('96.0')
+    expect(mock.scope).not.toHaveBeenCalled()
+    expect(wrapper.findAll('.um-model')).toHaveLength(0)
   })
   it.each([[{ status: 403, reason: 'CHANNEL_MONITOR_DISABLED' }, 'disabled'], [{ status: 403 }, 'forbidden'], [{ status: 503 }, 'unavailable']])('后端读取失败按真实原因显示 %s', async (error, message) => {
     mock.matrix.mockRejectedValue(error)
@@ -178,7 +205,7 @@ describe('新版普通用户渠道状态业务和生命周期', () => {
     mock.app.cachedPublicSettings.channel_monitor_enabled = false
     await settle()
     expect(wrapper.get('[data-testid=monitor-failure]').text()).toBe('userMonitor.disabled')
-    expect(card(wrapper).text()).not.toContain('96.0')
+    expect(wrapper.findAll('.um-model')).toHaveLength(0)
   })
   it('请求不响应时达到预算后退出加载，不保留过期健康', async () => {
     vi.useFakeTimers()

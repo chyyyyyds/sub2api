@@ -147,6 +147,7 @@ func RegisterUserRoutes(
 		monitorV2.Use(panelRateLimiter.Heavy())
 		monitorV2.Use(channelMonitorModeV2Guard(settingService))
 		{
+			monitorV2.GET("/display-scope", h.ChannelMonitorV2.DisplayScope)
 			monitorV2.GET("/dimensions", h.ChannelMonitorV2.Dimensions)
 			monitorV2.GET("/snapshot", h.ChannelMonitorV2.Snapshot)
 			monitorV2.GET("/models", h.ChannelMonitorV2.Models)
