@@ -27,7 +27,8 @@ export async function collectKeys(filters: Filters, signal: AbortSignal, list: L
       controller.signal.throwIfAborted()
       const res = await list(page, 1000, { ...filters, sort_by: 'id', sort_order: 'asc' }, { signal: controller.signal })
       controller.signal.throwIfAborted()
-      if (!Number.isSafeInteger(res.total) || res.total < 0 || res.page !== page || res.page_size <= 0 || res.page_size > 1000 || res.pages !== Math.ceil(res.total / res.page_size)) throw new KeyCollectionError('invalid')
+      // 后端空列表仍保留第 1 页，不能把合法的空集合误判为加载失败。
+      if (!Number.isSafeInteger(res.total) || res.total < 0 || res.page !== page || res.page_size <= 0 || res.page_size > 1000 || res.pages !== Math.max(1, Math.ceil(res.total / res.page_size))) throw new KeyCollectionError('invalid')
       if (total !== -1 && total !== res.total) throw new KeyCollectionError('changed')
       if (pageSize && pageSize !== res.page_size) throw new KeyCollectionError('changed')
       pageSize = res.page_size

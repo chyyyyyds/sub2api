@@ -3,10 +3,15 @@ import { collectKeys, effectiveKeyStatus, filterAndSortKeys, KeyCollectionError 
 import type { ApiKey } from '@/types'
 
 const key = (id: number, overrides: Partial<ApiKey> = {}) => ({ id, key: `fixture-${id}`, name: `Key ${id}`, status: 'active', updated_at: '2026-10-22', created_at: '2026-10-01', group_id: id % 2 + 1, group: { id: id % 2 + 1, name: `Group ${id % 2}`, platform: 'openai' }, current_concurrency: 0, quota: 0, quota_used: 0, ...overrides }) as ApiKey
-const pageOf = (all: ApiKey[], page: number, size = 1000) => ({ items: all.slice((page - 1) * size, page * size), total: all.length, page, page_size: size, pages: Math.ceil(all.length / size) })
+const pageOf = (all: ApiKey[], page: number, size = 1000) => ({ items: all.slice((page - 1) * size, page * size), total: all.length, page, page_size: size, pages: Math.max(1, Math.ceil(all.length / size)) })
 afterEach(() => vi.useRealTimers())
 
 describe('完整集合与混合筛选数据契约', () => {
+  it('后端空列表总页数为 1 时正常返回空集合', async () => {
+    const list = vi.fn(async () => pageOf([], 1))
+    await expect(collectKeys({}, new AbortController().signal, list)).resolves.toEqual([])
+    expect(list).toHaveBeenCalledTimes(2)
+  })
   it('读取并二次复核超过 1000 条，跨组过滤后再计算总数和分页', async () => {
     const all = Array.from({ length: 2017 }, (_, i) => key(i + 1))
     const list = vi.fn(async (page: number) => pageOf(all, page))
