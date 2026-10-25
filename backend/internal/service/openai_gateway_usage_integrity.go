@@ -114,6 +114,13 @@ func trustedOpenAIStreamUsage(data []byte) (OpenAIUsage, bool) {
 		if ok && imageUsage.IsObject() && validUsage(imageUsage) {
 			mergeHostedImageGenToolUsage(imageUsage, &usage)
 		}
+		// 合法整数的组合运算也可能溢出；映射后不能信任出现负数的计量快照。
+		for _, tokens := range []int{usage.InputTokens, usage.OutputTokens, usage.CacheCreationInputTokens, usage.CacheReadInputTokens, usage.ImageInputTokens, usage.ImageOutputTokens, usage.ImageCacheReadTokens} {
+			if tokens < 0 {
+				logger.L().Warn("openai_usage.untrusted_stream_snapshot", zap.String("reason", "mapped_token_overflow"))
+				return OpenAIUsage{}, false
+			}
+		}
 		return usage, ok
 	}
 	return OpenAIUsage{}, false

@@ -38,6 +38,7 @@ func TestStage8FinalUsageCompatibility(t *testing.T) {
 		{"optional_null_counter", `{"usage":{"input_tokens":10,"output_tokens":3,"input_tokens_details":{"cached_tokens":null}}}`, false, 0, 0, 0, 0, 0},
 		{"malformed_details", `{"usage":{"input_tokens":10,"output_tokens":3,"input_tokens_details":[]}}`, false, 0, 0, 0, 0, 0},
 		{"invalid_total", `{"usage":{"input_tokens":10,"output_tokens":3,"total_tokens":-1}}`, false, 0, 0, 0, 0, 0},
+		{"mapped_reasoning_overflow", `{"usage":{"input_tokens":9223372036854775807,"output_tokens":9223372036854775807,"total_tokens":1,"output_tokens_details":{"reasoning_tokens":1}}}`, false, 0, 0, 0, 0, 0},
 		{"null_chunk", `{"usage":null}`, false, 0, 0, 0, 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
