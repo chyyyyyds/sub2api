@@ -31,7 +31,7 @@ async function render(path = '/dashboard', admin = false, component = AppLayout)
   auth.token = 'local-test-token'
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ['/dashboard', '/usage', '/monitor', '/keys', '/redeem', '/profile', '/affiliate', '/admin/dashboard', '/login'].map(path => ({
+    routes: ['/dashboard', '/usage', '/monitor', '/keys', '/ai-creation/image', '/redeem', '/profile', '/affiliate', '/admin/dashboard', '/login'].map(path => ({
       path, component: { template: '<div />' },
       meta: { requiresAuth: path !== '/login', requiresAdmin: path.startsWith('/admin/') },
     })),
@@ -52,15 +52,17 @@ async function render(path = '/dashboard', admin = false, component = AppLayout)
 
 describe('Stage 1 用户外壳契约', () => {
   it('使用记录位于仪表盘和渠道状态之间，使用原有路径', () => {
-    expect(userConsoleNavigation(state).map(item => item.path)).toEqual(['/dashboard', '/usage', '/monitor', '/keys', '/redeem', '/profile'])
+    expect(userConsoleNavigation(state).map(item => item.path)).toEqual(['/dashboard', '/usage', '/monitor', '/keys', '/ai-creation/image', '/redeem', '/profile'])
     expect(userConsoleActivePath('/usage')).toBe('/usage')
     expect(userConsoleActivePath('/keys')).toBe('/keys')
+    expect(userConsoleActivePath('/ai-creation/chat')).toBe('/ai-creation/image')
+    expect(userConsoleActivePath('/ai-creation/video')).toBe('/ai-creation/image')
   })
   it('功能关闭、简易模式、未登录和后台模式只收窄菜单', () => {
-    expect(userConsoleNavigation({ ...state, monitor: false, simple: true }).map(item => item.path)).toEqual(['/dashboard', '/keys', '/profile'])
+    expect(userConsoleNavigation({ ...state, monitor: false, simple: true }).map(item => item.path)).toEqual(['/dashboard', '/keys', '/ai-creation/image', '/profile'])
     expect(userConsoleNavigation({ ...state, authenticated: false })).toEqual([])
     expect(userConsoleNavigation({ ...state, backend: true })).toEqual([])
-    expect(userConsoleNavigation({ ...state, backend: true, admin: true })).toHaveLength(6)
+    expect(userConsoleNavigation({ ...state, backend: true, admin: true })).toHaveLength(7)
   })
   it('外壳选择依据路由元数据，管理员角色不参与判断', () => {
     expect(isUserConsoleRoute({ meta: { requiresAdmin: false } })).toBe(true)
@@ -124,7 +126,7 @@ describe('Stage 1 用户外壳契约', () => {
     vi.spyOn(authAPI, 'getCurrentUser').mockResolvedValue({ data: { ...auth.user, run_mode: 'simple' } } as Awaited<ReturnType<typeof authAPI.getCurrentUser>>)
     await auth.refreshUser()
     await flushPromises()
-    expect(wrapper.findAll('.uc-nav-link').map(link => link.text())).toEqual(['仪表盘', 'API 密钥', '个人资料'])
+    expect(wrapper.findAll('.uc-nav-link').map(link => link.text())).toEqual(['仪表盘', 'API 密钥', 'AI 创作', '个人资料'])
     expect(wrapper.find('.uc-tabs').exists()).toBe(false)
     await wrapper.find('.uc-account').trigger('click')
     expect(wrapper.find('.uc-account-menu a[href="/redeem"]').exists()).toBe(false)

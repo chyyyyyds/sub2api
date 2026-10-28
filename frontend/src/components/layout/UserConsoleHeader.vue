@@ -1,6 +1,6 @@
 <template>
   <header class="uc-header">
-    <nav class="uc-nav" :aria-label="t('userConsole.navigation')">
+    <nav class="uc-nav uc-nav-with-creation" :aria-label="t('userConsole.navigation')">
       <RouterLink
         v-for="item in items" :key="item.path" :to="item.path"
         class="uc-nav-link" :class="{ 'uc-active': activePath === item.path }"
@@ -120,3 +120,11 @@ onBeforeUnmount(() => {
   document.removeEventListener('focusin', onOutside)
 })
 </script>
+
+<style scoped>
+/* 新增创作入口后，窄屏保留全部菜单，通过导航内部滚动避免整页溢出。 */
+@media (max-width: 800px) {
+  .uc-nav.uc-nav-with-creation { min-width: 0; max-width: 100%; overflow-x: auto; justify-content: safe center; scrollbar-width: none; }
+  .uc-nav-with-creation .uc-nav-link { flex: 0 0 auto; }
+}
+</style>

@@ -157,6 +157,8 @@ interface Props {
   ariaDescribedby?: string
   /** 可选用户展示类，默认保留共享下拉菜单的原主题。 */
   dropdownClass?: string
+  /** @description 弹出菜单宽度与触发按钮一致；默认沿用原有内容自适应宽度。 */
+  matchTriggerWidth?: boolean
   /** 远程搜索模式：输入不在本地过滤 options，而是防抖后 emit('search', query)，由父组件请求数据更新 options */
   remote?: boolean
   /** 远程搜索模式下的加载态：options 为空时下拉显示 loading 文案 */
@@ -224,7 +226,7 @@ const dropdownStyle = computed(() => {
     viewportRight
   )
   const availableWidth = Math.max(0, viewportRight - left)
-  const preferredMinWidth = Math.max(dropdownMinimumWidth, rect.width)
+  const preferredMinWidth = props.matchTriggerWidth ? rect.width : Math.max(dropdownMinimumWidth, rect.width)
   const minWidth = Math.min(preferredMinWidth, availableWidth)
   const style: Record<string, string> = {
     position: 'fixed',
@@ -233,6 +235,7 @@ const dropdownStyle = computed(() => {
     maxWidth: `${availableWidth}px`,
     zIndex: '100000020'
   }
+  if (props.matchTriggerWidth) style.width = `${minWidth}px`
 
   if (dropdownPosition.value === 'top') {
     style.bottom = `${window.innerHeight - rect.top + 4}px`

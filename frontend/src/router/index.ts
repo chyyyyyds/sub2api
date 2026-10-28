@@ -186,6 +186,13 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
+  // 图片创作沿用登录守卫与 Midnight HUD 用户外壳。
+  {
+    path: '/ai-creation/:mode(chat|image|video)',
+    name: 'ImageStudio',
+    component: () => import('@/views/user/ImageStudioView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: false, title: 'AI Creation', titleKey: 'imageStudio.navigation' }
+  },
   // ==================== User Routes ====================
   {
     path: '/',

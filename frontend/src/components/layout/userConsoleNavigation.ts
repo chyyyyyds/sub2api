@@ -26,6 +26,7 @@ export function userConsoleNavigation(state: UserConsoleNavigationState) {
     { path: '/usage', label: 'nav.usage', enabled: !state.simple },
     { path: '/monitor', label: 'nav.channelStatus', enabled: state.monitor },
     { path: '/keys', label: 'nav.apiKeys', enabled: true },
+    { path: '/ai-creation/image', label: 'imageStudio.navigation', enabled: true },
     { path: '/redeem', label: 'userConsole.wallet', enabled: !state.simple },
     { path: '/profile', label: 'nav.profile', enabled: true },
   ].filter(item => item.enabled)
@@ -33,5 +34,6 @@ export function userConsoleNavigation(state: UserConsoleNavigationState) {
 
 /** 仪表盘与使用记录各自高亮对应的主导航。 */
 export function userConsoleActivePath(path: string): string {
+  if (path.startsWith('/ai-creation/')) return '/ai-creation/image'
   return path
 }

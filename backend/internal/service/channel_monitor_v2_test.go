@@ -181,6 +181,22 @@ func TestChannelMonitorV2ConfigValidation(t *testing.T) {
 	require.ErrorIs(t, normalizeChannelMonitorV2Config(&cfg), ErrChannelMonitorV2InvalidConfig)
 }
 
+func TestChannelMonitorV2ConfigPreservesModelOrder(t *testing.T) {
+	cfg := ChannelMonitorV2Config{
+		Platforms: []ChannelMonitorV2PlatformConfig{{
+			Platform: "openai", Enabled: true,
+			Models: []string{" gpt-6-sol ", "gpt-5.6-luna", "gpt-6-sol", "", "gpt-6-astra"},
+		}},
+	}
+	want := []string{"gpt-6-sol", "gpt-5.6-luna", "gpt-6-astra"}
+	require.NoError(t, normalizeChannelMonitorV2Config(&cfg))
+	require.Equal(t, want, cfg.Platforms[0].Models)
+	// 配置再次保存时仍保留原顺序，查询筛选的规范化排序保持稳定。
+	require.NoError(t, normalizeChannelMonitorV2Config(&cfg))
+	require.Equal(t, want, cfg.Platforms[0].Models)
+	require.Equal(t, []string{"gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol"}, normalizeStringSet(want))
+}
+
 func TestChannelMonitorV2ErrorTaxonomyPriority(t *testing.T) {
 	tests := []struct {
 		name string

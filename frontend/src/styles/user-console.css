@@ -1,14 +1,18 @@
 /* 仅用户外壳使用这些变量。不得向 :root、body 或 .dark 写入用户主题。 */
 .user-console {
-  --uc-bg: #070c12;
-  --uc-panel: #101d29;
-  --uc-border: #2d485c;
-  --uc-muted: #a7b9ce;
-  --uc-text: #e9f1f8;
+  --uc-bg: #05080d;
+  --uc-panel: #090f17;
+  --uc-border: #253546;
+  --uc-muted: #9aabc3;
+  --uc-text: #f1f8ff;
   --uc-cyan: #19e5d2;
   min-height: 100vh;
   color: var(--uc-text);
-  background: radial-gradient(ellipse at 97% 90%, #0a31571c, transparent 74%), linear-gradient(115deg, var(--uc-bg), #080e15 62%, #07101b);
+  /* 六个页面共用外壳；渐变固定在视口，避免内容高度不同产生色差。 */
+  background: radial-gradient(ellipse 44% 19% at 51% -7%, #0061a629, transparent 80%), radial-gradient(ellipse 24% 26% at 102% 48%, #1d126d16, transparent 90%), linear-gradient(118deg, var(--uc-bg), #070b10 56%, #05080e);
+  background-attachment: fixed;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft Yahei", sans-serif;
+  isolation: isolate;
 }
 .user-console .uc-header {
   position: sticky;
@@ -17,21 +21,23 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  min-height: 72px;
+  min-height: 74px;
   padding: 0 28px;
-  border-bottom: 1px solid #58799d38;
-  background: #080e15f5;
+  border-bottom: 1px solid #506b9145;
+  background: linear-gradient(180deg, #05090efb, #05080df4);
+  box-shadow: 0 8px 26px #00000042;
 }
-.user-console .uc-nav { grid-column: 2; display: flex; align-self: stretch; gap: 10px; }
+.user-console .uc-nav { grid-column: 2; display: flex; align-self: stretch; gap: 17px; }
 .user-console .uc-nav-link {
   position: relative; display: flex; align-items: center; justify-content: center;
-  padding: 0 15px; min-height: 72px; color: var(--uc-muted); font-size: 15px; font-weight: 500; white-space: nowrap;
+  /* 选中前后字重一致，菜单宽度和相邻标题位置不随路由变化。 */
+  padding: 0 16px; min-height: 74px; color: #cad4e3; font-size: 15px; font-weight: 600; letter-spacing: .015em; white-space: nowrap;
 }
-.user-console .uc-nav-link:hover, .user-console .uc-active { color: var(--uc-cyan); }
-.user-console .uc-active { font-weight: 700; text-shadow: 0 0 16px #10e8da52; }
+.user-console .uc-nav-link:hover, .user-console .uc-active { color: #38f3e9; }
+.user-console .uc-active { text-shadow: 0 0 16px #10e8da52; }
 .user-console .uc-active::after {
-  content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 3px;
-  border-radius: 5px; background: var(--uc-cyan); box-shadow: 0 0 16px 2px #0fecdb99;
+  content: ''; position: absolute; bottom: 0; left: 13px; right: 13px; height: 3px;
+  border-radius: 5px; background: #12ede2; box-shadow: 0 0 11px 2px #07f4e1a3, 0 0 29px #0bdcff70;
 }
 .user-console .uc-actions { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 12px; min-width: 0; }
 .user-console .uc-announcements button { min-width: 44px; min-height: 44px; color: var(--uc-muted); }
@@ -40,10 +46,12 @@
   display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px;
   padding: 8px 12px; border: 1px solid #1f4648; border-radius: 9px; background: #0c2026;
   color: #2be8d2; font-size: 14px; font-weight: 700; white-space: nowrap;
+  box-shadow: inset 0 0 12px #12ead71b, 0 0 14px #0bebcb0b;
 }
 .user-console .uc-account { display: flex; align-items: center; gap: 9px; min-height: 44px; color: #d9e6ef; padding: 4px; border-radius: 8px; }
 .user-console .uc-avatar { width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, #058778, #17baa9); display: grid; place-items: center; font-size: 14px; font-weight: 700; color: #dbfef6; }
 .user-console .uc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.user-console .uc-avatar { box-shadow: 0 0 0 3px #0d393c, 0 0 19px #0af3d537; }
 .user-console .uc-account-text { display: flex; flex-direction: column; text-align: left; line-height: 1.3; max-width: 96px; }
 .user-console .uc-account-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 .user-console .uc-account-text small { color: #8da5b7; font-size: 12px; }
@@ -57,7 +65,7 @@
 .user-console .uc-account-menu > a, .user-console .uc-account-menu > button { display: flex; align-items: center; min-height: 44px; width: 100%; border-radius: 6px; padding: 8px; text-align: left; }
 .user-console .uc-account-menu > a:hover, .user-console .uc-account-menu > button:hover { background: #203242; }
 .user-console .uc-logout { color: #ff9aaa; }
-.user-console .uc-workspace { width: 100%; margin: 0 auto; padding: 26px 30px 75px; min-height: calc(100vh - 72px); }
+.user-console .uc-workspace { width: 100%; max-width: 1850px; margin: 0 auto; padding: 21px 32px 72px; min-height: calc(100vh - 74px); }
 /* 旧业务内容只限定容器宽度，保留原有组件外观、弹层及全局 Toast 主题。 */
 .user-console .uc-content { min-width: 0; }
 .user-console .uc-tabs { display: flex; gap: 22px; border-bottom: 1px solid #7b9ec738; margin-bottom: 22px; }
@@ -67,19 +75,23 @@
 .user-console :is(.uc-nav-link, .uc-actions button, .uc-popover a, .uc-tabs a, .uc-skip):focus-visible { outline: 2px solid var(--uc-cyan); outline-offset: 3px; }
 .user-console .uc-skip { position: fixed; top: 4px; left: 12px; z-index: 100; transform: translateY(-150%); padding: 10px; background: var(--uc-panel); color: var(--uc-cyan); }
 .user-console .uc-skip:focus { transform: translateY(0); }
+@media (max-width: 1540px) {
+  .user-console .uc-workspace { padding: 20px 24px 68px; }
+  .user-console .uc-nav { gap: 3px; }
+}
 @media (max-width: 1279px) {
   .user-console .uc-header { grid-template-columns: minmax(0, 1fr) auto; padding: 0 20px; }
-  .user-console .uc-nav { grid-column: 1; justify-self: center; gap: 4px; }
+  .user-console .uc-nav { grid-column: 1; justify-self: center; }
   .user-console .uc-actions { grid-column: 2; gap: 8px; }
   .user-console .uc-account-text { display: none; }
 }
 @media (max-width: 800px) {
-  .user-console .uc-header { display: flex; flex-direction: column-reverse; align-items: stretch; padding: 0 12px; }
+  .user-console .uc-header { display: flex; flex-direction: column-reverse; align-items: stretch; min-height: 108px; padding: 0 12px; }
   .user-console .uc-actions { align-self: flex-end; min-height: 56px; }
   .user-console .uc-nav { display: flex; justify-content: center; gap: 0; width: 100%; }
   .user-console .uc-nav-link { flex: 1 1 0; padding: 0 6px; min-height: 52px; font-size: 13px; }
   .user-console .uc-nav-link::after { left: 6px; right: 6px; }
-  .user-console .uc-workspace { padding: 16px 12px 48px; }
+  .user-console .uc-workspace { padding: 15px 12px 60px; min-height: calc(100vh - 108px); }
   .user-console .uc-tabs { gap: 8px; }
   .user-console .uc-tabs a { padding: 0 14px; min-height: 52px; }
   .user-console .uc-balance-details { right: -52px; }

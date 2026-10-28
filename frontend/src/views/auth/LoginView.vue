@@ -1,21 +1,21 @@
 <template>
   <AuthLayout>
-    <div class="space-y-6">
+    <div class="space-login space-y-6">
       <!-- Title -->
-      <div class="text-center">
+      <div class="login-heading">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-          {{ t('auth.signInToAccount') }}
+          {{ locale === 'zh' ? `登录你的${brandName}账号，继续探索更强大的 AI 能力。` : t('auth.signInToAccount') }}
         </p>
       </div>
       <!-- Login Form -->
       <form @submit.prevent="handleLogin" class="space-y-5">
-        <!-- Email Input -->
+        <!-- 邮箱或原用户名输入框 -->
         <div>
-          <label for="email" class="input-label">
-            {{ t('auth.emailLabel') }}
+          <label for="email" class="sr-only">
+            {{ locale === 'zh' ? '邮箱或用户名' : 'Email or username' }}
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -24,21 +24,24 @@
             <input
               id="email"
               v-model="formData.email"
-              type="email"
+              type="text"
               required
               autofocus
-              autocomplete="email"
+              autocomplete="username"
               :disabled="authActionDisabled"
               class="input pl-11"
               :class="{ 'input-error': errors.email }"
-              :placeholder="t('auth.emailPlaceholder')"
+              :aria-invalid="Boolean(errors.email)"
+              :aria-describedby="errors.email ? 'email-error' : undefined"
+              :placeholder="locale === 'zh' ? '邮箱或用户名' : 'Email or username'"
             />
           </div>
+          <p v-if="errors.email" id="email-error" class="field-error" role="alert">{{ errors.email }}</p>
         </div>
 
         <!-- Password Input -->
         <div>
-          <label for="password" class="input-label">
+          <label for="password" class="sr-only">
             {{ t('auth.passwordLabel') }}
           </label>
           <div class="relative">
@@ -54,11 +57,15 @@
               :disabled="authActionDisabled"
               class="input pl-11 pr-11"
               :class="{ 'input-error': errors.password }"
+              :aria-invalid="Boolean(errors.password)"
+              :aria-describedby="errors.password ? 'password-error' : undefined"
               :placeholder="t('auth.passwordPlaceholder')"
             />
             <button
               type="button"
               @click="showPassword = !showPassword"
+              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+              :aria-pressed="showPassword"
               :disabled="authActionDisabled"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
@@ -66,8 +73,9 @@
               <Icon v-else name="eye" size="md" />
             </button>
           </div>
-          <div class="mt-1 flex items-center justify-between">
-            <span></span>
+          <p v-if="errors.password" id="password-error" class="field-error" role="alert">{{ errors.password }}</p>
+          <div class="login-options">
+            <label class="remember-label"><input v-model="rememberEmail" type="checkbox" :disabled="authActionDisabled" />{{ locale === 'zh' ? '记住我' : 'Remember me' }}</label>
             <router-link
               v-if="passwordResetEnabled && !backendModeEnabled"
               to="/forgot-password"
@@ -123,8 +131,8 @@
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             ></path>
           </svg>
-          <Icon v-else name="login" size="md" class="mr-2" />
           {{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}
+          <Icon v-if="!isLoading" name="arrowRight" size="md" class="ml-4" />
         </button>
 
         <LoginAgreementPrompt
@@ -225,7 +233,7 @@
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AuthLayout } from '@/components/layout'
+import AuthLayout from '@/components/space/SpaceAuthLayout.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import DingTalkOAuthSection from '@/components/auth/DingTalkOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'
@@ -252,7 +260,7 @@ import type {
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import { clearAllAffiliateReferralCodes } from '@/utils/oauthAffiliate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
 
 // ==================== Router & Stores ====================
@@ -260,6 +268,13 @@ const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
 const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const brandName = computed(() => {
+  const name = appStore.cachedPublicSettings?.site_name || appStore.siteName
+  return !name || name === 'Sub2API' ? '天启星' : name
+})
+// 只记住邮箱；密码始终交由现有认证流程处理，不在浏览器中额外保存。
+const rememberedEmailKey = 'space_login_email'
+const rememberEmail = ref(Boolean(localStorage.getItem(rememberedEmailKey)))
 
 // ==================== State ====================
 
@@ -326,7 +341,7 @@ const totpUserEmailMasked = ref<string>('')
 const totpModalRef = ref<InstanceType<typeof TotpLoginModal> | null>(null)
 
 const formData = reactive({
-  email: '',
+  email: localStorage.getItem(rememberedEmailKey) || '',
   password: ''
 })
 
@@ -531,21 +546,18 @@ function validateForm(): boolean {
     return false
   }
 
-  // Email validation
+  // 登录标识允许邮箱或迁移前的原用户名，不套用注册邮箱校验规则。
   if (!formData.email.trim()) {
-    errors.email = t('auth.emailRequired')
+    errors.email = locale.value === 'zh' ? '请输入邮箱或用户名' : 'Enter your email or username'
     isValid = false
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-    errors.email = t('auth.invalidEmail')
+  } else if (formData.email.trim().length > 255) {
+    errors.email = locale.value === 'zh' ? '邮箱或用户名过长' : 'Email or username is too long'
     isValid = false
   }
 
   // Password validation
   if (!formData.password) {
     errors.password = t('auth.passwordRequired')
-    isValid = false
-  } else if (formData.password.length < 6) {
-    errors.password = t('auth.passwordMinLength')
     isValid = false
   }
 
@@ -578,7 +590,7 @@ async function handleLogin(): Promise<void> {
   try {
     // Call auth store login（阿里云 captchaVerifyParam 复用 turnstile_token 字段）
     const response = await authStore.login({
-      email: formData.email,
+      email: formData.email.trim(),
       password: formData.password,
       turnstile_token:
         turnstileEnabled.value || aliyunCaptchaEnabled.value ? turnstileToken.value : undefined,
@@ -598,6 +610,8 @@ async function handleLogin(): Promise<void> {
       return
     }
 
+    // 普通登录成功后更新记住的邮箱，不保存密码。
+    saveRememberedEmail()
     // Show success toast
     clearAllAffiliateReferralCodes()
     appStore.showSuccess(t('auth.loginSuccess'))
@@ -699,6 +713,11 @@ async function handleOAuthStart(request: OAuthLoginStart): Promise<void> {
 
 // ==================== 2FA Handlers ====================
 
+function saveRememberedEmail(): void {
+  if (rememberEmail.value) localStorage.setItem(rememberedEmailKey, formData.email.trim())
+  else localStorage.removeItem(rememberedEmailKey)
+}
+
 async function handle2FAVerify(code: string): Promise<void> {
   if (totpModalRef.value) {
     totpModalRef.value.setVerifying(true)
@@ -707,6 +726,8 @@ async function handle2FAVerify(code: string): Promise<void> {
   try {
     await authStore.login2FA(totpTempToken.value, code)
 
+    // 双重验证完成后才记住邮箱。
+    saveRememberedEmail()
     // Close modal and show success
     show2FAModal.value = false
     clearAllAffiliateReferralCodes()
@@ -734,6 +755,17 @@ function handle2FACancel(): void {
 </script>
 
 <style scoped>
+.login-heading { text-align: left; margin-bottom: 27px; }
+.login-heading h2 { color: #f5f7ff; font-size: 28px; font-weight: 600; letter-spacing: 1px; }
+.login-heading p { color: #bcc8da; font-size: 14px; line-height: 1.8; margin-top: 10px; }
+.space-login :deep(.text-gray-400) { color: #a9bed5; }
+.login-options { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 15px; }
+.remember-label { display: inline-flex; align-items: center; gap: 9px; min-height: 32px; color: #e2eaf5; font-size: 14px; cursor: pointer; }
+.remember-label input { appearance: auto; accent-color: #54dff3; height: 18px; width: 18px; cursor: pointer; }
+.space-login .input-error { border-color: #f88e9c; }
+.field-error { color: #ffabb6; font-size: 12px; margin-top: 7px; }
+@media (max-width: 600px) { .login-heading h2 { font-size: 25px; } .login-heading p { font-size: 13px; } }
+
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.3s ease;

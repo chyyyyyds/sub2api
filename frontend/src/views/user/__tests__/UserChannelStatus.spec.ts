@@ -41,6 +41,22 @@ beforeEach(() => {
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.useRealTimers() })
 
 describe('新版普通用户渠道状态业务和生命周期', () => {
+  it('模型卡片按监控配置顺序展示，刷新后同步新顺序并移除关联密钥按钮', async () => {
+    const orderedModels = ['no-samples', 'model-X', 'no-association']
+    mock.scope.mockResolvedValue({ group_ids: [1, 2], platforms: [{ platform: 'openai', models: orderedModels }] })
+    const wrapper = createView(); await settle()
+    const visibleModels = () => wrapper.findAll('.um-model').map(el => el.attributes('data-model'))
+    expect(visibleModels()).toEqual(orderedModels)
+    expect(card(wrapper).get('.um-model-footer').findAll('button')).toHaveLength(1)
+    expect(card(wrapper).text()).not.toContain('userMonitor.selectKeys')
+    await clickGroup(wrapper, 1)
+    expect(visibleModels()).toEqual(orderedModels)
+
+    mock.scope.mockResolvedValue({ group_ids: [1, 2], platforms: [{ platform: 'openai', models: [...orderedModels].reverse() }] })
+    await wrapper.get('.um-refresh').trigger('click'); await settle()
+    expect(visibleModels()).toEqual([...orderedModels].reverse())
+  })
+
   it('仅展示监控范围的模型并更新数量；不改动原渠道或调用目录', async () => {
     const source = channels()
     mock.channels.mockResolvedValue(source)

@@ -33,7 +33,8 @@ FRONTEND_CRITICAL_VITEST := \
 	src/components/admin/channel/__tests__/PricingEntryCard.modelDefaultPrice.spec.ts
 
 # 一键编译前后端
-build: build-backend build-frontend
+build: build-frontend
+	@$(MAKE) -C backend build GOFLAGS=-tags=embed
 
 # 编译后端（复用 backend/Makefile）
 build-backend:
@@ -42,6 +43,7 @@ build-backend:
 # 编译前端（需要已安装依赖）
 build-frontend:
 	@pnpm --dir frontend run build
+	@node tools/build-canvas.mjs
 
 # 运行测试（后端 + 前端）
 test: test-backend test-frontend

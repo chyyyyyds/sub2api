@@ -1,0 +1,599 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index e5486c1..89c63af 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -2,6 +2,8 @@
+ 
+ ## Unreleased
+ 
+++ [调整] KOKO 视频创作台更新四个在售模型与时长、清晰度、比例和提示词限制，支持参考图片及音频的本地上传与 base64 提交。
++
+ + [新增] 支持由同源 New API 宿主安全选择并注入生图 API Key，避免凭据出现在 URL 中。
+ + [调整] New API 宿主渠道跟随所选 API Key 自动命名并拉取可用模型，协议、接口地址和凭据由宿主管理且不可编辑。
+ + [修复] 嵌入 New API 时，生图与视频生成记录按登录用户隔离，不再被同一浏览器中的其他账号看到。
+diff --git a/web/src/components/video-settings-panel.tsx b/web/src/components/video-settings-panel.tsx
+index a87c26b..0a5bc6d 100644
+--- a/web/src/components/video-settings-panel.tsx
++++ b/web/src/components/video-settings-panel.tsx
+@@ -133,8 +133,8 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle =
+                 </SettingGroup>
+                 <SettingGroup title={t("settingsPanels.video.mode")} color={theme.node.muted}>
+                     <div className="grid grid-cols-2 gap-2.5">
+-                        {videoModeOptions.map((item) => (
+-                            <OptionPill key={item.value} selected={videoMode === item.value} theme={theme} onClick={() => onConfigChange("videoMode", item.value)}>
++                        {(fixedConfig ? videoModeOptions.filter((item) => item.value === "reference") : videoModeOptions).map((item) => (
++                            <OptionPill key={item.value} selected={Boolean(fixedConfig) || videoMode === item.value} theme={theme} onClick={() => onConfigChange("videoMode", item.value)}>
+                                 {t(`settingsPanels.video.modes.${fixedConfig && item.value === "frames" ? "firstFrame" : item.labelKey}`)}
+                             </OptionPill>
+                         ))}
+@@ -146,7 +146,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle =
+ }
+ 
+ export function videoResolutionLabel(value: string) {
+-    return `${parseVideoResolution(value)}p`;
++    return parseVideoResolution(value) === "1024" ? "1K" : `${parseVideoResolution(value)}p`;
+ }
+ 
+ export function videoSizeLabel(value: string) {
+diff --git a/web/src/i18n/locales/en-US.ts b/web/src/i18n/locales/en-US.ts
+index 1d530ab..35537f1 100644
+--- a/web/src/i18n/locales/en-US.ts
++++ b/web/src/i18n/locales/en-US.ts
+@@ -165,7 +165,10 @@ export default {
+         localAssetReadFailed: "Failed to read local asset",
+         seedanceReferenceHttpsRequired: "Seedance reference media must use a publicly accessible HTTPS URL",
+         seedanceModelMediaUnsupported: "The selected Seedance model does not support reference video or audio",
+-        kokoMediaUnsupported: "This KOKO endpoint supports reference images only",
++        kokoMediaUnsupported: "These KOKO models support reference images and audio, but not videos",
++        kokoAudioLimit: "At most 3 reference audio clips are supported",
++        kokoImageRequired: "This model requires at least one reference image",
++        kokoPromptLimit: "Enter a prompt with at most {{count}} characters",
+         seedanceImageLimit: "Seedance supports up to 9 reference images",
+     },
+     prompts: {
+diff --git a/web/src/i18n/locales/zh-CN.ts b/web/src/i18n/locales/zh-CN.ts
+index 999bfb3..ab6db47 100644
+--- a/web/src/i18n/locales/zh-CN.ts
++++ b/web/src/i18n/locales/zh-CN.ts
+@@ -159,7 +159,10 @@ export default {
+         localAssetReadFailed: "读取本地资产失败",
+         seedanceReferenceHttpsRequired: "Seedance 参考素材必须使用公网可访问的 HTTPS 链接",
+         seedanceModelMediaUnsupported: "当前 Seedance 模型不支持参考视频或音频",
+-        kokoMediaUnsupported: "当前 KOKO 接口仅支持参考图片",
++        kokoMediaUnsupported: "当前 KOKO 模型支持参考图片和音频，不支持参考视频",
++        kokoAudioLimit: "最多支持 3 段参考音频",
++        kokoImageRequired: "当前模型至少需要 1 张参考图片",
++        kokoPromptLimit: "提示词不能为空且最多 {{count}} 个字符",
+         seedanceImageLimit: "Seedance 最多支持 9 张参考图片",
+     },
+     prompts: {
+diff --git a/web/src/lib/__tests__/new-api-host.test.js b/web/src/lib/__tests__/new-api-host.test.js
+index 6725a78..c8c4e00 100644
+--- a/web/src/lib/__tests__/new-api-host.test.js
++++ b/web/src/lib/__tests__/new-api-host.test.js
+@@ -21,8 +21,8 @@ const stableHostConfig = {
+     channelName: "视频生成（稳定版）",
+     historyScope: "user-42",
+     studio: "video",
+-    preferredModel: "seedance-2.5",
+-    videoSeconds: "14",
++    preferredModel: "pp-sd25-stable",
++    videoSeconds: "30",
+     videoResolution: "720",
+     videoSize: "16:9",
+ };
+@@ -49,19 +49,23 @@ describe("new-api 视频工作台配置", () => {
+         });
+         useConfigStore.setState({ config: withModelChannels(defaultConfig, [legacyChannel, managedChannel]) });
+ 
+-        useConfigStore.getState().updateChannelModels("managed", ["seedance-2.0", "seedance-2.5", "minimaxh3"], stableHostConfig);
++        useConfigStore.getState().updateChannelModels("managed", ["minimax-h3-933", "oo-sd25-1080p", "mm-h3-768-stable", "pp-sd25-stable"], stableHostConfig);
+ 
+         const config = useConfigStore.getState().config;
+-        expect(selectableModelsByCapability(config, "video").map(modelOptionName)).toEqual(["seedance-2.0", "seedance-2.5", "minimaxh3"]);
+-        expect(modelOptionName(config.videoModel)).toBe("seedance-2.5");
++        expect(selectableModelsByCapability(config, "video").map(modelOptionName)).toEqual(["minimax-h3-933", "oo-sd25-1080p", "mm-h3-768-stable", "pp-sd25-stable"]);
++        expect(modelOptionName(config.videoModel)).toBe("pp-sd25-stable");
+         expect(config.vquality).toBe("720");
+         expect(config.size).toBe("16:9");
+-        expect(config.videoSeconds).toBe("14");
++        expect(config.videoSeconds).toBe("30");
+     });
+ 
+-    test("使用上游文档声明的清晰度、比例和时长", () => {
+-        expect(kokoVideoModelConfig("seedance-2.0")).toEqual({ resolution: "720p", durations: [5, 15], defaultDuration: 15, ratios: ["9:16", "1:1", "3:4", "4:3", "16:9"] });
+-        expect(kokoVideoModelConfig("seedance-2.5")).toEqual({ resolution: "720p", durations: [14, 30], defaultDuration: 14, ratios: ["9:16", "1:1", "3:4", "4:3", "16:9"] });
+-        expect(kokoVideoModelConfig("minimaxh3")).toEqual({ resolution: "2K", durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], defaultDuration: 15, ratios: ["9:16", "1:1", "3:4", "4:3", "16:9"] });
++    test("识别四个新视频模型、移除旧模型并保留真实时长", () => {
++        expect(kokoVideoModelConfig("seedance-2.0")).toBeNull();
++        expect(kokoVideoModelConfig("seedance-2.5")).toBeNull();
++        expect(kokoVideoModelConfig("minimaxh3")).toBeNull();
++        expect(kokoVideoModelConfig("minimax-h3-933")).toMatchObject({ resolution: "1K", durations: [15], requiresImage: true });
++        expect(kokoVideoModelConfig("mm-h3-768-stable")).toMatchObject({ resolution: "720p", durations: [15, 30] });
++        expect(kokoVideoModelConfig("oo-sd25-1080p")).toMatchObject({ resolution: "720p", durations: [30] });
++        expect(kokoVideoModelConfig("pp-sd25-stable")).toMatchObject({ resolution: "720p", durations: [30] });
+     });
+ });
+diff --git a/web/src/lib/video-model-config.ts b/web/src/lib/video-model-config.ts
+index 49252ea..11747ab 100644
+--- a/web/src/lib/video-model-config.ts
++++ b/web/src/lib/video-model-config.ts
+@@ -1,25 +1,36 @@
++/** KOKO 视频模型能力，字段对应 GET /models 的实时约束。 */
+ export type VideoModelConfig = {
+-    resolution: "720p" | "2K";
++    /** @description 请求分辨率；供应商展示名称可能与实际允许值不同 */
++    resolution: "720p" | "1K";
++    /** @description 允许的视频时长，单位秒 */
+     durations: readonly number[];
++    /** @description 初始选择的视频时长，单位秒 */
+     defaultDuration: number;
++    /** @description 支持的画面比例 */
+     ratios: readonly string[];
++    /** @description 提示词最大字符数 */
++    maxPromptLength: number;
++    /** @description 是否至少需要一张参考图片 */
++    requiresImage?: boolean;
+ };
+ 
+ export const KOKO_VIDEO_RATIOS = ["9:16", "1:1", "3:4", "4:3", "16:9"] as const;
+ 
++// 新任务仅提供当前四个模型；历史任务和生成记录保持可查。
+ const kokoVideoModels: Record<string, VideoModelConfig> = {
+-    "seedance-2.0": { resolution: "720p", durations: [5, 15], defaultDuration: 15, ratios: KOKO_VIDEO_RATIOS },
+-    "seedance-2.5": { resolution: "720p", durations: [14, 30], defaultDuration: 14, ratios: KOKO_VIDEO_RATIOS },
+-    minimaxh3: { resolution: "2K", durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], defaultDuration: 15, ratios: KOKO_VIDEO_RATIOS },
++    "minimax-h3-933": { resolution: "1K", durations: [15], defaultDuration: 15, ratios: KOKO_VIDEO_RATIOS, maxPromptLength: 10000, requiresImage: true },
++    "oo-sd25-1080p": { resolution: "720p", durations: [30], defaultDuration: 30, ratios: KOKO_VIDEO_RATIOS, maxPromptLength: 8000 },
++    "mm-h3-768-stable": { resolution: "720p", durations: [15, 30], defaultDuration: 15, ratios: KOKO_VIDEO_RATIOS, maxPromptLength: 15000 },
++    "pp-sd25-stable": { resolution: "720p", durations: [30], defaultDuration: 30, ratios: KOKO_VIDEO_RATIOS, maxPromptLength: 15000 },
+ };
+ 
+-/** 返回 KOKO 模型的固定参数范围；其他模型继续沿用通用视频配置。 */
++/** 返回 KOKO 模型参数范围；其他供应商继续沿用通用视频配置。 */
+ export function kokoVideoModelConfig(model: string): VideoModelConfig | null {
+     return kokoVideoModels[model.trim().toLowerCase()] || null;
+ }
+ 
+ export function videoResolutionPixels(resolution: VideoModelConfig["resolution"]): string {
+-    return resolution === "2K" ? "2048" : "720";
++    return resolution === "1K" ? "1024" : "720";
+ }
+ 
+ export function normalizeKokoVideoDuration(model: string, value: string): string {
+diff --git a/web/src/pages/video/index.tsx b/web/src/pages/video/index.tsx
+index ad37457..9214c36 100644
+--- a/web/src/pages/video/index.tsx
++++ b/web/src/pages/video/index.tsx
+@@ -15,7 +15,7 @@ import { clampVideoSeconds, inferVideoRatio } from "@/lib/media-size";
+ import { kokoVideoModelConfig, videoResolutionPixels } from "@/lib/video-model-config";
+ import { formatBytes, formatDuration } from "@/lib/image-utils";
+ import { generationLogStorageKey, isGenerationLogStorageKeyForScope } from "@/lib/generation-log-storage";
+-import { deleteStoredMedia, resolveMediaUrl } from "@/services/file-storage";
++import { deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
+ import { resolveImageUrl, ensureImagePreview, getImagePreviewRevision, previewUrlFor, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
+ import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, type VideoGenerationTask } from "@/services/api/video";
+ import { useAssetStore } from "@/stores/use-asset-store";
+@@ -23,6 +23,7 @@ import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
+ import { boolConfig, modelOptionLabel, modelOptionName, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+ import { useThemeStore } from "@/stores/use-theme-store";
+ import type { ReferenceImage } from "@/types/image";
++import type { ReferenceAudio } from "@/types/media";
+ import i18n from "@/i18n";
+ 
+ type GeneratedVideo = {
+@@ -52,6 +53,8 @@ type GenerationLog = {
+     model: string;
+     config: GenerationLogConfig;
+     references: ReferenceImage[];
++    /** 参考音频随历史记录保存，重试时恢复 */
++    audios?: ReferenceAudio[];
+     durationMs: number;
+     size: string;
+     resolution: string;
+@@ -74,6 +77,7 @@ export default function VideoPage() {
+     const { t } = useTranslation();
+     useSyncExternalStore(subscribeImagePreviews, getImagePreviewRevision);
+     const fileInputRef = useRef<HTMLInputElement>(null);
++    const audioInputRef = useRef<HTMLInputElement>(null);
+     const dragDepthRef = useRef(0);
+     const activeLogIdsRef = useRef<Set<string>>(new Set());
+     const config = useConfigStore((state) => state.config);
+@@ -85,6 +89,7 @@ export default function VideoPage() {
+     const addAsset = useAssetStore((state) => state.addAsset);
+     const [prompt, setPrompt] = useState("");
+     const [references, setReferences] = useState<ReferenceImage[]>([]);
++    const [audios, setAudios] = useState<ReferenceAudio[]>([]);
+     const [results, setResults] = useState<GenerationResult[]>([]);
+     const [logs, setLogs] = useState<GenerationLog[]>([]);
+     const [running, setRunning] = useState(false);
+@@ -106,7 +111,8 @@ export default function VideoPage() {
+     const agentTaskIdRef = useRef<string | undefined>(undefined);
+ 
+     const model = effectiveConfig.videoModel || effectiveConfig.model;
+-    const canGenerate = Boolean(prompt.trim());
++    const fixedModelConfig = kokoVideoModelConfig(modelOptionName(model));
++    const canGenerate = Boolean(prompt.trim()) && (!fixedModelConfig?.requiresImage || references.length > 0);
+ 
+     useEffect(() => {
+         if (!running || !startedAt) return;
+@@ -137,14 +143,14 @@ export default function VideoPage() {
+         const selectedFiles = Array.from(files || []);
+         const unsupported = selectedFiles.filter((file) => !file.type.startsWith("image/"));
+         if (unsupported.length) message.warning(t("videoWorkbench.unsupportedFiles"));
+-        const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/")).slice(0, 7 - references.length);
++        const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/")).slice(0, 9 - references.length);
+         const nextReferences = await Promise.all(
+             imageFiles.map(async (file) => {
+                 const image = await uploadImage(file);
+                 return { id: nanoid(), name: file.name, type: image.mimeType, dataUrl: image.url, storageKey: image.storageKey };
+             }),
+         );
+-        setReferences((value) => [...value, ...nextReferences].slice(0, 7));
++        setReferences((value) => [...value, ...nextReferences].slice(0, 9));
+     };
+ 
+     const handleReferenceDragEnter = (event: DragEvent<HTMLDivElement>) => {
+@@ -175,17 +181,36 @@ export default function VideoPage() {
+                 return;
+             }
+             const nextReferences = await Promise.all(
+-                blobs.slice(0, 7 - references.length).map(async (blob, index) => {
++                blobs.slice(0, 9 - references.length).map(async (blob, index) => {
+                     const image = await uploadImage(blob);
+                     return { id: nanoid(), name: `clipboard-${index + 1}.png`, type: image.mimeType, dataUrl: image.url, storageKey: image.storageKey };
+                 }),
+             );
+-            setReferences((value) => [...value, ...nextReferences].slice(0, 7));
++            setReferences((value) => [...value, ...nextReferences].slice(0, 9));
+             message.success(t("videoWorkbench.clipboardAdded", { count: nextReferences.length }));
+         } catch {
+             message.error(t("videoWorkbench.clipboardEmpty"));
+         }
+     };
++    const addAudios = async (files: FileList | null) => {
++        try {
++            const selected = Array.from(files || []);
++            if (selected.length + audios.length > 3) {
++                message.error(t("apiErrors.kokoAudioLimit"));
++                return;
++            }
++            const supported = selected.filter((file) => /\.(mp3|wav|m4a|aac|flac)$/i.test(file.name));
++            if (supported.length !== selected.length) message.warning(t("videoWorkbench.unsupportedFiles"));
++            const added = await Promise.all(supported.map(async (file) => {
++                const stored = await uploadMediaFile(file, "audio");
++                return { id: nanoid(), name: file.name, type: stored.mimeType, url: stored.url, storageKey: stored.storageKey, durationMs: stored.durationMs };
++            }));
++            setAudios((value) => [...value, ...added]);
++        } catch (error) {
++            message.error(error instanceof Error ? error.message : t("apiErrors.invalidReferenceAudio"));
++        }
++    };
++
+     const generate = async () => {
+         const agentTaskId = agentTaskIdRef.current;
+         agentTaskIdRef.current = undefined;
+@@ -202,15 +227,15 @@ export default function VideoPage() {
+         const batchStartedAt = performance.now();
+         setStartedAt(batchStartedAt);
+         try {
+-            const task = await createVideoGenerationTask(snapshot.config, snapshot.text, snapshot.references);
+-            const log = buildLog({ prompt: snapshot.text, model, config: snapshot.config, references: snapshot.references, durationMs: 0, status: "pending", task });
++            const task = await createVideoGenerationTask(snapshot.config, snapshot.text, snapshot.references, { audios: snapshot.audios });
++            const log = buildLog({ prompt: snapshot.text, model, config: snapshot.config, references: snapshot.references, audios: snapshot.audios, durationMs: 0, status: "pending", task });
+             await saveLog(log, false);
+             void pollGenerationLog(log, snapshot.config, agentTaskId);
+         } catch (error) {
+             const errorMessage = error instanceof Error ? error.message : t("workbench.generationFailed");
+             setResults([{ id: nanoid(), status: "failed", error: errorMessage }]);
+             if (agentTaskId) updateAgentTask(agentTaskId, { status: "failed", successCount: 0, failCount: 1, error: errorMessage });
+-            await saveLog(buildLog({ prompt: snapshot.text, model, config: snapshot.config, references: snapshot.references, durationMs: performance.now() - batchStartedAt, status: "failed", error: errorMessage }));
++            await saveLog(buildLog({ prompt: snapshot.text, model, config: snapshot.config, references: snapshot.references, audios: snapshot.audios, durationMs: performance.now() - batchStartedAt, status: "failed", error: errorMessage }));
+             message.error(errorMessage);
+             setRunning(false);
+         }
+@@ -249,7 +274,7 @@ export default function VideoPage() {
+             openConfigDialog(true);
+             return null;
+         }
+-        return { text, config: buildVideoConfig(effectiveConfig, model), references: [...references] };
++        return { text, config: buildVideoConfig(effectiveConfig, model), references: [...references], audios: fixedModelConfig ? [...audios] : [] };
+     };
+ 
+     const retryResult = () => {
+@@ -278,7 +303,7 @@ export default function VideoPage() {
+             setPrompt(payload.content);
+         } else if (payload.kind === "image") {
+             const stored = await uploadImage(payload.dataUrl);
+-            setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, 7));
++            setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, 9));
+         }
+         setAssetPickerOpen(false);
+     };
+@@ -286,6 +311,7 @@ export default function VideoPage() {
+     const createSession = () => {
+         setPrompt("");
+         setReferences([]);
++        setAudios([]);
+         setResults([]);
+         setElapsedMs(0);
+         setStartedAt(0);
+@@ -383,6 +409,7 @@ export default function VideoPage() {
+         setLogsOpen(false);
+         setPrompt(log.prompt);
+         setReferences(log.references || []);
++        setAudios(log.audios || []);
+         if (log.config.videoModel || log.model) updateConfig("videoModel", log.config.videoModel || log.model);
+         if (log.config.size) updateConfig("size", log.config.size);
+         if (log.config.vquality) updateConfig("vquality", log.config.vquality);
+@@ -435,7 +462,7 @@ export default function VideoPage() {
+                                         </Button>
+                                     </div>
+                                 </div>
+-                                <Input.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={7} placeholder={t("videoWorkbench.promptPlaceholder")} />
++                                <Input.TextArea maxLength={fixedModelConfig?.maxPromptLength} showCount={Boolean(fixedModelConfig)} value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={7} placeholder={t("videoWorkbench.promptPlaceholder")} />
+                             </div>
+ 
+                             <div className="min-w-0">
+@@ -479,9 +506,26 @@ export default function VideoPage() {
+                                 </div>
+                             </div>
+ 
++                            {fixedModelConfig?.requiresImage && !references.length ? <Typography.Text type="warning">{t("apiErrors.kokoImageRequired")}</Typography.Text> : null}
++                            {fixedModelConfig ? (
++                                <div className="space-y-2">
++                                    <div className="flex items-center justify-between gap-2">
++                                        <span className="text-base font-semibold">{t("videoWorkbench.audioReferences")} ({audios.length}/3)</span>
++                                        <Button size="small" icon={<Upload className="size-3.5" />} disabled={audios.length >= 3} onClick={() => audioInputRef.current?.click()}>{t("workbench.upload")}</Button>
++                                    </div>
++                                    {audios.map((audio) => (
++                                        <div key={audio.id} className="flex min-w-0 items-center gap-2">
++                                            <span className="min-w-0 flex-1 truncate text-sm" title={audio.name}>{audio.name}</span>
++                                            <audio controls preload="metadata" src={audio.url} aria-label={audio.name} className="h-8 w-40" />
++                                            <Button type="text" size="small" aria-label={t("videoWorkbench.removeAudio")} icon={<Trash2 className="size-3.5" />} onClick={() => setAudios((value) => value.filter((item) => item.id !== audio.id))} />
++                                        </div>
++                                    ))}
++                                </div>
++                            ) : null}
++
+                             <div className="flex items-center justify-between rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900 sm:hidden">
+                                 <span className="truncate text-stone-500 dark:text-stone-400">
+-                                    {modelOptionLabel(effectiveConfig, model)} · {normalizeResolution(effectiveConfig.vquality)}p · {videoSizeLabel(effectiveConfig.size)} · {normalizeVideoSeconds(effectiveConfig.videoSeconds)}s ·{" "}
++                                    {modelOptionLabel(effectiveConfig, model)} · {fixedModelConfig?.resolution || `${normalizeResolution(effectiveConfig.vquality)}p`} · {videoSizeLabel(effectiveConfig.size)} · {normalizeVideoSeconds(effectiveConfig.videoSeconds)}s ·{" "}
+                                     {videoModeLabel(effectiveConfig.videoMode)}
+                                 </span>
+                                 <Button size="small" type="text" icon={<SlidersHorizontal className="size-4" />} onClick={() => setSettingsOpen(true)}>
+@@ -538,6 +582,7 @@ export default function VideoPage() {
+                     event.target.value = "";
+                 }}
+             />
++            <input ref={audioInputRef} type="file" accept=".mp3,.wav,.m4a,.aac,.flac" multiple className="hidden" onChange={(event) => { void addAudios(event.target.files); event.target.value = ""; }} />
+             <Drawer title={t("workbench.logs")} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)}>
+                 <LogPanel
+                     logs={logs}
+@@ -770,6 +815,7 @@ async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog>
+         model: log.model || config.videoModel || "",
+         config,
+         references,
++        audios: await Promise.all((log.audios || []).map(async (audio) => ({ ...audio, url: await resolveMediaUrl(audio.storageKey, audio.url) }))),
+         durationMs: log.durationMs || 0,
+         size: log.size || config.size || "",
+         resolution: normalizeResolution(log.resolution || config.vquality || ""),
+@@ -784,6 +830,7 @@ async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog>
+ function serializeLog(log: GenerationLog): GenerationLog {
+     return {
+         ...log,
++        audios: (log.audios || []).map((audio) => ({ ...audio, url: audio.storageKey ? "" : audio.url })),
+         references: log.references.map((item) => ({ ...item, dataUrl: item.storageKey ? "" : item.dataUrl })),
+         video: log.video?.storageKey ? { ...log.video, url: "" } : log.video,
+     };
+@@ -825,6 +872,7 @@ function buildLog({
+     model,
+     config,
+     references,
++    audios,
+     durationMs,
+     status,
+     task,
+@@ -835,6 +883,8 @@ function buildLog({
+     model: string;
+     config: AiConfig;
+     references: ReferenceImage[];
++    /** 参考音频随历史记录保存，重试时恢复 */
++    audios?: ReferenceAudio[];
+     durationMs: number;
+     status: GenerationLog["status"];
+     task?: VideoGenerationTask;
+@@ -860,6 +910,7 @@ function buildLog({
+         model,
+         config: logConfig,
+         references,
++        audios,
+         durationMs,
+         size: logConfig.size,
+         resolution: logConfig.vquality,
+diff --git a/web/src/services/api/video.test.ts b/web/src/services/api/video.test.ts
+index 1c2addb..e4ff678 100644
+--- a/web/src/services/api/video.test.ts
++++ b/web/src/services/api/video.test.ts
+@@ -34,33 +34,50 @@ describe("Seedance per-task request", () => {
+ 
+ describe("KOKO video request", () => {
+     test.each([
+-        ["seedance-2.0", "6", 15, "720p"],
+-        ["seedance-2.5", "30", 30, "720p"],
+-        ["minimaxh3", "4", 4, "2K"],
++        ["minimax-h3-933", "6", 15, "1K"],
++        ["mm-h3-768-stable", "30", 30, "720p"],
++        ["oo-sd25-1080p", "30", 30, "720p"],
++        ["pp-sd25-stable", "14", 30, "720p"],
+     ] as const)("normalizes %s to its supported duration and fixed resolution", (model: string, requested: string, duration: number, resolution: string) => {
+-        expect(buildKokoVideoRequest({ ...defaultConfig, videoSeconds: requested, size: "16:9" }, model, "测试视频")).toEqual({
++        expect(buildKokoVideoRequest({ ...defaultConfig, videoSeconds: requested, size: "16:9" }, model, "测试视频", model === "minimax-h3-933" ? [{ id: "i", name: "ref", type: "image/png", dataUrl: "", url: "https://example.com/ref.png" }] : [])).toEqual({
+             model,
+             prompt: "测试视频",
+             duration,
+             ratio: "16:9",
+             resolution,
+-            mode: "text-to-video",
++            mode: model === "minimax-h3-933" ? "reference" : "text-to-video",
++            ...(model === "minimax-h3-933" ? { reference_images: [{ url: "https://example.com/ref.png" }] } : {}),
+             count: 1,
+         });
+     });
+ 
+-    test("uses first-frame mode and the documented reference image field", () => {
++    test("使用参考模式提交图片，避免把旧首帧模式发给新模型", () => {
+         expect(
+-            buildKokoVideoRequest({ ...defaultConfig, videoSeconds: "14", size: "9:16", videoMode: "frames" }, "seedance-2.5", "人物转身", [{ id: "1", name: "reference", type: "image/png", dataUrl: "", url: "https://cdn.example.com/reference.png" }]),
++            buildKokoVideoRequest({ ...defaultConfig, videoSeconds: "14", size: "9:16", videoMode: "frames" }, "pp-sd25-stable", "人物转身", [{ id: "1", name: "reference", type: "image/png", dataUrl: "", url: "https://cdn.example.com/reference.png" }]),
+         ).toEqual({
+-            model: "seedance-2.5",
++            model: "pp-sd25-stable",
+             prompt: "人物转身",
+-            duration: 14,
++            duration: 30,
+             ratio: "9:16",
+             resolution: "720p",
+-            mode: "first-frame",
++            mode: "reference",
+             count: 1,
+             reference_images: [{ url: "https://cdn.example.com/reference.png" }],
+         });
+     });
+ });
++
++
++describe("KOKO参考素材与旧模型保护", () => {
++    test("支持本地图片和音频base64并保留参考模式", () => {
++        const body = buildKokoVideoRequest({ ...defaultConfig, videoSeconds: "15", size: "16:9" }, "mm-h3-768-stable", "测试", [{ id: "1", name: "ref", type: "image/png", dataUrl: "data:image/png;base64,YQ==" }], { audios: [{ id: "a", name: "ref.wav", type: "audio/wav", url: "data:audio/wav;base64,YQ==" }] });
++        expect(body.reference_images).toEqual([{ url: "data:image/png;base64,YQ==" }]);
++        expect(body.audio_urls).toEqual(["data:audio/wav;base64,YQ=="]);
++        expect(body.mode).toBe("reference");
++    });
++    test("拒绝旧模型、参考视频和超过三段的音频", () => {
++        expect(() => buildKokoVideoRequest(defaultConfig, "seedance-2.5", "测试")).toThrow();
++        expect(() => buildKokoVideoRequest(defaultConfig, "pp-sd25-stable", "测试", [], { videos: [{ id: "v", name: "v", type: "video/mp4", url: "https://example.com/v.mp4" }] })).toThrow();
++        expect(() => buildKokoVideoRequest(defaultConfig, "pp-sd25-stable", "测试", [], { audios: Array.from({length: 4}, (_, i) => ({id: String(i), name: "a", type: "audio/wav", url: "https://example.com/a.wav"})) })).toThrow();
++    });
++});
+diff --git a/web/src/services/api/video.ts b/web/src/services/api/video.ts
+index c31fd83..fac0cc5 100644
+--- a/web/src/services/api/video.ts
++++ b/web/src/services/api/video.ts
+@@ -12,7 +12,7 @@ import { runModelPlugin } from "./model-plugin";
+ import type { ReferenceImage } from "@/types/image";
+ import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
+ 
+-type VideoResponse = { id: string; status?: string; error?: { message?: string }; url?: string; result_url?: string; video_url?: string; content?: { video_url?: string; url?: string } | null };
++type VideoResponse = { id: string; status?: string; failure_reason?: string; error?: { message?: string }; url?: string; result_url?: string; video_url?: string; content?: { video_url?: string; url?: string } | null };
+ type ApiVideoResponse = VideoResponse | { code?: number | string; data?: VideoResponse | null; msg?: string; message?: string; error?: { message?: string } };
+ type ApiEnvelope<T> = T | { code?: number | string; data?: T | null; msg?: string; message?: string; error?: { message?: string } };
+ type RequestOptions = { signal?: AbortSignal };
+@@ -27,16 +27,28 @@ type SeedanceVideoRequest = {
+     extra_videos?: string[];
+     extra_audios?: string[];
+ };
++/** KOKO 视频请求；字段与公开视频接口保持一致。 */
+ type KokoVideoRequest = {
++    /** @description 上游模型 ID */
+     model: string;
++    /** @description 完整视频提示词 */
+     prompt: string;
++    /** @description 视频时长，单位秒 */
+     duration: number;
++    /** @description 画面比例 */
+     ratio: string;
+-    resolution: "720p" | "2K";
+-    mode: "text-to-video" | "reference" | "first-frame";
++    /** @description API 允许的清晰度参数 */
++    resolution: "720p" | "1K";
++    /** @description 有素材时使用参考生成，否则使用文生视频 */
++    mode: "text-to-video" | "reference";
++    /** @description 每次固定生成一条视频 */
+     count: 1;
++    /** @description 参考图片，最多9张，支持HTTPS或base64 */
+     reference_images?: Array<{ url: string }>;
++    /** @description 参考音频，最多3段，支持HTTPS或base64 */
++    audio_urls?: string[];
+ };
++
+ const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
+ 
+ export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
+@@ -211,7 +223,14 @@ export function buildSeedanceVideoRequest(config: AiConfig, model: string, promp
+ 
+ async function createKokoVideoTask(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], options?: VideoMediaOptions): Promise<VideoGenerationTask> {
+     try {
+-        const body = buildKokoVideoRequest(config, model, prompt, references, options);
++        // 浏览器本地素材先转为 base64，上游无法读取 blob URL 或本地存储键。
++        const images = await Promise.all(references.map(async (image) => ({ ...image, dataUrl: /^https:\/\//i.test(image.url || "") ? image.dataUrl : await imageToDataUrl(image) })));
++        const audios = await Promise.all((options?.audios || []).map(async (audio) => {
++            if (/^https:\/\//i.test(audio.url) || /^data:audio\//i.test(audio.url)) return audio;
++            const file = await referenceMediaToFile(audio, "ref.wav", "invalidReferenceAudio", options);
++            return { ...audio, url: await readFileAsDataUrl(file) };
++        }));
++        const body = buildKokoVideoRequest(config, model, prompt, images, { ...options, audios });
+         const created = unwrapVideoResponse((await axios.post<ApiVideoResponse>(aiApiUrl(config, "/videos"), body, { headers: aiHeaders(config, "application/json"), signal: options?.signal })).data);
+         if (!created.id) throw new Error(apiText("noVideoTaskId"));
+         return { id: created.id, provider: "openai", model };
+@@ -224,13 +243,17 @@ export function buildKokoVideoRequest(config: AiConfig, model: string, prompt: s
+     const modelName = modelOptionName(model);
+     const fixedConfig = kokoVideoModelConfig(modelName);
+     if (!fixedConfig) throw new Error(apiText("videoModelRequired"));
+-    if ((options?.videos || []).length > 0 || (options?.audios || []).length > 0) throw new Error(apiText("kokoMediaUnsupported"));
++    if ((options?.videos || []).length > 0) throw new Error(apiText("kokoMediaUnsupported"));
++    if ((options?.audios || []).length > 3) throw new Error(apiText("kokoAudioLimit"));
++    if (!prompt.trim() || prompt.trim().length > fixedConfig.maxPromptLength) throw new Error(apiText("kokoPromptLimit", { count: fixedConfig.maxPromptLength }));
++    if (fixedConfig.requiresImage && !references.length) throw new Error(apiText("kokoImageRequired"));
+     if (references.length > 9) throw new Error(apiText("seedanceImageLimit"));
+ 
+-    const images = references.map((item) => ({ url: seedanceReferenceUrl(item.url, item.dataUrl) }));
++    const images = references.map((item) => ({ url: kokoReferenceUrl("image", item.url, item.dataUrl) }));
++    const audios = (options?.audios || []).map((item) => kokoReferenceUrl("audio", item.url));
+     const requestedRatio = videoAspectRatio(config.size);
+     const ratio = fixedConfig.ratios.includes(requestedRatio) ? requestedRatio : "16:9";
+-    const mode = images.length > 0 ? (config.videoMode === "reference" ? "reference" : "first-frame") : "text-to-video";
++    const mode = images.length > 0 || audios.length > 0 ? "reference" : "text-to-video";
+     return {
+         model: modelName,
+         prompt,
+@@ -240,9 +263,16 @@ export function buildKokoVideoRequest(config: AiConfig, model: string, prompt: s
+         mode,
+         count: 1,
+         ...(images.length > 0 ? { reference_images: images } : {}),
++        ...(audios.length > 0 ? { audio_urls: audios } : {}),
+     };
+ }
+ 
++function kokoReferenceUrl(type: "image" | "audio", ...candidates: Array<string | undefined>): string {
++    const url = candidates.find((value) => /^https:\/\//i.test(value || "") || (value || "").startsWith(`data:${type}/`));
++    if (!url) throw new Error(apiText(type === "image" ? "referenceImageReadFailed" : "invalidReferenceAudio"));
++    return url;
++}
++
+ function isKokoVideoModel(model: string) {
+     return Boolean(kokoVideoModelConfig(modelOptionName(model)));
+ }
+@@ -307,7 +337,7 @@ async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask,
+             await assertVideoBlob(content.data);
+             return { status: "completed", result: { blob: content.data } };
+         }
+-        if (video.status === "failed" || video.status === "cancelled") return { status: "failed", error: readApiErrorMessage(video.error?.message) || apiText("videoGenerationFailed") };
++        if (video.status === "failed" || video.status === "cancelled") return { status: "failed", error: readApiErrorMessage(video.failure_reason || video.error?.message) || apiText("videoGenerationFailed") };
+         return { status: "pending" };
+     } catch (error) {
+         throw new Error(readAxiosError(error, apiText("videoTaskQueryFailed")));
+diff --git a/web/src/stores/use-config-store.ts b/web/src/stores/use-config-store.ts
+index 672cb34..9b7ac21 100644
+--- a/web/src/stores/use-config-store.ts
++++ b/web/src/stores/use-config-store.ts
+@@ -157,7 +157,7 @@ const IMAGE_KEYWORDS = ["seedream", "gpt-image", "image", "dall-e", "dalle", "im
+ /** Best-effort default capability for a freshly fetched model name; user can override in the channel editor. */
+ export function guessCapability(name: string): ModelCapability {
+     const value = name.toLowerCase();
+-    if (VIDEO_KEYWORDS.some((keyword) => value.includes(keyword))) return "video";
++    if (kokoVideoModelConfig(value) || VIDEO_KEYWORDS.some((keyword) => value.includes(keyword))) return "video";
+     if (AUDIO_KEYWORDS.some((keyword) => value.includes(keyword))) return "audio";
+     if (IMAGE_KEYWORDS.some((keyword) => value.includes(keyword))) return "image";
+     return "text";

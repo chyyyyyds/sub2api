@@ -9,7 +9,10 @@ import userConsole from './userConsole'
 import wallet from './wallet'
 import profileV1 from './profileV1'
 
+import imageStudio from './imageStudio'
+
 export default {
+  imageStudio,
   ...landing,
   ...common,
   ...dashboard,

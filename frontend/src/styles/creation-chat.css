@@ -1,0 +1,37 @@
+/* Stage B 只扩展聊天区域，延用 Stage A 的 V5 / Midnight HUD 布局。 */
+.creation-live-chat{position:relative}
+.creation-live-chat .creation-history{min-height:0;gap:12px}
+.creation-live-chat .creation-pane-title{margin-bottom:0}
+.creation-history-list{flex:1;min-height:0;overflow:auto}
+.creation-history-row{display:flex;align-items:center;border:1px solid transparent;border-radius:9px;margin-bottom:6px;color:#adc0ce}
+.creation-history-row.selected{background:#123034;border-color:#24565b;color:#83eee2}
+.creation-history-select{min-width:0;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:11px 9px;font-size:12px}
+.creation-history-select small{display:block;color:#8198a8;font-size:10px;margin-top:6px}
+.creation-history-actions{display:flex;flex:none}.creation-history-actions button{padding:8px;font-size:15px;color:#93a9b5}
+.creation-live-chat .creation-messages{display:block;scrollbar-gutter:stable}
+.creation-live-chat .creation-welcome{height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;margin:0 auto}
+.creation-message-list{width:100%;max-width:930px;margin:auto;display:flex;flex-direction:column;gap:24px;padding-bottom:18px}
+.creation-message{min-width:0;border:1px solid #213441;border-radius:12px;background:#0c1923;padding:15px 18px}
+.creation-message.is-user{background:#10262a;border-color:#245056;margin-left:8%;}.creation-message.is-assistant{margin-right:3%}
+.creation-message-meta{display:flex;flex-wrap:wrap;gap:9px;align-items:center;color:#88a0b1;font-size:10px;margin-bottom:12px}.creation-message-meta strong{color:#58d8cd;font-size:12px}
+.creation-user-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}
+.creation-markdown{line-height:1.85;font-size:13px;overflow-wrap:anywhere;color:#d7e4ee}
+.creation-markdown>:first-child{margin-top:0}.creation-markdown>:last-child{margin-bottom:0}
+.creation-markdown :is(p,ul,ol,blockquote,pre,table){margin:10px 0}.creation-markdown :is(h1,h2,h3,h4){font-weight:700;margin:14px 0 8px;line-height:1.5}.creation-markdown h1{font-size:21px}.creation-markdown h2{font-size:18px}.creation-markdown h3{font-size:16px}
+.creation-markdown ul{list-style:disc;padding-left:24px}.creation-markdown ol{list-style:decimal;padding-left:24px}.creation-markdown blockquote{border-left:3px solid #327f80;padding-left:14px;color:#94b2bf}.creation-markdown a{color:#60e5de;text-decoration:underline}.creation-markdown hr{border-color:#29414b}
+.creation-markdown pre{background:#080f18;border:1px solid #25394a;border-radius:9px;overflow:hidden;max-width:100%}.creation-markdown pre code{display:block;overflow:auto;padding:12px 14px;white-space:pre;font-size:12px;line-height:1.65}.creation-markdown :not(pre)>code{background:#182e3c;color:#93e4df;padding:2px 5px;border-radius:4px}
+.creation-code-header{display:flex;align-items:center;justify-content:space-between;background:#12212e;padding:5px 12px;color:#8ea9b8;font-size:10px}.creation-code-header button{color:#b1d3dc;padding:4px 7px}.creation-markdown table{display:block;overflow:auto;border-collapse:collapse}.creation-markdown :is(th,td){border:1px solid #2c4351;padding:7px 12px}
+.creation-markdown .hljs-keyword,.creation-markdown .hljs-selector-tag{color:#bd9fff}.creation-markdown .hljs-string,.creation-markdown .hljs-attr{color:#8fd9af}.creation-markdown .hljs-number,.creation-markdown .hljs-literal{color:#f0bb83}.creation-markdown .hljs-comment{color:#8195a6}.creation-markdown .hljs-title{color:#71cef4}.creation-markdown .hljs-built_in{color:#e8cd8c}
+.creation-stream-status,.creation-copy-status{font-size:11px;color:#75d9d0;margin-top:9px}.creation-message-error{font-size:11px;color:#edb896;margin-top:10px;line-height:1.7}.creation-message-actions{display:flex;gap:16px;margin-top:12px;color:#8bafbd;font-size:11px}.creation-message-actions button{padding:4px 0}
+.creation-cursor{animation:creation-blink 1s steps(2,start) infinite;margin-left:4px}@keyframes creation-blink{to{opacity:.3}}
+.creation-compose-hint{font-size:10px;color:#85a3b3;margin-left:auto}.creation-live-chat .creation-composer textarea{height:62px;max-height:120px;resize:vertical}.creation-stop{border-color:#956246!important;background:#402e23!important;color:#f0bd92!important}
+.creation-chat-mobilebar,.creation-mobile-close,.creation-history-scrim{display:none}
+.creation-dialog-backdrop{position:absolute;inset:0;z-index:50;background:#000a;display:flex;align-items:center;justify-content:center;padding:20px}.creation-chat-dialog{width:min(380px,100%);background:#0c1c29;border:1px solid #345464;border-radius:12px;padding:22px;box-shadow:0 20px 60px #0009}.creation-chat-dialog label{display:block;margin-bottom:12px}.creation-chat-dialog input{width:100%;border:1px solid #365465;border-radius:7px;background:#08131d;color:#e1edf4;padding:10px}.creation-chat-dialog>div{display:flex;justify-content:flex-end;gap:12px;margin-top:20px}.creation-chat-dialog button{padding:8px 14px;border:1px solid #2c6269;border-radius:7px;color:#9ce7de}
+@media(max-width:800px){.creation-chat-mobilebar{display:flex;flex:none;align-items:center;justify-content:space-between;gap:12px;padding:3px 10px;border-bottom:1px solid #20303e;color:#9bb6c3;font-size:11px}.creation-chat-mobilebar>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.creation-chat-mobilebar button{padding:9px 4px;white-space:nowrap}.creation-live-chat .creation-history.is-open{display:flex;position:absolute;inset:0 auto 0 0;z-index:41;width:min(285px,85%);box-shadow:10px 0 30px #0008}.creation-mobile-close{display:block;color:#84ddd5;padding:9px}.creation-history-scrim{display:block;position:absolute;inset:0;z-index:40;background:#0009}.creation-message{padding:12px;}.creation-message.is-user{margin-left:4%}.creation-message.is-assistant{margin-right:0}.creation-message-list{gap:15px}.creation-compose-hint{margin-right:auto;margin-left:0;font-size:9px}.creation-live-chat .creation-composer textarea{height:52px;max-height:88px}.creation-markdown{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.creation-cursor{animation:none}}
+
+/* 长回答生成期用纯文本节流；完成后显示安全 Markdown，历史气泡由浏览器跳过屏外绘制。 */
+.creation-stream-plain{white-space:pre-wrap}
+.creation-message{content-visibility:auto;contain-intrinsic-size:auto 150px}
+.creation-protocol-notice{flex:none;color:#dbbd85;background:#251e17;border-bottom:1px solid #55452e;padding:7px 14px;font-size:11px;line-height:1.6}
+@media(max-width:800px){.creation-live-chat .creation-composer{padding-bottom:max(8px,env(safe-area-inset-bottom));}.creation-live-chat .creation-composer textarea{font-size:16px}.creation-live-chat{min-height:0}}

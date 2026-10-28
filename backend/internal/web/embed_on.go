@@ -86,6 +86,9 @@ func (s *FrontendServer) InvalidateCache() {
 // Middleware returns the Gin middleware handler
 func (s *FrontendServer) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if serveCanvas(c, s.distFS) {
+			return
+		}
 		path := c.Request.URL.Path
 
 		// Skip API routes
@@ -309,6 +312,9 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 	overrideDir := filepath.Join("data", "public")
 
 	return func(c *gin.Context) {
+		if serveCanvas(c, distFS) {
+			return
+		}
 		path := c.Request.URL.Path
 
 		if shouldBypassEmbeddedFrontend(path) {

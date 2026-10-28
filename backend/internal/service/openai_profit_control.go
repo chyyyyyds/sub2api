@@ -288,6 +288,10 @@ func attachSelectionProfitGate(ctx context.Context, sel *AccountSelectionResult)
 // （ProfitControlVetoLatest / GatewayProfitControlVetoLatest）与准入后粘性
 // 绑定，否则这两步会因为看不到调度栈内安装的门而退化为空操作。
 func ContextWithSelectionProfitGate(ctx context.Context, sel *AccountSelectionResult) context.Context {
+	// 同步重放探测权限，避免抢槽后的终检再次被同一内置冷却拒绝。
+	if sel != nil && sel.transientProbe != nil {
+		ctx = context.WithValue(ctx, openAITransientProbeContextKey{}, sel.transientProbe)
+	}
 	if sel == nil || sel.profitGate == nil {
 		return ctx
 	}

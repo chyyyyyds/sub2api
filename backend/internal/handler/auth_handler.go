@@ -73,13 +73,13 @@ type SendVerifyCodeResponse struct {
 	Countdown int    `json:"countdown"` // 倒计时秒数
 }
 
-// LoginRequest represents the login request payload
+// LoginRequest 登录请求；email 字段兼容接收邮箱或迁移前的用户名。
 type LoginRequest struct {
-	Email                 string `json:"email" binding:"required,email"`
-	Password              string `json:"password" binding:"required"`
-	TurnstileToken        string `json:"turnstile_token"`
-	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`
-	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
+	Email                 string `json:"email" binding:"required,max=255" example:"原用户名或邮箱"`  // 邮箱或已迁移的原用户名
+	Password              string `json:"password" binding:"required,max=512" example:"用户原密码"` // 原密码，不进行裁剪或转换
+	TurnstileToken        string `json:"turnstile_token"`                                     // 验证码凭证
+	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`                              // 腾讯验证码票据
+	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`                             // 腾讯验证码随机串
 }
 
 func captchaProof(turnstileToken, tencentTicket, tencentRandstr string) service.CaptchaProof {
@@ -92,11 +92,11 @@ func captchaProof(turnstileToken, tencentTicket, tencentRandstr string) service.
 
 // AuthResponse 认证响应格式（匹配前端期望）
 type AuthResponse struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token,omitempty"` // 新增：Refresh Token
-	ExpiresIn    int       `json:"expires_in,omitempty"`    // 新增：Access Token有效期（秒）
-	TokenType    string    `json:"token_type"`
-	User         *dto.User `json:"user"`
+	AccessToken  string    `json:"access_token"`            // 登录成功后的访问令牌
+	RefreshToken string    `json:"refresh_token,omitempty"` // 刷新令牌
+	ExpiresIn    int       `json:"expires_in,omitempty"`    // 访问令牌有效期，单位秒
+	TokenType    string    `json:"token_type"`              // 令牌类型，Bearer
+	User         *dto.User `json:"user"`                    // 当前登录用户信息
 }
 
 func ensureLoginUserActive(user *service.User) error {
@@ -234,8 +234,17 @@ func (h *AuthHandler) SendVerifyCode(c *gin.Context) {
 	})
 }
 
-// Login handles user login
-// POST /api/v1/auth/login
+// Login 用户登录，兼容迁移账号的原用户名及原密码。
+// @Summary 用户登录
+// @Description email 字段接受邮箱或已迁移的原用户名；保留验证码、双因素认证和账号状态检查。
+// @Tags 用户认证
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "登录信息"
+// @Success 200 {object} AuthResponse "登录成功；启用双因素认证时返回二次验证信息"
+// @Failure 400 {object} map[string]interface{} "请求参数无效"
+// @Failure 401 {object} map[string]interface{} "用户名、邮箱或密码错误"
+// @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

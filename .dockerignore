@@ -83,3 +83,11 @@ deploy/redis_data/
 .claude/
 issues/
 CLAUDE.md
+
+# 定制画布独立构建；仅放行构建需要的说明文件。
+!canvas/CHANGELOG.md
+canvas/web/node_modules/
+canvas/web/dist/
+.codex/
+.stage*/
+.release-*/

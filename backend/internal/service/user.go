@@ -3,6 +3,7 @@ package service
 import (
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordhash"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -106,5 +107,5 @@ func (u *User) SetPassword(password string) error {
 }
 
 func (u *User) CheckPassword(password string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)) == nil
+	return passwordhash.Verify(password, u.PasswordHash)
 }

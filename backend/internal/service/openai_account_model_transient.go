@@ -48,6 +48,8 @@ type openAIAccountModelTransientState struct {
 	mu         sync.Mutex
 	entries    map[openAIAccountModelKey]openAIAccountModelTransientEntry
 	maxEntries int
+	// probes 按分组和请求模型限制探测；账号和上游模型仍共享原有冷却状态。
+	probes map[openAITransientProbeGroupKey]*openAITransientProbe
 }
 
 func newOpenAIAccountModelTransientState(maxEntries int) *openAIAccountModelTransientState {

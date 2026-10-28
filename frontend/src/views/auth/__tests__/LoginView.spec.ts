@@ -2,9 +2,10 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginView from '@/views/auth/LoginView.vue'
 
-const { getPublicSettingsMock, pushMock } = vi.hoisted(() => ({
+const { getPublicSettingsMock, pushMock, loginMock } = vi.hoisted(() => ({
   getPublicSettingsMock: vi.fn(),
-  pushMock: vi.fn()
+  pushMock: vi.fn(),
+  loginMock: vi.fn()
 }))
 
 const publicSettings = {
@@ -44,13 +45,14 @@ vi.mock('vue-i18n', () => ({
     }
   }),
   useI18n: () => ({
-    t: (key: string) => key
+    t: (key: string) => key,
+    locale: { value: 'zh' }
   })
 }))
 
 vi.mock('@/stores', () => ({
   useAuthStore: () => ({
-    login: vi.fn(),
+    login: loginMock,
     loginWithPasskey: vi.fn(),
     login2FA: vi.fn()
   }),
@@ -94,6 +96,9 @@ describe('LoginView registration entry', () => {
   beforeEach(() => {
     getPublicSettingsMock.mockReset()
     pushMock.mockReset()
+    loginMock.mockReset()
+    loginMock.mockResolvedValue({})
+    localStorage.clear()
     getPublicSettingsMock.mockResolvedValue(publicSettings)
   })
 
@@ -114,5 +119,19 @@ describe('LoginView registration entry', () => {
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('auth.signUp')
+  })
+
+  it('accepts an original username and preserves the password exactly', async () => {
+    const wrapper = mountLogin()
+    await flushPromises()
+    expect(wrapper.get('#email').attributes('type')).toBe('text')
+    expect(wrapper.get('#email').attributes('autocomplete')).toBe('username')
+    await wrapper.get('#email').setValue(' 原用户名 ')
+    await wrapper.get('#password').setValue(' 原密码保留空格 ')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(loginMock).toHaveBeenCalledWith(expect.objectContaining({
+      email: '原用户名', password: ' 原密码保留空格 '
+    }))
   })
 })

@@ -40,6 +40,10 @@ var (
 	integrationDB          *sql.DB
 	integrationEntClient   *dbent.Client
 	integrationRedis       *redisclient.Client
+	// 仅把新建 testcontainers 的连接传给 R2F 隔离子进程，不接受站点 DSN。
+	integrationFixtureDSN   string
+	integrationFixturePG    *tcpostgres.PostgresContainer
+	integrationFixtureRedis *tcredis.RedisContainer
 
 	redisNamespaceSeq uint64
 )
@@ -48,6 +52,9 @@ func TestMain(m *testing.M) {
 	// 仅本轮固定隔离夹具可走此入口；不接受任意站点数据库连接字符串。
 	if integrationStage8QMain != nil && os.Getenv("STAGE8Q_FIXTURE") == "isolated-compose-only" {
 		integrationStage8QMain(m)
+		return
+	}
+	if runStage7R2FChild() {
 		return
 	}
 	ctx := context.Background()
@@ -81,6 +88,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	defer func() { _ = pgContainer.Terminate(ctx) }()
+	integrationFixturePG = pgContainer
 
 	redisContainer, err := tcredis.Run(
 		ctx,
@@ -91,12 +99,14 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	defer func() { _ = redisContainer.Terminate(ctx) }()
+	integrationFixtureRedis = redisContainer
 
 	dsn, err := pgContainer.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
 	if err != nil {
 		log.Printf("failed to get postgres dsn: %v", err)
 		os.Exit(1)
 	}
+	integrationFixtureDSN = dsn
 
 	integrationDB, err = openSQLWithRetry(ctx, dsn, 30*time.Second)
 	if err != nil {

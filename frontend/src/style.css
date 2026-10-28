@@ -12,6 +12,14 @@
     color-scheme: light;
   }
 
+  /* 用户控制台预留滚动条空间，长短页面切换时顶部导航保持原位。 */
+  html:has(.user-console) {
+    scrollbar-gutter: stable;
+    /* 预留区域沿用用户端暗底，避免浅色主题下出现白边。 */
+    background-color: #05080d;
+    color-scheme: dark;
+  }
+
   .dark {
     color-scheme: dark;
   }

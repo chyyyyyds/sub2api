@@ -75,6 +75,21 @@ beforeEach(() => {
 })
 
 describe('MonitorSettingsPanel platform configuration', () => {
+  it('按填写顺序保存模型，去重后重新加载仍保留顺序', async () => {
+    const wrapper = await panel()
+    const orderedModels = ['gpt-6-sol', 'gpt-5.6-luna', 'gpt-6-astra']
+    await wrapper.findAll('input[type="text"]')[0].setValue(' gpt-6-sol, gpt-5.6-luna, gpt-6-sol, , gpt-6-astra ')
+    await button(wrapper, 'save').trigger('click')
+    await flushPromises()
+    expect(mocks.updateConfig.mock.calls[0][0].platforms[0].models).toEqual(orderedModels)
+    const persisted = await mocks.updateConfig.mock.results[0].value
+    wrapper.unmount()
+
+    const reloaded = await panel(persisted)
+    expect((reloaded.findAll('input[type="text"]')[0].element as HTMLInputElement).value).toBe(orderedModels.join(', '))
+    reloaded.unmount()
+  })
+
   it('adds a missing provider and saves its models without changing existing settings', async () => {
     const original = config()
     const wrapper = await panel(original)

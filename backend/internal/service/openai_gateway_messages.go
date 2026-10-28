@@ -148,7 +148,8 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	// ChatGPT/Codex credentials rely on session_id + x-codex-turn-state; trimming to a
 	// sliding 12-message window makes the cached prefix stall at system/tools.
 	// Keep full replay there so upstream prompt caching can grow turn by turn.
-	if compatReplayGuardEnabled && !account.UsesOpenAICodexProtocol() && previousResponseID == "" && !compatContinuationDisabled {
+	// 未确认有状态续接能力时，完整保留客户端历史和工具调用/结果，不能截成滑动窗口。
+	if compatReplayGuardEnabled && compatContinuationEnabled && !account.UsesOpenAICodexProtocol() && previousResponseID == "" && !compatContinuationDisabled {
 		compatReplayTrimmed = applyAnthropicCompatFullReplayGuard(&anthropicReq)
 	}
 

@@ -1,0 +1,40 @@
+/* 宿主 V5 三栏布局仅作用于图片工作台，复用原有生成与 IndexedDB 引擎。 */
+.host-image-workbench{background:#0b121b!important;color:#e5edf5!important;font-size:13px}
+.host-image-workbench .host-image-grid{grid-template-columns:242px minmax(0,1fr);gap:0;padding:0;overflow:hidden}
+.host-image-workbench .host-image-grid>aside{display:block;background:#0c151d;border:0;border-right:1px solid #20303e;border-radius:0;padding:17px;box-shadow:none}
+.host-image-workbench .host-image-content{grid-template-columns:minmax(370px,42%) minmax(0,1fr);gap:0;min-height:0;overflow:hidden}
+.host-image-workbench .host-image-content>div{min-height:0;overflow-y:auto;background:#0d151d;border:0;border-right:1px solid #20303e;border-radius:0;padding:17px;box-shadow:none}
+.host-image-workbench .host-image-content>div:last-child{background:#0b121b;border-right:0;padding:19px 22px}
+.host-image-workbench h1,.host-image-workbench h2{color:#e5edf5!important;font-size:14px!important;font-weight:750}
+.host-image-workbench .host-image-content>div>div.mt-6{margin-top:18px}
+.host-image-workbench .host-image-content>div>div.mt-auto{padding-top:16px}
+.host-image-workbench .host-image-content>div:last-child>div:last-child{min-height:260px}
+.host-image-workbench .host-image-settings{display:grid;grid-template-columns:1fr;gap:12px}
+.host-image-workbench .text-base{font-size:12px}
+.host-image-workbench .border-stone-200,.host-image-workbench .border-stone-300,.host-image-workbench .dark\:border-stone-800,.host-image-workbench .dark\:border-stone-700{border-color:#284152!important}
+.host-image-workbench .bg-background,.host-image-workbench .dark\:bg-stone-900{background:#101c26!important}
+.host-image-workbench .ant-input{background:#0b141d!important;color:#e8f2f6!important;border-color:#283943!important;font-size:12px}
+.host-image-workbench .ant-btn-default{background:#11212b;color:#daebf0;border-color:#29404b}
+.host-image-workbench .ant-btn-primary{background:#13b9aa;color:#031c20;border-color:#26dbd0;font-weight:700}
+.host-image-workbench .host-image-grid>aside .ant-btn{font-size:10px;padding-inline:6px}
+.host-image-workbench .ant-btn-sm{font-size:10px;padding-inline:6px}
+.host-image-workbench .host-compact-settings{display:flex;flex-direction:column;gap:14px}
+.host-image-workbench .host-compact-settings>*{margin:0!important}
+.host-image-workbench [data-setting=quality]{order:1}
+.host-image-workbench [data-setting=ratio]{order:2}
+.host-image-workbench .host-advanced-toggle{order:3;text-align:left;border:1px solid #284152;border-radius:8px;padding:8px;color:#8eabba;font-size:11px;background:#0c1723;cursor:pointer}
+.host-image-workbench [data-setting=size]{order:4}.host-image-workbench [data-setting=scale]{order:5}.host-image-workbench [data-setting=background]{order:6}.host-image-workbench [data-setting=count]{order:7}
+.host-image-workbench .host-compact-settings[data-advanced=false]>:is([data-setting=size],[data-setting=scale],[data-setting=background],[data-setting=count]){display:none}
+.host-image-workbench [data-setting=ratio] button{height:36px;border-radius:24px;font-size:12px}
+.host-image-workbench [data-setting=ratio] button>span.grid{display:none}
+.host-image-workbench .host-image-grid>aside .host-generation-log>div{display:flex;flex-direction:column;gap:8px}
+.host-image-workbench .host-image-grid>aside .host-generation-log>div>div{width:100%;min-width:0}
+.host-image-workbench .host-image-grid>aside .host-generation-log>div>div:last-child{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:5px}
+.host-image-workbench .host-image-grid>aside .host-generation-log .ant-tag{height:auto;min-height:18px;font-size:9px;padding-inline:4px;white-space:normal;overflow-wrap:anywhere}
+.host-image-workbench .host-compact-settings button[aria-pressed=true]{color:#63ede4!important;border-color:#32b2a8!important;background:#103337!important}
+.host-image-workbench .host-image-content>div:first-child>div:first-child .lg\:hidden{display:none}
+@media(max-width:1200px){.host-image-workbench .host-image-grid{grid-template-columns:200px minmax(0,1fr)}.host-image-workbench .host-image-content{grid-template-columns:320px minmax(0,1fr)}}
+@media(max-width:1100px){.host-image-workbench .host-image-grid{grid-template-columns:minmax(0,1fr)}.host-image-workbench .host-image-grid>aside{display:none}.host-image-workbench .host-image-content>div:first-child>div:first-child .lg\:hidden{display:flex}}
+@media(max-width:800px){.host-image-workbench .host-image-grid{display:block;overflow-y:auto}.host-image-workbench .host-image-content{display:flex;flex-direction:column;overflow:visible;min-height:100%}.host-image-workbench .host-image-content>div{overflow:visible;flex:none;border-right:0;border-bottom:1px solid #20303e;padding:17px}.host-image-workbench .host-image-content>div:last-child{min-height:370px;padding:17px}.host-image-workbench .host-image-content>div:first-child>div:first-child .lg\:hidden{display:flex}.host-image-workbench .host-image-content>div:first-child>.space-y-5>.sm\:hidden{display:none}.host-image-workbench .host-image-settings{display:grid}}
+/* 手机在参数与结果间切换；每个面板仅保留一个滚动容器，生成按钮留在滚动区外。 */
+@media(max-width:800px){.host-image-workbench .host-image-grid{display:flex;flex-direction:column;overflow:hidden}.host-image-workbench .host-image-content{flex:1;min-height:0;overflow:hidden}.host-image-workbench .host-image-content>div{flex:1;min-height:0;overflow-y:auto;border-bottom:0}.host-image-workbench .host-image-content>div:last-child{min-height:0}.host-image-workbench[data-mobile-pane=parameters] .host-image-content>div:last-child,.host-image-workbench[data-mobile-pane=results] .host-image-content>div:first-child{display:none}}

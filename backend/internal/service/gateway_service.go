@@ -588,6 +588,8 @@ type AccountSelectionResult struct {
 	// 局部 ctx 上，handler 必须经 ContextWithSelectionProfitGate 重放后才能在
 	// 调度栈之外做抢槽后终检与准入后粘性绑定。
 	profitGate *openAIProfitControlGate
+	// transientProbe 保留本次选号独占的内置冷却探测名额，供准入终检复用。
+	transientProbe *openAITransientProbe
 }
 
 // ProfitGateActive 报告本次选号是否处于利润门之下。

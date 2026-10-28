@@ -139,6 +139,8 @@ docs/*
 !docs/ASYNC_IMAGE_TASKS.md
 !docs/BATCH_IMAGE_MVP.md
 !docs/COMPOSITE_GROUPS.md
+!docs/NEWAPI_MIGRATION_GUIDE.md
+!docs/NEWAPI_MIGRATION_TEST_REPORT_20261027.md
 !docs/PLUGIN_DEVELOPMENT.md
 !docs/channel-monitor-v2-safe-defaults.md
 !docs/codex-credits.md
@@ -154,6 +156,7 @@ docs/screenshots/*
 frontend/coverage/
 aicodex
 output/
+tools/__pycache__/
 .codegraph/
 issues/
 
@@ -161,3 +164,12 @@ issues/
 .vite/
 # 本地闭源插件开发目录及构建产物不进入 Sub2API 仓库
 /plugins/
+
+# 来源快照中的缩略图测试必须可追踪。
+!/canvas/web/tests/
+!/canvas/web/tests/**
+!/canvas/**/AGENTS.md
+
+# 本机历史发布包、验收副本和临时编译目录，不进入源码提交。
+/.release-*/
+/.stage*/

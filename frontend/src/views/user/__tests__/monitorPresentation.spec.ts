@@ -82,6 +82,15 @@ describe('渠道状态纯展示映射', () => {
     expect(filterMonitoredCatalog(catalog, { group_ids: [1], platforms: [{ platform: 'openai', models: [] }] })).toHaveLength(3)
     expect(JSON.stringify(catalog)).toBe(original)
   })
+  it('按配置中模型名称的首次出现顺序展示，留空时保留原目录顺序', () => {
+    const catalog = buildCatalog(channels(), [group(1)], [])
+    const original = [...catalog]
+    const scope = { group_ids: [1], platforms: [{ platform: 'openai', models: ['no-samples', 'MODEL X', 'no-samples', 'no-association'] }] }
+    expect(filterMonitoredCatalog(catalog, scope).map(entry => entry.model)).toEqual(['no-samples', 'model-X', 'no-association'])
+    expect(filterMonitoredCatalog(catalog, { ...scope, platforms: [{ platform: 'openai', models: [] }] })).toEqual(original)
+    expect(catalog).toEqual(original)
+  })
+
   it('页面专属新增中英文展示键完整', () => {
     expect(Object.keys(monitorMessages.zh.monitorDisplay).sort()).toEqual(Object.keys(monitorMessages.en.monitorDisplay).sort())
     expect(monitorMessages.zh.monitorDisplay.cache_write_price).toBe('缓存写入')

@@ -8,10 +8,24 @@ const displayModelKey = (name: string) => name.trim().toLowerCase().replace(/\s+
 /** 监控范围与已有授权目录取交集；范围读取失败时不退回全量目录。 */
 export function filterMonitoredCatalog(catalog: CatalogModel[], scope?: MonitorDisplayScope | null): CatalogModel[] {
   if (!scope) return []
+  // 只调整展示目录：管理员填写的模型顺序优先，留空时沿用目录顺序。
+  const modelOrders = new Map(scope.platforms.map(platform => {
+    const order = new Map<string, number>()
+    platform.models.forEach((name, index) => {
+      const key = displayModelKey(name)
+      if (!order.has(key)) order.set(key, index)
+    })
+    return [platform.platform, order] as const
+  }))
   return catalog.filter(entry => {
     if (!scope.group_ids.includes(entry.group.id)) return false
     const platform = scope.platforms.find(item => item.platform === entry.platform)
     return platform && (!platform.models.length || platform.models.some(name => name !== '__other__' && displayModelKey(name) === displayModelKey(entry.model)))
+  }).sort((a, b) => {
+    const dimensionOrder = a.platform.localeCompare(b.platform) || a.group.id - b.group.id
+    if (dimensionOrder) return dimensionOrder
+    const order = modelOrders.get(a.platform)
+    return (order?.get(displayModelKey(a.model)) ?? 0) - (order?.get(displayModelKey(b.model)) ?? 0)
   })
 }
 

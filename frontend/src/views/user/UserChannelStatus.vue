@@ -48,7 +48,7 @@
                   <p v-if="hasSamples(entry)" class="um-percentile">{{ t('userMonitor.p95') }} {{ millis(rowFor(entry)?.metrics.ttft.p95_ms) }}</p>
                   <p class="um-interval-note">{{ display('monitorDisplay.intervalNote') }}</p>
                 </details>
-                <div class="um-model-footer um-price-preview"><button @click="priceEntry = entry">{{ t('userMonitor.priceDetails') }} <Icon name="chevronRight" size="sm" /></button><button :aria-pressed="model === entry.model" @click="model = entry.model">{{ t('userMonitor.selectKeys') }} <Icon name="chevronRight" size="sm" /></button></div>
+                <div class="um-model-footer um-price-preview"><button @click="priceEntry = entry">{{ t('userMonitor.priceDetails') }} <Icon name="chevronRight" size="sm" /></button></div>
               </article>
             </div>
             <p v-if="!filteredModels.length" class="um-panel um-empty">{{ t('userMonitor.emptyFilter') }}</p>

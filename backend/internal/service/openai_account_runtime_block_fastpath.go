@@ -555,7 +555,7 @@ func (s *OpenAIGatewayService) clearOpenAIAccountRuntimeBlockIfUnchanged(account
 // block is dropped with generation+deadline CAS. Model-scoped transient blocks
 // are left alone. This is fail-open if a DB write failed or the snapshot has
 // not caught up yet: empty cooldown fields drop the local account-level block.
-func (s *OpenAIGatewayService) isOpenAIAccountRequestRuntimeBlocked(account *Account, requestedModel string) bool {
+func (s *OpenAIGatewayService) isOpenAIAccountRequestRuntimeBlocked(account *Account, requestedModel string, contexts ...context.Context) bool {
 	if s == nil {
 		return false
 	}
@@ -565,6 +565,9 @@ func (s *OpenAIGatewayService) isOpenAIAccountRequestRuntimeBlocked(account *Acc
 			return true
 		}
 		s.clearOpenAIAccountRuntimeBlockIfUnchanged(account.ID, snapshot)
+	}
+	if account != nil && len(contexts) > 0 && transientProbeAllowed(contexts[0], account.ID, canonicalOpenAIAccountSchedulingModel(account, requestedModel)) {
+		return false
 	}
 	return s.isOpenAIAccountModelRuntimeBlocked(account, requestedModel)
 }

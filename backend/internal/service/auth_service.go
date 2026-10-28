@@ -18,6 +18,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordhash"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -533,8 +534,8 @@ func (s *AuthService) IsEmailVerifyEnabled(ctx context.Context) bool {
 
 // Login 用户登录，返回JWT token
 func (s *AuthService) Login(ctx context.Context, email, password string) (string, *User, error) {
-	// 查找用户
-	user, err := s.userRepo.GetByEmail(ctx, email)
+	// 邮箱继续按原规则登录，迁移账号额外支持原用户名。
+	user, err := s.findUserForPasswordLogin(ctx, email)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			return "", nil, ErrInvalidCredentials
@@ -1470,8 +1471,7 @@ func (s *AuthService) HashPassword(password string) (string, error) {
 
 // CheckPassword 验证密码是否匹配
 func (s *AuthService) CheckPassword(password, hashedPassword string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	return err == nil
+	return passwordhash.Verify(password, hashedPassword)
 }
 
 // RefreshToken 刷新token

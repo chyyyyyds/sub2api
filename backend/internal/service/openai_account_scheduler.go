@@ -1457,7 +1457,7 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 			filterStats.exclude("platform_mismatch")
 			continue
 		}
-		if s.service.isOpenAIAccountRequestRuntimeBlocked(account, req.RequestedModel) {
+		if s.service.isOpenAIAccountRequestRuntimeBlocked(account, req.RequestedModel, ctx) {
 			filterStats.exclude("runtime_blocked")
 			continue
 		}
@@ -1784,7 +1784,7 @@ func (s *defaultOpenAIAccountScheduler) isAccountRequestCompatibleReason(ctx con
 	if req.RequirePrivacySet && !account.IsPrivacySet() {
 		return false, "privacy_not_set"
 	}
-	if s != nil && s.service != nil && s.service.isOpenAIAccountRequestRuntimeBlocked(account, req.RequestedModel) {
+	if s != nil && s.service != nil && s.service.isOpenAIAccountRequestRuntimeBlocked(account, req.RequestedModel, ctx) {
 		return false, "runtime_blocked"
 	}
 	if s != nil && s.service != nil && s.service.isOpenAIProxyStreamQuarantined(ctx, account) {
@@ -2175,23 +2175,34 @@ func (s *OpenAIGatewayService) selectAccountWithScheduler(
 	previousResponseCanMove bool,
 	useUpstreamTokenCost bool,
 ) (*AccountSelectionResult, OpenAIAccountScheduleDecision, error) {
-	selection, decision, err := s.selectAccountWithSchedulerOnce(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove, useUpstreamTokenCost)
-	if err == nil || openAIProxyStreamQuarantineBypassed(ctx) {
+	selectOnce := func(attemptCtx context.Context) (*AccountSelectionResult, OpenAIAccountScheduleDecision, error) {
+		return s.selectAccountWithSchedulerOnce(attemptCtx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove, useUpstreamTokenCost)
+	}
+	selection, decision, err := selectOnce(ctx)
+	if err == nil || (!errors.Is(err, ErrNoAvailableAccounts) && !errors.Is(err, ErrNoAvailableCompactAccounts)) || NormalizeOpenAICompatiblePlatform(platform) != PlatformOpenAI {
 		return selection, decision, err
 	}
-	if !errors.Is(err, ErrNoAvailableAccounts) && !errors.Is(err, ErrNoAvailableCompactAccounts) {
-		return selection, decision, err
+	if !openAIProxyStreamQuarantineBypassed(ctx) {
+		if blocked := s.getOpenAIProxyStreamCircuit().activeBlockCount(time.Now()); blocked > 0 {
+			s.logOpenAIProxyStreamQuarantineFailOpen(requestedModel, blocked)
+			ctx = withOpenAIProxyStreamQuarantineBypass(ctx)
+			selection, decision, err = selectOnce(ctx)
+			if err == nil || (!errors.Is(err, ErrNoAvailableAccounts) && !errors.Is(err, ErrNoAvailableCompactAccounts)) {
+				return selection, decision, err
+			}
+		}
 	}
-	// The circuit only ever quarantines PlatformOpenAI accounts.
-	if NormalizeOpenAICompatiblePlatform(platform) != PlatformOpenAI {
-		return selection, decision, err
+	// 所有正常候选均因内置瞬时错误冷却不可用时，最多放行一次受限探测。
+	// 不清除冷却，不重试本请求已经失败的账号，也不改变其他准入规则。
+	if recovered, probeDecision, ok := s.trySelectOpenAITransientProbe(ctx, OpenAIAccountScheduleRequest{
+		GroupID: groupID, Platform: PlatformOpenAI, RequestedModel: requestedModel,
+		RequiredTransport: requiredTransport, RequiredCapability: requiredCapability,
+		RequiredImageCapability: requiredImageCapability, RequireCompact: requireCompact,
+		ExcludedIDs: excludedIDs,
+	}, selectOnce); ok {
+		return recovered, probeDecision, nil
 	}
-	blocked := s.getOpenAIProxyStreamCircuit().activeBlockCount(time.Now())
-	if blocked == 0 {
-		return selection, decision, err
-	}
-	s.logOpenAIProxyStreamQuarantineFailOpen(requestedModel, blocked)
-	return s.selectAccountWithSchedulerOnce(withOpenAIProxyStreamQuarantineBypass(ctx), groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove, useUpstreamTokenCost)
+	return selection, decision, err
 }
 
 type openAIGroupPrivacyRequirementContextKey struct{}

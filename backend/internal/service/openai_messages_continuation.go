@@ -24,6 +24,13 @@ func openAICompatContinuationEnabled(account *Account, model string) bool {
 	if account == nil || account.Type != AccountTypeAPIKey {
 		return false
 	}
+	// 支持 Responses 或 prompt_cache_key 不代表支持 previous_response_id。
+	// Messages 本身携带完整历史；只有已明确验证续接能力的账号才允许改成有状态请求。
+	// 缺省及非布尔值均走无状态重放，避免第三方上游通用 400、空回答或丢失上下文。
+	supported, _ := account.Extra["openai_messages_continuation_supported"].(bool)
+	if !supported {
+		return false
+	}
 	return shouldAutoInjectPromptCacheKeyForCompat(model)
 }
 

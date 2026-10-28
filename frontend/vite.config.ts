@@ -158,6 +158,7 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: devPort,
       proxy: {
+        '/canvas': { target: env.VITE_CANVAS_SERVER_URL || 'http://127.0.0.1:3001', changeOrigin: true },
         '/api': {
           target: backendUrl,
           changeOrigin: true

@@ -8,7 +8,7 @@
 # =============================================================================
 
 ARG NODE_IMAGE=node:24-alpine
-ARG GOLANG_IMAGE=golang:1.27.2-alpine
+ARG GOLANG_IMAGE=golang:1.27.3-alpine
 ARG ALPINE_IMAGE=alpine:3.21
 ARG POSTGRES_IMAGE=postgres:18-alpine
 ARG GOPROXY=https://goproxy.cn,direct
@@ -26,7 +26,7 @@ ARG NPM_CONFIG_REGISTRY
 WORKDIR /app/frontend
 
 # Install pnpm (pinned to v9 to match CI and keep builds reproducible)
-RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
@@ -50,6 +50,14 @@ RUN pnpm run build
 # cross-compile to the target arch below. The binary is CGO_ENABLED=0, so this
 # is a clean pure-Go cross-compile — no QEMU emulation of go mod download / go
 # build (emulated networking here was dropping module fetches with EOF).
+FROM --platform=${BUILDPLATFORM} oven/bun:1.4.0 AS canvas-builder
+WORKDIR /app/canvas/web
+COPY canvas/web/package.json canvas/web/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY canvas/VERSION canvas/CHANGELOG.md /app/canvas/
+COPY canvas/web/ ./
+RUN VITE_BASE=/canvas/ VITE_SUB2API_HOST=true bun run build
+
 FROM --platform=${BUILDPLATFORM} ${GOLANG_IMAGE} AS backend-builder
 
 # Build arguments for version info (set by CI)
@@ -82,6 +90,7 @@ COPY backend/ ./
 
 # Copy frontend dist from previous stage (must be after backend copy to avoid being overwritten)
 COPY --from=frontend-builder /app/backend/internal/web/dist ./internal/web/dist
+COPY --from=canvas-builder /app/canvas/web/dist ./internal/web/dist/canvas
 
 # Build the binary (BuildType=release for CI builds, embed frontend)
 # Version precedence: build arg VERSION > exact git tag > cmd/server/VERSION
@@ -140,6 +149,7 @@ WORKDIR /app
 
 # Copy binary/resources with ownership to avoid extra full-layer chown copy
 COPY --from=backend-builder --chown=sub2api:sub2api /app/sub2api /app/sub2api
+COPY canvas/LICENSE /app/licenses/infinite-canvas-LICENSE
 COPY --from=backend-builder --chown=sub2api:sub2api /app/backend/resources /app/resources
 
 # Create data directory

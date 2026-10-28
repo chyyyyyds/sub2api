@@ -1,38 +1,8 @@
-/* Stage7D：仅四个目标页生效。离开页面后外壳规则自动失效，保护钱包、资料和管理员。 */
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) {
-  --uc-bg:#05080d;
-  --uc-panel:#090f17;
-  --uc-border:#253546;
-  --uc-muted:#9aabc3;
-  --uc-text:#f1f8ff;
-  background:radial-gradient(ellipse 44% 19% at 51% -7%,#0061a629,transparent 80%),radial-gradient(ellipse 24% 26% at 102% 48%,#1d126d16,transparent 90%),linear-gradient(118deg,#05080d,#070b10 56%,#05080e);
-  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft Yahei",sans-serif;
-  isolation:isolate;
-}
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-header {
-  min-height:74px;
-  background:linear-gradient(180deg,#05090efb,#05080df4);
-  border-bottom:1px solid #506b9145;
-  box-shadow:0 8px 26px #00000042;
-}
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-nav { gap:17px; }
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-nav-link { min-height:74px; color:#cad4e3; font-weight:560; letter-spacing:.015em; padding-inline:16px; }
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-nav-link:is(:hover,.uc-active) { color:#38f3e9; }
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-active::after { left:13px; right:13px; background:#12ede2; box-shadow:0 0 11px 2px #07f4e1a3,0 0 29px #0bdcff70; }
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-balance { box-shadow:inset 0 0 12px #12ead71b,0 0 14px #0bebcb0b; }
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-avatar { box-shadow:0 0 0 3px #0d393c,0 0 19px #0af3d537; }
-.user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-workspace { max-width:1850px; padding:21px 32px 72px; }
+/* 页面内容增强样式；导航、背景和工作区统一由 user-console.css 管理。 */
 .user-console.user-console:has(.uc-analytics) .uc-tabs { margin-bottom:23px; border-color:#253246; }
 .user-console.user-console:has(.uc-analytics) .uc-tabs a { min-height:61px; color:#c0ccdd; }
 .user-console.user-console:has(.uc-analytics) .uc-tabs a[aria-current=page] { color:#58eff2; text-shadow:0 0 18px #0bead846; }
 .user-console.user-console:has(.uc-analytics) .uc-tabs a[aria-current=page]::after { box-shadow:0 0 14px 3px #05f0e099; }
-/* 请求明细顶部蓝紫弧光，装饰节点始终不接收鼠标事件。 */
-.user-console.user-console:has(.ua-requests) .uc-header {
-  background:radial-gradient(ellipse 300px 122px at 69% -29%,#1843d380,#0a27793d 37%,transparent 76%),radial-gradient(ellipse 230px 75px at 69% -29%,#0b4cf861,transparent 78%),linear-gradient(180deg,#05090ffb,#05080ef6);
-}
-.user-console.user-console:has(.ua-requests) .uc-header::before { content:""; position:absolute; z-index:-1; pointer-events:none; right:21%; top:-156px; width:480px; height:227px; border-bottom:1px solid #1a64ff94; border-radius:0 0 56% 48%; transform:rotate(13deg); box-shadow:0 6px 27px -21px #1864ffde; opacity:.68; background:radial-gradient(ellipse at 64% 47%,#215aef1f,transparent 68%); }
-.user-console.user-console:has(.ua-requests) .uc-header::after { content:""; position:absolute; z-index:-1; pointer-events:none; top:0; right:18%; width:320px; height:2px; background:linear-gradient(90deg,transparent 3%,#1450dd38,#3a85ff8c,transparent 86%); box-shadow:0 0 24px 8px #0745b632; }
-
 /* 统计卡使用已验收 V1.2.1 的暗底与多层渐变，真实数值和精度由原组件保持。 */
 .user-console.user-console .uc-analytics { --ua-panel:#090f17; --ua-line:#5c7ba442; --ua-muted:#92a2b9; --ua-text:#f1f8ff; }
 /* 时间筛选在统计卡片上方独立成行，随内容正常布局。 */
@@ -252,8 +222,6 @@
 .user-console.user-console .uk-bars span { background:linear-gradient(#1febd3,#096d80); box-shadow:0 0 15px #0fe2c721,inset 0 1px #a8fff466; }
 
 @media (max-width:1540px) {
-  .user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-workspace { padding:20px 24px 68px; }
-  .user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-nav { gap:3px; }
   .user-console.user-console .uc-analytics .ua-stat { padding:16px 13px; gap:12px; }
   .user-console.user-console .uc-analytics .ua-stat-icon { width:56px; height:56px; }
   .user-console.user-console .uc-analytics .ua-stat-copy strong { font-size:23px; }
@@ -293,10 +261,6 @@
   .user-console.user-console .uc-analytics .ua-donut-content,.user-console.user-console .uc-analytics .ua-overview-bottom .ua-donut-content { grid-template-columns:minmax(100px,38%) minmax(0,1fr); }
 }
 @media (max-width:800px) {
-  .user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-header { min-height:108px; }
-  .user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-nav { gap:0; }
-  .user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-nav-link { padding:0 6px; min-height:52px; font-size:13px; }
-  .user-console.user-console:has(:is(.uc-analytics,.um-console,.uk-console)) .uc-workspace { padding:15px 12px 60px; }
   .user-console.user-console .uc-analytics .ua-toolbar { margin:0; }
   .user-console.user-console .uc-analytics .ua-panel { padding:16px 13px; }
   .user-console.user-console .uc-analytics .ua-stat { min-height:115px; padding:14px 11px; gap:9px; }
@@ -311,7 +275,6 @@
   .user-console.user-console .uc-analytics .ua-trend-canvas { height:220px; }
   .user-console.user-console .uc-analytics .ua-chart-legend { gap:8px; }
   .user-console.user-console .uc-analytics h3 { font-size:16px; }
-  .user-console.user-console:has(.ua-requests) .uc-header::before { width:260px; right:8%; opacity:.6; }
 }
 @media (max-width:600px) {
   .user-console.user-console .um-model-grid,.user-console.user-console .um-side { grid-template-columns:minmax(0,1fr); }

@@ -33,6 +33,7 @@ const (
 type ChannelMonitorV2PlatformConfig struct {
 	Platform string   `json:"platform"`
 	Enabled  bool     `json:"enabled"`
+	// 监控模型名称，按填写顺序保存及展示；空数组表示全部模型。
 	Models   []string `json:"models"`
 }
 
@@ -772,7 +773,8 @@ func normalizeChannelMonitorV2Config(cfg *ChannelMonitorV2Config) error {
 			return fmt.Errorf("%w: duplicate platform %s", ErrChannelMonitorV2InvalidConfig, p.Platform)
 		}
 		seen[p.Platform] = struct{}{}
-		p.Models = normalizeStringSet(p.Models)
+		// 模型顺序属于展示配置，去重后保留管理员填写的先后顺序。
+		p.Models = normalizeOrderedStringSet(p.Models)
 	}
 	sort.Slice(cfg.Platforms, func(i, j int) bool { return cfg.Platforms[i].Platform < cfg.Platforms[j].Platform })
 	return nil
@@ -902,6 +904,13 @@ func ChannelMonitorV2IgnoredCategorySet(cfg ChannelMonitorV2Config) map[string]s
 }
 
 func normalizeStringSet(values []string) []string {
+	out := normalizeOrderedStringSet(values)
+	sort.Strings(out)
+	return out
+}
+
+// normalizeOrderedStringSet 去除空白与重复项，保留首次出现的顺序。
+func normalizeOrderedStringSet(values []string) []string {
 	seen := make(map[string]struct{}, len(values))
 	out := make([]string, 0, len(values))
 	for _, value := range values {
@@ -915,7 +924,6 @@ func normalizeStringSet(values []string) []string {
 		seen[value] = struct{}{}
 		out = append(out, value)
 	}
-	sort.Strings(out)
 	return out
 }
 

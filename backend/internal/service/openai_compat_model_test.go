@@ -659,6 +659,7 @@ func TestForwardAsAnthropic_TrimsFullReplayOnlyForCodexCompatModels(t *testing.T
 			cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 		}
 		account := &Account{
+			Extra:       map[string]any{"openai_messages_continuation_supported": true},
 			ID:          1,
 			Name:        "openai-apikey",
 			Platform:    PlatformOpenAI,
@@ -741,6 +742,7 @@ func TestForwardAsAnthropic_AttachesPreviousResponseIDForCompatContinuation(t *t
 		cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 	}
 	account := &Account{
+		Extra:       map[string]any{"openai_messages_continuation_supported": true},
 		ID:          1,
 		Name:        "openai-apikey",
 		Platform:    PlatformOpenAI,
@@ -793,6 +795,7 @@ func TestForwardAsAnthropic_PreviousResponseIDKeepsMultiToolCallContext(t *testi
 		cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 	}
 	account := &Account{
+		Extra:       map[string]any{"openai_messages_continuation_supported": true},
 		ID:          1,
 		Name:        "openai-apikey",
 		Platform:    PlatformOpenAI,
@@ -848,6 +851,7 @@ func TestForwardAsAnthropic_ReplaysFullToolHistoryWhenPreviousResponseUnavailabl
 		cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 	}
 	account := &Account{
+		Extra:       map[string]any{"openai_messages_continuation_supported": true},
 		ID:          1,
 		Name:        "openai-apikey",
 		Platform:    PlatformOpenAI,
@@ -919,7 +923,8 @@ func TestForwardAsAnthropic_PreviousResponseUnavailableRetryFailureDoesNotLoop(t
 		httpUpstream: upstream,
 		cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 	}
-	account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Concurrency: 1, Credentials: map[string]any{"api_key": "sk-test", "base_url": "https://api.openai.com/v1"}}
+	account := &Account{
+		Extra: map[string]any{"openai_messages_continuation_supported": true}, ID: 1, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Concurrency: 1, Credentials: map[string]any{"api_key": "sk-test", "base_url": "https://api.openai.com/v1"}}
 	svc.bindOpenAICompatSessionResponseID(context.Background(), nil, account, "stable-cache-key", "resp_missing")
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
@@ -942,6 +947,7 @@ func TestForwardAsAnthropic_DisablesAPIKeyContinuationWhenUpstreamRequiresWebSoc
 		cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 	}
 	account := &Account{
+		Extra:       map[string]any{"openai_messages_continuation_supported": true},
 		ID:          1,
 		Name:        "openai-apikey",
 		Platform:    PlatformOpenAI,
@@ -1013,6 +1019,7 @@ func TestForwardAsAnthropic_APIKeyMetadataSessionSurvivesChangingCacheControlAnc
 		cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 	}
 	account := &Account{
+		Extra:       map[string]any{"openai_messages_continuation_supported": true},
 		ID:          1,
 		Name:        "openai-apikey",
 		Platform:    PlatformOpenAI,
@@ -1491,6 +1498,7 @@ func TestForwardAsAnthropic_StoresStreamingResponseIDWithoutUsage(t *testing.T) 
 		cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 	}
 	account := &Account{
+		Extra:       map[string]any{"openai_messages_continuation_supported": true},
 		ID:          1,
 		Name:        "openai-apikey",
 		Platform:    PlatformOpenAI,
@@ -2312,6 +2320,7 @@ func TestForwardAsAnthropic_AstraContinuationRestoresHistoryAndDisablesUnsupport
 			}}
 			svc := &OpenAIGatewayService{httpUpstream: upstream, cfg: &config.Config{}}
 			account := rawGPT56ResponsesAPIKeyAccount("gpt-6-astra", "gpt-6-astra")
+			account.Extra = map[string]any{"openai_messages_continuation_supported": true}
 			svc.bindOpenAICompatSessionResponseID(context.Background(), nil, account, "astra-session", "resp_old")
 			body := []byte(`{"model":"gpt-6-astra","max_tokens":16,"messages":[{"role":"user","content":"first"},{"role":"assistant","content":"ok"},{"role":"user","content":"second"}]}`)
 			for i := 0; i < 2; i++ {

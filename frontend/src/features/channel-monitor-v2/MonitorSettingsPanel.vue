@@ -376,6 +376,7 @@ const warningCachePercent = percentModel('warning_cache_rate')
 const criticalCachePercent = percentModel('critical_cache_rate')
 
 function setModels(platform: MonitorConfig['platforms'][number], event: Event) {
+  // 去重时保留填写顺序，渠道状态页按此顺序展示模型。
   platform.models = [
     ...new Set(
       (event.target as HTMLInputElement).value
@@ -383,7 +384,7 @@ function setModels(platform: MonitorConfig['platforms'][number], event: Event) {
         .map((v) => v.trim())
         .filter(Boolean)
     ),
-  ].sort()
+  ]
 }
 
 function toggleGroup(id: number) {
