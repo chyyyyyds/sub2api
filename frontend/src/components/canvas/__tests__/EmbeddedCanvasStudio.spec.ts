@@ -47,10 +47,47 @@ async function render() {
 }
 
 describe('图片创作桥接与用户会话', () => {
+  it('Key 查询期间提前加载空画布，记住 ready 并只发送随后验证通过的凭证', async () => {
+    let finish!: (value: never) => void
+    vi.mocked(keysAPI.getById).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const wrapper = await render()
+    const iframe = wrapper.find('iframe').element as HTMLIFrameElement
+    const post = vi.spyOn(iframe.contentWindow!, 'postMessage').mockImplementation(() => {})
+    window.dispatchEvent(new MessageEvent('message', { origin: location.origin, source: iframe.contentWindow!, data: { version: 1, type: 'new-api:canvas-ready', frameId: 'early-frame' } }))
+    expect(post).not.toHaveBeenCalled()
+    finish({ id: 1, user_id: 101, name: '图片', status: 'active', key: 'fixture-user-key' } as never)
+    await flushPromises()
+    expect(wrapper.find('iframe').element).toBe(iframe)
+    expect(post).toHaveBeenCalledTimes(1)
+    expect(post.mock.calls[0][0]).toMatchObject({ type: 'new-api:canvas-config', frameId: 'early-frame', keyId: 1, preferredModel: 'gpt-image-2' })
+    expect(keysAPI.getById).toHaveBeenCalledTimes(1)
+  })
+  it('同一用户资料刷新不清空选择、不重查目录、不暂停正在使用的画布', async () => {
+    const wrapper = await render()
+    const iframe = wrapper.find('iframe').element as HTMLIFrameElement
+    const post = vi.spyOn(iframe.contentWindow!, 'postMessage').mockImplementation(() => {})
+    window.dispatchEvent(new MessageEvent('message', { origin: location.origin, source: iframe.contentWindow!, data: { version: 1, type: 'new-api:canvas-ready', frameId: 'refresh-frame' } }))
+    const vm = wrapper.vm as unknown as { credential: object; selectedModel: string; selectedKey: number }
+    const credential = vm.credential
+    const calls = [vi.mocked(keysAPI.list).mock.calls.length, vi.mocked(keysAPI.getById).mock.calls.length, vi.mocked(axios.get).mock.calls.length]
+    post.mockClear()
+    // 模拟 auth/me 周期性返回同一用户的新资料对象，ID 与登录状态均未变化。
+    const auth = useAuthStore()
+    auth.user = { ...auth.user!, balance: 9.5 }
+    await flushPromises()
+    expect(vm.credential).toBe(credential)
+    expect(vm.selectedKey).toBe(1)
+    expect(vm.selectedModel).toBe('gpt-image-2')
+    expect(wrapper.find('iframe').element).toBe(iframe)
+    expect(wrapper.find('iframe').attributes('style') || '').not.toContain('pointer-events: none')
+    expect([vi.mocked(keysAPI.list).mock.calls.length, vi.mocked(keysAPI.getById).mock.calls.length, vi.mocked(axios.get).mock.calls.length]).toEqual(calls)
+    expect(post).not.toHaveBeenCalled()
+  })
   it('只读取用户Key接口，拒绝非所属Key', async () => {
     vi.mocked(keysAPI.getById).mockResolvedValue({ id: 1, user_id: 202, key: 'foreign-key', status: 'active' } as never)
     const wrapper = await render()
-    expect(wrapper.find('iframe').exists()).toBe(false)
+    // 无凭证框架可以提前下载，但未核实所属权时必须禁用且不能读取模型。
+    expect(wrapper.find('iframe').attributes('style')).toContain('pointer-events: none')
     expect(axios.get).not.toHaveBeenCalled()
   })
   it('验证窗口来源并关联握手，支持iframe独立刷新', async () => {
@@ -101,7 +138,7 @@ describe('图片创作桥接与用户会话', () => {
     expect(vm.selectedKey).toBe(1)
     expect(vm.keyOptions).toHaveLength(1)
     expect(vm.credential.keyId).toBe(1)
-    expect(keysAPI.getById).toHaveBeenCalledTimes(2)
+    expect(keysAPI.getById).toHaveBeenCalledTimes(1)
   })
   it('耗尽、过期和禁用 Key 不参与自动匹配', async () => {
     vi.mocked(keysAPI.list).mockResolvedValue({ items: [
@@ -111,19 +148,19 @@ describe('图片创作桥接与用户会话', () => {
     ], total: 3 } as never)
     const wrapper = await render()
     expect(keysAPI.getById).not.toHaveBeenCalled()
-    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.find('iframe').attributes('style')).toContain('pointer-events: none')
     expect(wrapper.text()).toContain('imageStudio.noKeys')
   })
   it('图片分组权限关闭时不能配置画布', async () => {
     vi.mocked(keysAPI.getById).mockResolvedValue({ id: 1, name: '受限', user_id: 101, status: 'active', key: 'fixture-user-key', group: { allow_image_generation: false } } as never)
     const wrapper = await render()
-    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.find('iframe').attributes('style')).toContain('pointer-events: none')
     expect(wrapper.text()).toContain('imageStudio.incompatible')
   })
   it('模型目录仅包含视频时不能配置图片画布', async () => {
     vi.mocked(axios.get).mockResolvedValue({ data: { data: [{ id: 'seedance-2.0' }] } })
     const wrapper = await render()
-    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.find('iframe').attributes('style')).toContain('pointer-events: none')
     expect(wrapper.text()).toContain('imageStudio.incompatible')
   })
   it('切换模型时重新核实目录，不沿用已撤销权限', async () => {
@@ -245,6 +282,6 @@ describe('图片创作桥接与用户会话', () => {
     const wrapper = await render()
     expect(wrapper.text()).toContain('imageStudio.failed')
     expect(wrapper.text()).not.toContain('imageStudio.noKeys')
-    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.find('iframe').attributes('style')).toContain('pointer-events: none')
   })
 })

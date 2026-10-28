@@ -24,6 +24,19 @@ beforeEach(() => {
   vi.mocked(axios.get).mockReset().mockResolvedValue({ data: { data: [{ id: 'gpt-6' }, { id: 'claude-sonnet' }, { id: 'private-alias' }] } })
 })
 describe('P2 模型与 Key 偏好重新验证', () => {
+  it('发现默认 Key 后不预读其余目录，手动选择时仍用新 Key 重新校验', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: { data: ['gpt-image-2', 'gpt-6-sol'].map(id => ({ id })) } })
+    const { selection: s, wrapper } = setup()
+    await vi.waitFor(() => expect(s.credential.value?.keyId).toBe(1))
+    expect(keysAPI.getById).toHaveBeenCalledTimes(1)
+    expect(axios.get).toHaveBeenCalledTimes(1)
+    expect(s.keyOptions.value.map(option => option.value)).toEqual([1, 2])
+    s.selectedKey.value = 2
+    await vi.waitFor(() => expect(s.credential.value?.keyId).toBe(2))
+    expect(keysAPI.getById).toHaveBeenLastCalledWith(2)
+    expect(axios.get).toHaveBeenLastCalledWith('/v1/models', expect.objectContaining({ headers: { Authorization: 'Bearer memory-2' } }))
+    wrapper.unmount()
+  })
   it.each([
     [['codex-auto-review', 'gpt-6.1-sol', 'gpt-6-sol'], 'gpt-6-sol'],
     [['private-alias', 'gpt-6.1-sol'], 'gpt-6.1-sol'],

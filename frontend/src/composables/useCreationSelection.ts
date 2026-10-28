@@ -68,6 +68,8 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
   let controller = new AbortController()
   let discovery = new AbortController()
   let disposed = false
+  // 初次发现目录的结果仅在本次选择前驻留内存，使用后立即清空，避免重复查询同一 Key。
+  const discoveredCatalogs = new Map<number, { catalog: KeyCatalog; secret: string }>()
 
   // 旧会话中的 auto 只触发一次默认选择，界面和后续请求始终绑定具体 Key。
   const selectedKey = computed({ get: () => preferences.value[kind.value].key, set: value => { preferences.value[kind.value].key = value === 'auto' ? 0 : value } })
@@ -107,6 +109,7 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
 
   async function loadKeys() {
     invalidate()
+    discoveredCatalogs.clear()
     discovery.abort()
     discovery = new AbortController()
     const signal = discovery.signal
@@ -120,6 +123,7 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
     try {
       let page = 1
       const catalogs: KeyCatalog[] = []
+      let foundPreferred = false
       while (true) {
         const result = await keysAPI.list(page, 100, undefined, { signal })
         if (signal.aborted || current !== discoveryEpoch) return
@@ -129,10 +133,17 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
             catalogs.push({ id: key.id, name: key.name, groupName: key.group?.name || '', available: false, imageAllowed: false, models: [], failed: false })
             continue
           }
+          // 已找到默认可用 Key 后，其余目录按选择加载；手动刷新也只核实所选 Key。
+          if (foundPreferred || (selectedKey.value && selectedKey.value !== 'auto' && selectedKey.value !== key.id)) {
+            catalogs.push({ id: key.id, name: key.name, groupName: key.group?.name || '', available: true, imageAllowed: key.group?.allow_image_generation !== false, models: [], failed: false })
+            continue
+          }
           try {
-            const { catalog } = await readCatalog(key.id, signal, owner)
+            const verified = await readCatalog(key.id, signal, owner)
             if (signal.aborted) return
-            catalogs.push(catalog)
+            catalogs.push(verified.catalog)
+            discoveredCatalogs.set(key.id, verified)
+            foundPreferred = candidates(verified.catalog).length > 0 && verified.catalog.imageAllowed && imageModelCandidates(verified.catalog.models).some(model => /image|flux|seedream|dall/i.test(model))
           } catch {
             if (signal.aborted) return
             catalogs.push({ id: key.id, name: key.name, groupName: key.group?.name || '', available: true, imageAllowed: false, models: [], failed: true })
@@ -147,6 +158,7 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
     } catch { if (!signal.aborted) error.value = t('imageStudio.failed'); return }
     finally { if (current === discoveryEpoch) loadingKeys.value = false }
     await selectCredential()
+    discoveredCatalogs.clear()
   }
 
   /** 每次切换都重新检查本人密钥及网关目录，不能用旧目录绕过白名单、额度或分组权限。 */
@@ -183,7 +195,9 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
     try {
       for (const entry of eligible) {
         try {
-          const { catalog, secret } = await readCatalog(entry.id, signal, owner)
+          const verified = discoveredCatalogs.get(entry.id)
+          discoveredCatalogs.clear()
+          const { catalog, secret } = verified || await readCatalog(entry.id, signal, owner)
           if (signal.aborted || current !== epoch) return
           keys.value = keys.value.map(item => item.id === entry.id ? catalog : item)
           const allowed = candidates(catalog)
@@ -213,6 +227,7 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
     if (!valid) {
       invalidate()
       discovery.abort()
+      discoveredCatalogs.clear()
       keys.value = []
       locked.value = true
       loadingKeys.value = false
@@ -220,12 +235,13 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
     }
   }
   watch([kind, selectedKey, selectedModel], () => { void selectCredential() }, { flush: 'sync' })
-  watch(() => [auth.user?.id, auth.isAuthenticated], () => {
+  // 多源监听分别比较身份值；同一用户的余额等资料刷新不能被误判成换号。
+  watch([() => auth.user?.id, () => auth.isAuthenticated], () => {
     locked.value = false
     preferences.value = { chat: { key: 0, model: '' }, image: { key: 0, model: '' }, video: { key: 0, model: '' } }
     void loadKeys()
   })
   onMounted(() => { window.addEventListener('storage', checkSession); void loadKeys() })
-  onBeforeUnmount(() => { disposed = true; invalidate(); discovery.abort(); window.removeEventListener('storage', checkSession) })
+  onBeforeUnmount(() => { disposed = true; invalidate(); discovery.abort(); discoveredCatalogs.clear(); window.removeEventListener('storage', checkSession) })
   return { selectedKey, selectedModel, credential, keys, modelOptions, keyOptions, loadingKeys, loadingModels, locked, error, notice, reload: loadKeys }
 }

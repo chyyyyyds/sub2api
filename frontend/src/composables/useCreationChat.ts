@@ -184,7 +184,8 @@ export function useCreationChat(credential: Ref<CreationCredential | null>, lock
     } catch { if (current === generation) storageError.value = true }
     finally { if (current === generation) loading.value = false }
   }
-  watch(() => [auth.user?.id, auth.isAuthenticated, locked.value], () => { void restore() }, { immediate: true, flush: 'sync' })
+  // 周期性刷新同一用户资料时保留当前会话与流式请求，仅在身份或锁定状态变化时重置。
+  watch([() => auth.user?.id, () => auth.isAuthenticated, locked], () => { void restore() }, { immediate: true, flush: 'sync' })
   function checkSession() {
     let valid = false
     try { valid = !!localStorage.getItem('auth_token') && JSON.parse(localStorage.getItem('auth_user') || 'null')?.id === auth.user?.id } catch { /* 无法确认身份时立即清空视图。 */ }

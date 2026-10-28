@@ -40,7 +40,7 @@ function restartFrame() {
 }
 function sendConfig() {
   const credential = props.credential
-  if (!credential || !frameId || props.locked) return
+  if (!credential || !frameId || props.locked || !auth.isAuthenticated || credential.userId !== auth.user?.id) return
   sessionId = crypto.randomUUID()
   frame.value?.contentWindow?.postMessage(canvasConfig(credential.userId, credential.apiKey, credential.keyName,
     credential.models, credential.model, frameId, sessionId, credential.keyId), location.origin)
@@ -58,6 +58,13 @@ function handleMessage(event: MessageEvent) {
   }
   if (credential && message.type === CANVAS_CONFIGURED && message.frameId === frameId && message.sessionId === sessionId) emit('connected', true)
 }
+// 提前加载无凭证画布，与 Key 查询并行；身份变化仍重建文档，握手前不读取用户作品。
+watch([() => auth.user?.id, () => auth.isAuthenticated], ([owner, authenticated]) => {
+  const nextOwner = authenticated ? owner : undefined
+  if (frameOwner.value === nextOwner) return
+  frameOwner.value = nextOwner
+  restartFrame()
+}, { immediate: true, flush: 'sync' })
 // 同一用户热更新内存配置，保留项目、提示词和结果；重新鉴权期间暂停旧凭证。
 watch(() => props.credential, credential => {
   emit('connected', false)

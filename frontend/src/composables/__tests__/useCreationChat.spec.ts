@@ -26,6 +26,32 @@ beforeEach(() => {
   vi.mocked(streamChat).mockReset().mockImplementation(async (_config, _context, _signal, text) => { text('完整回答') })
 })
 describe('聊天生命周期和并发归属', () => {
+  it('同一用户资料刷新不重置会话、草稿或中断正在接收的回答', async () => {
+    let complete!: () => void
+    let signal!: AbortSignal
+    vi.mocked(streamChat).mockImplementation(async (_config, _context, currentSignal, text) => {
+      signal = currentSignal
+      text('正在回答')
+      await new Promise<void>(resolve => { complete = resolve })
+    })
+    const { chat, wrapper } = setup()
+    await ready(chat)
+    chat.draft.value = '保留当前会话'
+    const pending = chat.send()
+    await vi.waitFor(() => expect(chat.busy.value).toBe(true))
+    const id = chat.activeId.value
+    chat.draft.value = '尚未发送的草稿'
+    auth.user = { ...auth.user }
+    await Promise.resolve()
+    expect(signal.aborted).toBe(false)
+    expect(chat.busy.value).toBe(true)
+    expect(chat.activeId.value).toBe(id)
+    expect(chat.draft.value).toBe('尚未发送的草稿')
+    complete()
+    await pending
+    expect(chat.active.value?.messages.at(-1)?.content).toBe('正在回答')
+    wrapper.unmount()
+  })
   it('多轮上下文、连续发送防重和请求快照', async () => {
     const { chat, credential, wrapper } = setup()
     await ready(chat)
