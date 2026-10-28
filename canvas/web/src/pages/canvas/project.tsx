@@ -2,7 +2,7 @@ import { IS_SUB2API_HOST } from "@/lib/sub2api-context";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent as ReactChangeEvent, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Group, Video } from "lucide-react";
+import { ArrowLeft, Group, Video } from "lucide-react";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 
@@ -3108,8 +3108,16 @@ function InfiniteCanvasPage() {
 
     if (!projectLoaded) return <CanvasRefreshShell />;
 
+    const returnToImage = () => {
+        // 切换前保存最新视口，并记录原画布，便于生图页一键返回同一个项目。
+        updateProject(projectId, { viewport: viewportRef.current });
+        navigate("/image", { state: { canvasProjectId: projectId } });
+    };
+
     return (
-        <main className="flex h-full min-h-0 overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
+        <div className="flex h-full min-h-0 flex-col" style={{ background: theme.canvas.background, color: theme.node.text }}>
+            {IS_SUB2API_HOST && <nav className="flex min-h-12 shrink-0 items-center justify-between gap-3 px-4 text-sm" aria-label="创作工作区切换"><button type="button" onClick={returnToImage} className="flex min-h-11 shrink-0 items-center gap-2 rounded-md px-2 transition hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-white/10"><ArrowLeft className="size-4" aria-hidden="true" />返回生图</button><span className="font-semibold">画布工作台</span></nav>}
+        <main className="flex min-h-0 flex-1 overflow-hidden">
             <CanvasSidePanel nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={focusNode} onPreviewNode={setPreviewNodeId} onInsertAsset={handleAssetInsert} />
             <section className="relative min-w-0 flex-1 overflow-hidden">
                 <CanvasTopBar
@@ -3122,7 +3130,7 @@ function InfiniteCanvasPage() {
                     onCancelTitleEditing={() => setTitleEditing(false)}
                     canUndo={historyState.canUndo}
                     canRedo={historyState.canRedo}
-                    onHome={() => navigate("/")}
+                    onHome={IS_SUB2API_HOST ? returnToImage : () => navigate("/")}
                     onProjects={() => navigate("/canvas")}
                     onCreateProject={createAndOpenProject}
                     onDeleteProject={deleteCurrentProject}
@@ -3404,5 +3412,6 @@ function InfiniteCanvasPage() {
                 <AssetPickerModal open={assetPickerOpen} onInsert={handleAssetInsert} onClose={() => setAssetPickerOpen(false)} />
             </section>
         </main>
+        </div>
     );
 }

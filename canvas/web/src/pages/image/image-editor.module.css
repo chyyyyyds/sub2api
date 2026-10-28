@@ -1,4 +1,10 @@
 /* V6 参数面板只挂载在宿主生图工作台，沿用宿主深色与青绿主题。 */
+.workspaceNav { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 16px; }
+.workspaceNav > span { font-size: 14px; font-weight: 600; }
+.workspaceNav > button { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 0 12px; border-radius: 6px; color: inherit; background: transparent; cursor: pointer; }
+.workspaceNav > button:hover:not(:disabled) { background: var(--muted); }
+.workspaceNav > button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.workspaceNav > button:disabled { opacity: .5; cursor: wait; }
 .editor {
     --editor-bg: #09131d;
     --editor-raised: #101f2b;

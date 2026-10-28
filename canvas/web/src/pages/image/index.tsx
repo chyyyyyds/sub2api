@@ -19,7 +19,7 @@ import { generationLogStorageKey, isGenerationLogStorageKeyForScope } from "@/li
 import { modelOptionName, modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
@@ -79,6 +79,7 @@ const logStore = localforage.createInstance({ name: "infinite-canvas", storeName
 export default function ImagePage() {
     const { message, modal } = App.useApp();
     const navigate = useNavigate();
+    const location = useLocation();
     const { t } = useTranslation();
     useSyncExternalStore(subscribeImagePreviews, getImagePreviewRevision);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +119,12 @@ export default function ImagePage() {
     const generationCount = Math.max(1, Math.min(10, Number(config.count) || 1));
     const parameterError = IS_SUB2API_HOST ? imageSettingsError(effectiveConfig, references.length) : "";
     const qualityLabel = ({ auto: "自动", low: "低", medium: "中", high: "高", xhigh: "超高", max: "极致" } as Record<string, string>)[effectiveConfig.quality] || effectiveConfig.quality;
+
+    const enterCanvas = () => {
+        // 从画布返回后优先回到原项目；首次进入复用最近画布，没有项目时由画布页创建。
+        const project = useCanvasStore.getState().projects.find(item => item.id === location.state?.canvasProjectId);
+        navigate(project ? `/canvas/${project.id}` : "/canvas?mode=recent");
+    };
 
     useEffect(() => {
         if (!running || !startedAt) return;
@@ -445,6 +452,7 @@ export default function ImagePage() {
 
     return (
         <div data-mobile-pane={mobilePane} className={`${IS_SUB2API_HOST ? "host-image-workbench " : ""}flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100`}>
+            {IS_SUB2API_HOST && <nav className={editorStyles.workspaceNav} aria-label="创作工作区切换"><span>生图工作台</span><button type="button" disabled={running} title={running ? "请等待本次生成完成后切换画布" : "打开画布继续创作"} onClick={enterCanvas}>进入画布<ArrowRight className="size-4" aria-hidden="true" /></button></nav>}
             {IS_SUB2API_HOST && <nav className={editorStyles.mobileTabs} aria-label="图片工作区"><button type="button" aria-pressed={mobilePane === "parameters"} onClick={() => setMobilePane("parameters")}>创作参数</button><button type="button" aria-pressed={mobilePane === "results"} onClick={() => setMobilePane("results")}>生成结果{results.length ? ` · ${results.length}` : ""}</button><button type="button" onClick={() => setLogsOpen(true)}>生成记录</button></nav>}
             <main className="host-image-grid grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
                 <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
