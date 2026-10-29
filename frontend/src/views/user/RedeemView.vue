@@ -26,8 +26,8 @@
       <section ref="storeCard" class="uw-panel uw-store" :class="{ 'uw-highlighted': storeHighlighted }" tabindex="-1" aria-labelledby="wallet-store-title">
         <div class="uw-store-icon"><Icon name="gift" size="xl" /></div>
         <div class="uw-store-text"><h2 id="wallet-store-title">{{ t('userWallet.getCode') }}</h2><p>{{ t('userWallet.storeDescription') }}</p></div>
-        <!-- 无明确店铺配置时禁用入口，禁止挪用订阅或余额通知 URL。 -->
-        <button type="button" class="uw-secondary" disabled>{{ t('userWallet.storeUnconfigured') }}</button>
+        <!-- 使用已确认的余额兑换码店铺，新窗口打开并隔离来源窗口。 -->
+        <a class="uw-secondary" href="https://catfk.com/shop/HCE5SKUD" target="_blank" rel="noopener noreferrer">{{ t('userWallet.getCode') }}</a>
         <Icon name="gift" class="uw-watermark" size="xl" aria-hidden="true" />
       </section>
       <section class="uw-panel uw-info">

@@ -178,12 +178,15 @@ describe('活动、客服与页面内帮助', () => {
     expect(mocks.getHistory).toHaveBeenLastCalledWith(2, 7)
   })
   it('空活动时两侧分页禁用', async () => { const w = await mountView(); expect(w.text()).toContain('暂无活动'); expect(button(w, '下一页').attributes('disabled')).toBeDefined(); expect(button(w, '上一页').attributes('disabled')).toBeDefined() })
-  it('客服使用真实文本安全展示，不将邮箱标为 QQ，店铺未配置没有错误链接', async () => {
+  it('客服使用真实文本安全展示，充值入口使用已确认店铺', async () => {
     mocks.getPublicSettings.mockResolvedValue({ contact_info: '<script>alert(1)</script> support@example.test', subscription_url: 'https://wrong.example.test', balance_low_notify_recharge_url: 'https://wrong.example.test' })
     const w = await mountView()
     expect(w.get('.uw-contact').text()).toContain('<script>'); expect(w.find('script').exists()).toBe(false)
-    expect(w.text()).not.toContain('QQ'); expect(w.findAll('a')).toHaveLength(0)
-    expect(button(w, '云猫寄售店铺尚未配置').attributes('disabled')).toBeDefined()
+    expect(w.text()).not.toContain('QQ'); expect(w.findAll('a')).toHaveLength(1)
+    const link = w.get('.uw-store a')
+    expect(link.attributes('href')).toBe('https://catfk.com/shop/HCE5SKUD')
+    expect(link.attributes('target')).toBe('_blank')
+    expect(link.attributes('rel')).toBe('noopener noreferrer')
   })
   it('客服加载失败可重试，空配置明确展示', async () => {
     mocks.getPublicSettings.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({})
@@ -205,5 +208,5 @@ describe('活动、客服与页面内帮助', () => {
     const w = await mountView(); w.unmount(); finish({ items: [row()], total: 1 }); await flushPromises()
     expect(mocks.showError).not.toHaveBeenCalled()
   })
-  it('英文完整文案', async () => { const w = await mountView('en'); expect(w.text()).toContain('Get a redeem code'); expect(w.text()).toContain('Yunmao store is not configured'); expect(w.text()).not.toContain('userWallet.') })
+  it('英文完整文案', async () => { const w = await mountView('en'); expect(w.text()).toContain('Get a redeem code'); expect(w.get('.uw-store a').text()).toBe('Get a redeem code'); expect(w.text()).not.toContain('userWallet.') })
 })

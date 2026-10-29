@@ -1,5 +1,8 @@
 <template>
-  <div class="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+  <div class="relative flex min-h-screen items-center justify-center overflow-hidden p-4" :class="{ 'pt-20 sm:pt-4': modelPlazaEnabled }">
+    <router-link v-if="modelPlazaEnabled" to="/model-plaza" class="absolute right-4 top-4 z-20 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-primary-700 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-primary-300 dark:hover:bg-dark-800 sm:right-8 sm:top-8">
+      <Icon name="grid" size="sm" /><span>{{ t('nav.modelPlaza') }}</span>
+    </router-link>
     <!-- Background -->
     <div
       class="absolute inset-0 bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950"
@@ -66,8 +69,13 @@
 import { computed, onMounted } from 'vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
+import { useI18n } from 'vue-i18n'
+import Icon from '@/components/icons/Icon.vue'
+import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 
 const appStore = useAppStore()
+const { t } = useI18n()
+const modelPlazaEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.modelPlaza))
 
 const siteName = computed(() => appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))

@@ -689,7 +689,8 @@ const ChevronDownIcon = {
 // Public-settings flags go through the registry in utils/featureFlags.ts,
 // which handles the opt-in vs opt-out fallback when settings haven't loaded
 // yet. Admin-only flags (not in public settings) stay inline below.
-const flagChannelMonitor = makeSidebarFlag(FeatureFlags.channelMonitor)
+// 管理员始终可进入监控配置和查看页面，普通用户仅在开关开启时展示。
+const flagChannelMonitor = () => isAdmin.value || appStore.cachedPublicSettings?.channel_monitor_enabled === true
 const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
 const flagSubscription = makeSidebarFlag(FeatureFlags.subscription)

@@ -24,7 +24,8 @@ export function userConsoleNavigation(state: UserConsoleNavigationState) {
   return [
     { path: '/dashboard', label: 'nav.dashboard', enabled: true },
     { path: '/usage', label: 'nav.usage', enabled: !state.simple },
-    { path: '/monitor', label: 'nav.channelStatus', enabled: state.monitor },
+    // 管理员保留监控入口，普通用户遵循后台功能开关。
+    { path: '/monitor', label: 'nav.channelStatus', enabled: state.admin || state.monitor },
     { path: '/keys', label: 'nav.apiKeys', enabled: true },
     { path: '/ai-creation/image', label: 'imageStudio.navigation', enabled: true },
     { path: '/redeem', label: 'userConsole.wallet', enabled: !state.simple },

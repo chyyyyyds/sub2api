@@ -1,5 +1,8 @@
 <template>
   <header class="uc-header">
+    <RouterLink v-if="modelPlazaEnabled" to="/model-plaza" class="uc-plaza" :class="{ 'uc-active': route.path === '/model-plaza' }" :aria-current="route.path === '/model-plaza' ? 'page' : undefined">
+      <Icon name="grid" size="sm" /><span>{{ t('nav.modelPlaza') }}</span>
+    </RouterLink>
     <nav class="uc-nav uc-nav-with-creation" :aria-label="t('userConsole.navigation')">
       <RouterLink
         v-for="item in items" :key="item.path" :to="item.path"
@@ -53,7 +56,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
-import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
+import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { userConsoleActivePath, userConsoleNavigation } from './userConsoleNavigation'
@@ -65,12 +68,14 @@ const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 const user = computed(() => authStore.user)
+const modelPlazaEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.modelPlaza))
 const items = computed(() => userConsoleNavigation({
   authenticated: authStore.isAuthenticated,
   admin: authStore.isAdmin,
   simple: authStore.isSimpleMode,
   backend: appStore.backendModeEnabled,
-  monitor: isFeatureFlagEnabled(FeatureFlags.channelMonitor),
+  // 未拿到明确开启值时不提前展示；管理员例外由导航统一处理。
+  monitor: appStore.cachedPublicSettings?.channel_monitor_enabled === true,
 }))
 const activePath = computed(() => userConsoleActivePath(route.path))
 const walletVisible = computed(() => items.value.some(item => item.path === '/redeem'))
@@ -111,11 +116,18 @@ async function logout() {
 }
 
 watch(() => route.fullPath, () => closePopovers())
+function refreshSettings() {
+  // 后台可能在另一标签页修改开关，返回用户页时重新读取公开配置。
+  if (document.visibilityState === 'visible') void appStore.fetchPublicSettings(true)
+}
 onMounted(() => {
+  void appStore.fetchPublicSettings(true)
+  document.addEventListener('visibilitychange', refreshSettings)
   document.addEventListener('click', onOutside)
   document.addEventListener('focusin', onOutside)
 })
 onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', refreshSettings)
   document.removeEventListener('click', onOutside)
   document.removeEventListener('focusin', onOutside)
 })

@@ -29,9 +29,13 @@ async function render(path = '/dashboard', admin = false, component = AppLayout)
   const auth = useAuthStore()
   auth.user = { id: 1, username: '真实账号', email: 'stage1@example.test', role: admin ? 'admin' : 'user', balance: 12.34, frozen_balance: 5 } as User
   auth.token = 'local-test-token'
+  const app = useAppStore()
+  app.cachedPublicSettings = { channel_monitor_enabled: true, model_plaza_enabled: true } as PublicSettings
+  app.publicSettingsLoaded = true
+  vi.spyOn(app, 'fetchPublicSettings').mockImplementation(async () => app.cachedPublicSettings)
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ['/dashboard', '/usage', '/monitor', '/keys', '/ai-creation/image', '/redeem', '/profile', '/affiliate', '/admin/dashboard', '/login'].map(path => ({
+    routes: ['/dashboard', '/usage', '/monitor', '/keys', '/ai-creation/image', '/redeem', '/profile', '/affiliate', '/model-plaza', '/admin/dashboard', '/login'].map(path => ({
       path, component: { template: '<div />' },
       meta: { requiresAuth: path !== '/login', requiresAdmin: path.startsWith('/admin/') },
     })),
@@ -63,6 +67,7 @@ describe('Stage 1 用户外壳契约', () => {
     expect(userConsoleNavigation({ ...state, authenticated: false })).toEqual([])
     expect(userConsoleNavigation({ ...state, backend: true })).toEqual([])
     expect(userConsoleNavigation({ ...state, backend: true, admin: true })).toHaveLength(7)
+    expect(userConsoleNavigation({ ...state, admin: true, monitor: false }).some(item => item.path === '/monitor')).toBe(true)
   })
   it('外壳选择依据路由元数据，管理员角色不参与判断', () => {
     expect(isUserConsoleRoute({ meta: { requiresAdmin: false } })).toBe(true)
@@ -130,6 +135,43 @@ describe('Stage 1 用户外壳契约', () => {
     expect(wrapper.find('.uc-tabs').exists()).toBe(false)
     await wrapper.find('.uc-account').trigger('click')
     expect(wrapper.find('.uc-account-menu a[href="/redeem"]').exists()).toBe(false)
+  })
+  it.each([false, true])('监控关闭只隐藏普通用户入口，管理员保留入口（admin=%s）', async admin => {
+    const { wrapper, app } = await render('/dashboard', admin)
+    app.cachedPublicSettings = { channel_monitor_enabled: false } as PublicSettings
+    await flushPromises()
+    expect(wrapper.find('.uc-nav a[href="/monitor"]').exists()).toBe(admin)
+  })
+  it('配置未知时不提前展示监控入口，页面恢复可见后更新旧配置', async () => {
+    const { wrapper, app } = await render()
+    expect(app.fetchPublicSettings).toHaveBeenCalledWith(true)
+    app.cachedPublicSettings = {} as PublicSettings
+    await flushPromises()
+    expect(wrapper.find('.uc-nav a[href="/monitor"]').exists()).toBe(false)
+    app.cachedPublicSettings = { channel_monitor_enabled: true } as PublicSettings
+    vi.mocked(app.fetchPublicSettings).mockImplementationOnce(async () => {
+      app.cachedPublicSettings = { channel_monitor_enabled: false } as PublicSettings
+      return app.cachedPublicSettings
+    })
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
+    expect(wrapper.find('.uc-nav a[href="/monitor"]').exists()).toBe(false)
+  })
+  it('模型广场在左侧独立展示，沿用后台四宫格图标，并遵循开关', async () => {
+    const { wrapper, app, router } = await render()
+    const link = wrapper.get('.uc-plaza')
+    expect(link.attributes('href')).toBe('/model-plaza')
+    expect(link.text()).toBe('模型广场')
+    expect(link.find('svg').exists()).toBe(true)
+    expect(wrapper.find('.uc-nav a[href="/model-plaza"]').exists()).toBe(false)
+    await router.push('/model-plaza')
+    expect(wrapper.get('.uc-plaza').attributes('aria-current')).toBe('page')
+    expect(wrapper.findAll('.uc-header')).toHaveLength(1)
+    expect(wrapper.find('[data-test="admin-sidebar"]').exists()).toBe(false)
+    app.cachedPublicSettings = { model_plaza_enabled: false } as PublicSettings
+    await flushPromises()
+    expect(wrapper.find('.uc-plaza').exists()).toBe(false)
   })
   it('退出复用认证 store 并返回原登录路由', async () => {
     const { wrapper, auth, router } = await render('/keys', false, UserConsoleHeader)

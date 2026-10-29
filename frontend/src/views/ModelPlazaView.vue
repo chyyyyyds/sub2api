@@ -1,7 +1,7 @@
 <template>
-  <!-- 后台内嵌形态:?embedded=1 且已登录,套完整后台布局 -->
-  <AppLayout v-if="isEmbedded">
-    <ModelPlazaContent :response="data" :loading="loading" :error="loadFailed" embedded />
+  <!-- 登录后统一使用用户顶部导航，直接访问和历史 embedded 链接保持一致。 -->
+  <AppLayout v-if="isAuthenticated">
+    <ModelPlazaContent :response="data" :loading="loading" :error="loadFailed" />
   </AppLayout>
 
   <!-- 独立形态:自带导航条(logo/站名 + 登录/回后台) -->
@@ -15,7 +15,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
 import ModelPlazaContent from '@/components/modelPlaza/ModelPlazaContent.vue'
@@ -23,12 +22,11 @@ import { getModelPlaza, type ModelPlazaResponse } from '@/api/modelPlaza'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 
-const route = useRoute()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
-// embedded=1 但未登录(如转发的链接)自动降级为独立形态。
-const isEmbedded = computed(() => route.query.embedded === '1' && authStore.isAuthenticated)
+// 访客保留品牌和登录按钮；认证后切换外壳，不要求额外查询参数。
+const isAuthenticated = computed(() => authStore.isAuthenticated)
 
 const data = ref<ModelPlazaResponse | null>(null)
 const loading = ref(true)
