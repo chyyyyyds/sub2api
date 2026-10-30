@@ -9,7 +9,7 @@ import { ImageSettingsPanel } from "@/components/image-settings-panel";
 import { HostImageSettings, imageSettingsError } from "./components/host-image-settings";
 import editorStyles from "./image-editor.module.css";
 import { ModelPicker } from "@/components/model-picker";
-import { hostImageCapability, hostImageParams } from "@/lib/host-image-capabilities";
+import { hostImageParams } from "@/lib/host-image-capabilities";
 import { getHostConfig, IS_SUB2API_HOST } from "@/lib/sub2api-context";
 import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
@@ -475,7 +475,6 @@ export default function ImagePage() {
                                 <div className="min-w-0">
                                     <h1 className="text-2xl font-semibold text-stone-950 dark:text-stone-100">{IS_SUB2API_HOST ? "创作参数" : t("imageWorkbench.title")}</h1>
                                 </div>
-                                {IS_SUB2API_HOST && <span className={editorStyles.badge}>{hostImageCapability(modelOptionName(model)).capabilityModel === "gpt-image-2.5-flare" ? "GPT Image 2.5 · Flare" : modelOptionName(model).replace("gpt-image-", "GPT Image ")}</span>}
                                 <div className="flex shrink-0 gap-2 lg:hidden">
                                     <Button icon={<History className="size-4" />} onClick={() => setLogsOpen(true)}>
                                         {t("workbench.logs")}

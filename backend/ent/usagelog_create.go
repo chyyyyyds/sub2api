@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"time"
@@ -567,6 +568,40 @@ func (_c *UsageLogCreate) SetImageSizeBreakdown(v map[string]int) *UsageLogCreat
 	return _c
 }
 
+// SetMediaType sets the "media_type" field.
+func (_c *UsageLogCreate) SetMediaType(v string) *UsageLogCreate {
+	_c.mutation.SetMediaType(v)
+	return _c
+}
+
+// SetNillableMediaType sets the "media_type" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableMediaType(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetMediaType(*v)
+	}
+	return _c
+}
+
+// SetVideoTaskID sets the "video_task_id" field.
+func (_c *UsageLogCreate) SetVideoTaskID(v string) *UsageLogCreate {
+	_c.mutation.SetVideoTaskID(v)
+	return _c
+}
+
+// SetNillableVideoTaskID sets the "video_task_id" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableVideoTaskID(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetVideoTaskID(*v)
+	}
+	return _c
+}
+
+// SetVideoPricingSnapshot sets the "video_pricing_snapshot" field.
+func (_c *UsageLogCreate) SetVideoPricingSnapshot(v jsontext.Value) *UsageLogCreate {
+	_c.mutation.SetVideoPricingSnapshot(v)
+	return _c
+}
+
 // SetVideoCount sets the "video_count" field.
 func (_c *UsageLogCreate) SetVideoCount(v int) *UsageLogCreate {
 	_c.mutation.SetVideoCount(v)
@@ -917,6 +952,16 @@ func (_c *UsageLogCreate) check() error {
 			return &ValidationError{Name: "image_size_source", err: fmt.Errorf(`ent: validator failed for field "UsageLog.image_size_source": %w`, err)}
 		}
 	}
+	if v, ok := _c.mutation.MediaType(); ok {
+		if err := usagelog.MediaTypeValidator(v); err != nil {
+			return &ValidationError{Name: "media_type", err: fmt.Errorf(`ent: validator failed for field "UsageLog.media_type": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.VideoTaskID(); ok {
+		if err := usagelog.VideoTaskIDValidator(v); err != nil {
+			return &ValidationError{Name: "video_task_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.video_task_id": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.VideoCount(); !ok {
 		return &ValidationError{Name: "video_count", err: errors.New(`ent: missing required field "UsageLog.video_count"`)}
 	}
@@ -1114,6 +1159,18 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ImageSizeBreakdown(); ok {
 		_spec.SetField(usagelog.FieldImageSizeBreakdown, field.TypeJSON, value)
 		_node.ImageSizeBreakdown = value
+	}
+	if value, ok := _c.mutation.MediaType(); ok {
+		_spec.SetField(usagelog.FieldMediaType, field.TypeString, value)
+		_node.MediaType = &value
+	}
+	if value, ok := _c.mutation.VideoTaskID(); ok {
+		_spec.SetField(usagelog.FieldVideoTaskID, field.TypeString, value)
+		_node.VideoTaskID = &value
+	}
+	if value, ok := _c.mutation.VideoPricingSnapshot(); ok {
+		_spec.SetField(usagelog.FieldVideoPricingSnapshot, field.TypeJSON, value)
+		_node.VideoPricingSnapshot = value
 	}
 	if value, ok := _c.mutation.VideoCount(); ok {
 		_spec.SetField(usagelog.FieldVideoCount, field.TypeInt, value)
@@ -2007,6 +2064,60 @@ func (u *UsageLogUpsert) UpdateImageSizeBreakdown() *UsageLogUpsert {
 // ClearImageSizeBreakdown clears the value of the "image_size_breakdown" field.
 func (u *UsageLogUpsert) ClearImageSizeBreakdown() *UsageLogUpsert {
 	u.SetNull(usagelog.FieldImageSizeBreakdown)
+	return u
+}
+
+// SetMediaType sets the "media_type" field.
+func (u *UsageLogUpsert) SetMediaType(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldMediaType, v)
+	return u
+}
+
+// UpdateMediaType sets the "media_type" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateMediaType() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldMediaType)
+	return u
+}
+
+// ClearMediaType clears the value of the "media_type" field.
+func (u *UsageLogUpsert) ClearMediaType() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldMediaType)
+	return u
+}
+
+// SetVideoTaskID sets the "video_task_id" field.
+func (u *UsageLogUpsert) SetVideoTaskID(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldVideoTaskID, v)
+	return u
+}
+
+// UpdateVideoTaskID sets the "video_task_id" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateVideoTaskID() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldVideoTaskID)
+	return u
+}
+
+// ClearVideoTaskID clears the value of the "video_task_id" field.
+func (u *UsageLogUpsert) ClearVideoTaskID() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldVideoTaskID)
+	return u
+}
+
+// SetVideoPricingSnapshot sets the "video_pricing_snapshot" field.
+func (u *UsageLogUpsert) SetVideoPricingSnapshot(v jsontext.Value) *UsageLogUpsert {
+	u.Set(usagelog.FieldVideoPricingSnapshot, v)
+	return u
+}
+
+// UpdateVideoPricingSnapshot sets the "video_pricing_snapshot" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateVideoPricingSnapshot() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldVideoPricingSnapshot)
+	return u
+}
+
+// ClearVideoPricingSnapshot clears the value of the "video_pricing_snapshot" field.
+func (u *UsageLogUpsert) ClearVideoPricingSnapshot() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldVideoPricingSnapshot)
 	return u
 }
 
@@ -2985,6 +3096,69 @@ func (u *UsageLogUpsertOne) UpdateImageSizeBreakdown() *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) ClearImageSizeBreakdown() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearImageSizeBreakdown()
+	})
+}
+
+// SetMediaType sets the "media_type" field.
+func (u *UsageLogUpsertOne) SetMediaType(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetMediaType(v)
+	})
+}
+
+// UpdateMediaType sets the "media_type" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateMediaType() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateMediaType()
+	})
+}
+
+// ClearMediaType clears the value of the "media_type" field.
+func (u *UsageLogUpsertOne) ClearMediaType() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearMediaType()
+	})
+}
+
+// SetVideoTaskID sets the "video_task_id" field.
+func (u *UsageLogUpsertOne) SetVideoTaskID(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetVideoTaskID(v)
+	})
+}
+
+// UpdateVideoTaskID sets the "video_task_id" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateVideoTaskID() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateVideoTaskID()
+	})
+}
+
+// ClearVideoTaskID clears the value of the "video_task_id" field.
+func (u *UsageLogUpsertOne) ClearVideoTaskID() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearVideoTaskID()
+	})
+}
+
+// SetVideoPricingSnapshot sets the "video_pricing_snapshot" field.
+func (u *UsageLogUpsertOne) SetVideoPricingSnapshot(v jsontext.Value) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetVideoPricingSnapshot(v)
+	})
+}
+
+// UpdateVideoPricingSnapshot sets the "video_pricing_snapshot" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateVideoPricingSnapshot() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateVideoPricingSnapshot()
+	})
+}
+
+// ClearVideoPricingSnapshot clears the value of the "video_pricing_snapshot" field.
+func (u *UsageLogUpsertOne) ClearVideoPricingSnapshot() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearVideoPricingSnapshot()
 	})
 }
 
@@ -4141,6 +4315,69 @@ func (u *UsageLogUpsertBulk) UpdateImageSizeBreakdown() *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) ClearImageSizeBreakdown() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearImageSizeBreakdown()
+	})
+}
+
+// SetMediaType sets the "media_type" field.
+func (u *UsageLogUpsertBulk) SetMediaType(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetMediaType(v)
+	})
+}
+
+// UpdateMediaType sets the "media_type" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateMediaType() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateMediaType()
+	})
+}
+
+// ClearMediaType clears the value of the "media_type" field.
+func (u *UsageLogUpsertBulk) ClearMediaType() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearMediaType()
+	})
+}
+
+// SetVideoTaskID sets the "video_task_id" field.
+func (u *UsageLogUpsertBulk) SetVideoTaskID(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetVideoTaskID(v)
+	})
+}
+
+// UpdateVideoTaskID sets the "video_task_id" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateVideoTaskID() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateVideoTaskID()
+	})
+}
+
+// ClearVideoTaskID clears the value of the "video_task_id" field.
+func (u *UsageLogUpsertBulk) ClearVideoTaskID() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearVideoTaskID()
+	})
+}
+
+// SetVideoPricingSnapshot sets the "video_pricing_snapshot" field.
+func (u *UsageLogUpsertBulk) SetVideoPricingSnapshot(v jsontext.Value) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetVideoPricingSnapshot(v)
+	})
+}
+
+// UpdateVideoPricingSnapshot sets the "video_pricing_snapshot" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateVideoPricingSnapshot() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateVideoPricingSnapshot()
+	})
+}
+
+// ClearVideoPricingSnapshot clears the value of the "video_pricing_snapshot" field.
+func (u *UsageLogUpsertBulk) ClearVideoPricingSnapshot() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearVideoPricingSnapshot()
 	})
 }
 

@@ -880,6 +880,7 @@ var ProviderSet = wire.NewSet(
 	NewOpenAIGatewayService,
 	ProvideImageStorageSettingService,
 	ProvideImageTaskService,
+	ProvideVideoService,
 	ProvideBatchImageModelPricingResolver,
 	NewBatchImagePublicService,
 	NewBatchImageDownloadService,
@@ -1086,4 +1087,42 @@ func ProvideClaudeResetCreditService(accounts AccountRepository, tokens *ClaudeT
 	s := NewClaudeResetCreditService(accounts, tokens, proxies, settings)
 	s.ConfigureRedemption(idem, locks)
 	return s
+}
+
+// ProvideVideoService 复用现有 Redis，在多 Worker 与多账号间按上游身份限制请求预算。
+func ProvideVideoService(repo VideoRepository, accounts AccountRepository, cfg *config.Config, billing *BillingCacheService, auth APIKeyAuthCacheInvalidator, upstream HTTPUpstream, redisClient *redis.Client) *VideoService {
+	return newVideoService(repo, accounts, cfg, billing, auth, upstream, newKokoRequestBudget(redisClient))
+}
+
+// newKokoRequestBudget 使用原子 SET NX TTL，每个身份每秒至多放行一次；Redis 故障不放行。
+func newKokoRequestBudget(client *redis.Client) func(context.Context, string) error {
+	return func(ctx context.Context, scope string) error {
+		if client == nil {
+			return context.Canceled
+		}
+		key := "koko:video:request-budget:" + scope
+		for {
+			acquired, err := client.SetNX(ctx, key, "1", time.Second).Result()
+			if err != nil {
+				return err
+			}
+			if acquired {
+				return nil
+			}
+			delay, err := client.PTTL(ctx, key).Result()
+			if err != nil {
+				return err
+			}
+			if delay <= 0 {
+				delay = time.Millisecond
+			}
+			timer := time.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
+		}
+	}
 }

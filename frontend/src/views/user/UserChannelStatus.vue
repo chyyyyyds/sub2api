@@ -3,14 +3,28 @@
     <div class="um-console" :aria-busy="loading">
       <div class="um-layout">
         <div class="um-primary">
-          <section class="um-panel um-filters">
-            <div class="um-field"><span>{{ t('userMonitor.vendor') }}</span><div class="um-pills" role="group" :aria-label="t('userMonitor.vendor')"><button v-for="vendor in vendors" :key="vendor" :aria-pressed="platform === vendor" @click="choosePlatform(vendor)"><PlatformIcon :platform="vendor as GroupPlatform" size="sm" />{{ platformDisplayName(vendor) }}</button></div></div>
-            <div class="um-field"><span>{{ t('userMonitor.group') }}</span><div class="um-pills" role="group" :aria-label="t('userMonitor.group')"><button v-for="group in groups" :key="group.id" :title="group.name" :aria-pressed="groupId === group.id" @click="chooseGroup(group.id)"><span class="um-ellipsis">{{ group.name }}</span><small>{{ issues.includes('rates') ? t('userMonitor.rateUnknown') : `${rates[group.id] ?? group.rate_multiplier}x` }}</small></button></div></div>
+          <section class="um-panel um-filters um-compact-filters">
+            <!-- 下拉内搜索，长名称在控件内截断，避免挤占时间和状态筛选。 -->
+            <div class="um-field">
+              <label for="monitor-vendor">{{ t('userMonitor.vendor') }}</label>
+              <Select id="monitor-vendor" :model-value="platform" :options="vendorOptions" :aria-label="t('userMonitor.vendor')" class="uc-console-select um-directory-select" searchable match-trigger-width dropdown-class="uc-console-select-menu" @update:model-value="choosePlatform(String($event))">
+                <template #selected><span class="um-select-content"><PlatformIcon v-if="platform" :platform="platform as GroupPlatform" size="sm" /><span>{{ platformDisplayName(platform) }}</span><Icon name="search" size="sm" class="um-select-search" /></span></template>
+                <template #option="{ option }"><span class="um-select-content"><PlatformIcon :platform="String(option.value) as GroupPlatform" size="sm" /><span>{{ option.label }}</span><Icon v-if="platform === option.value" name="check" size="sm" /></span></template>
+              </Select>
+            </div>
+            <div class="um-field">
+              <label for="monitor-group">{{ t('userMonitor.group') }}</label>
+              <Select id="monitor-group" :model-value="groupId" :options="groupOptions" :aria-label="t('userMonitor.group')" class="uc-console-select um-directory-select" searchable match-trigger-width dropdown-class="uc-console-select-menu" @update:model-value="chooseGroup($event == null ? null : Number($event))">
+                <template #selected><span class="um-select-content"><PlatformIcon v-if="platform" :platform="platform as GroupPlatform" size="sm" /><span :title="selectedGroup?.name">{{ selectedGroup?.name || t('userMonitor.group') }}</span><small v-if="selectedGroup" class="um-select-rate">{{ groupRate(selectedGroup) }}</small><Icon name="search" size="sm" class="um-select-search" /></span></template>
+                <template #option="{ option }"><span class="um-select-content"><span :title="option.label">{{ option.label }}</span><small class="um-select-rate">{{ option.rate }}</small><Icon v-if="groupId === option.value" name="check" size="sm" /></span></template>
+              </Select>
+            </div>
             <div class="um-toolbar">
               <label for="monitor-range">{{ t('userMonitor.range') }}<Select id="monitor-range" v-model="range" class="uc-console-select" :aria-label="t('userMonitor.range')" :options="rangeOptions" :searchable="false" dropdown-class="uc-console-select-menu" /></label>
               <label for="monitor-status">{{ t('userMonitor.filter') }}<Select id="monitor-status" v-model="status" class="uc-console-select" :aria-label="t('userMonitor.filter')" :options="statusOptions" :searchable="false" dropdown-class="uc-console-select-menu" /></label>
-              <button class="um-refresh" :aria-label="t('common.refresh')" :disabled="loading" @click="reload"><Icon name="refresh" size="sm" /></button>
+              <button class="um-refresh" :aria-label="t('common.refresh')" :disabled="loading" @click="reload"><Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" /><span>{{ t('common.refresh') }}</span></button>
             </div>
+            <p class="um-filter-summary" aria-live="polite"><span>{{ display('monitorDisplay.currentSelection') }}：</span><span>{{ platformDisplayName(platform) || '—' }}</span><span>/</span><span :title="selectedGroup?.name">{{ selectedGroup?.name || '—' }}</span><span>/</span><span>{{ t(`userMonitor.ranges.${range}`) }}</span><span>/</span><span>{{ statusOptions.find(option => option.value === status)?.label }}</span></p>
           </section>
 
           <p v-if="loading" class="um-notice" role="status">{{ t('common.loading') }}</p>
@@ -90,7 +104,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { maskApiKey } from '@/utils/maskApiKey'
 import { platformDisplayName } from '@/constants/platformCatalog'
 import { formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
-import type { GroupPlatform } from '@/types'
+import type { Group, GroupPlatform } from '@/types'
 import { effectiveKeyStatus } from './keysConsole'
 import { coverageConditions, dimensionKey, keysQuery, sampleState, type CatalogModel } from './channelStatusConsole'
 import { cardTokenPrices, historyPositions, monitorMessages } from './monitorPresentation'
@@ -98,6 +112,7 @@ import '@/styles/user-channel-status.css'
 import '@/styles/stage7d-visual.css'
 import '@/styles/monitor-presentation.css'
 import '@/styles/user-console-select.css'
+import '@/styles/user-channel-filters.css'
 
 const { t } = useI18n()
 const { t: display } = useI18n({ useScope: 'local', messages: monitorMessages })
@@ -115,6 +130,9 @@ const statusOptions = computed(() => [
 ])
 const conditions = computed(() => coverageConditions(coverage.value, refreshSeconds.value, now.value))
 const selectedGroup = computed(() => groups.value.find(group => group.id === groupId.value))
+const groupRate = (group: Group) => issues.value.includes('rates') ? t('userMonitor.rateUnknown') : `${rates.value[group.id] ?? group.rate_multiplier}x`
+const vendorOptions = computed(() => vendors.value.map(value => ({ value, label: platformDisplayName(value) })))
+const groupOptions = computed(() => groups.value.map(group => ({ value: group.id, label: group.name, rate: groupRate(group) })))
 const endpoint = computed(() => app.cachedPublicSettings?.api_base_url || window.location.origin)
 const sample = (entry: CatalogModel) => sampleState(rowFor(entry))
 const tokenPrices = (entry: CatalogModel) => cardTokenPrices(entry, rates.value[entry.group.id], !issues.value.includes('rates'))

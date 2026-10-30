@@ -98,9 +98,12 @@ export function chatRequest(model: string, context: ReturnType<typeof chatContex
   }
   if (protocol === 'responses') return {
     protocol, path: '/v1/responses', body: { model, stream: true, store: false, max_output_tokens: maxOutputTokens,
+      reasoning: { effort: 'high' },
       input: context.map(m => ({ role: m.role, content: [{ type: m.role === 'assistant' ? 'output_text' : 'input_text', text: m.content }] })) }
   }
-  return { protocol, path: '/v1/chat/completions', body: { model, stream: true, max_completion_tokens: maxOutputTokens, messages: context } }
+  // OpenAI 推理模型默认使用高强度；其他模型不附加不支持的推理参数。
+  const reasoning = /^(?:gpt-(?:[5-9]|\d{2,})(?:[.-]|$)|o[134](?:[.-]|$))/i.test(model) ? { reasoning_effort: 'high' } : {}
+  return { protocol, path: '/v1/chat/completions', body: { model, stream: true, max_completion_tokens: maxOutputTokens, messages: context, ...reasoning } }
 }
 
 /** @description 从状态码及上游错误类型映射用户可理解的错误；不返回上游原文。 */

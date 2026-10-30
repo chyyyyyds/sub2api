@@ -150,6 +150,11 @@ func DefaultValidityDays(v int) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldDefaultValidityDays, v))
 }
 
+// AllowKokoVideoGeneration applies equality check predicate on the "allow_koko_video_generation" field. It's identical to AllowKokoVideoGenerationEQ.
+func AllowKokoVideoGeneration(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldAllowKokoVideoGeneration, v))
+}
+
 // AllowImageGeneration applies equality check predicate on the "allow_image_generation" field. It's identical to AllowImageGenerationEQ.
 func AllowImageGeneration(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldAllowImageGeneration, v))
@@ -1303,6 +1308,16 @@ func DefaultValidityDaysLT(v int) predicate.Group {
 // DefaultValidityDaysLTE applies the LTE predicate on the "default_validity_days" field.
 func DefaultValidityDaysLTE(v int) predicate.Group {
 	return predicate.Group(sql.FieldLTE(FieldDefaultValidityDays, v))
+}
+
+// AllowKokoVideoGenerationEQ applies the EQ predicate on the "allow_koko_video_generation" field.
+func AllowKokoVideoGenerationEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldAllowKokoVideoGeneration, v))
+}
+
+// AllowKokoVideoGenerationNEQ applies the NEQ predicate on the "allow_koko_video_generation" field.
+func AllowKokoVideoGenerationNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldAllowKokoVideoGeneration, v))
 }
 
 // AllowImageGenerationEQ applies the EQ predicate on the "allow_image_generation" field.

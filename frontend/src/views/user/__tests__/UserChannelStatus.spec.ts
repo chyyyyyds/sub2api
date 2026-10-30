@@ -29,18 +29,46 @@ const createView = () => {
 }
 const card = (wrapper: VueWrapper, name = 'model-X') => wrapper.get(`[data-model="${name}"]`)
 const settle = async () => { await flushPromises(); await flushPromises() }
-const clickGroup = async (wrapper: VueWrapper, index: number) => { await wrapper.findAll('.um-field')[1].findAll('button')[index].trigger('click'); await settle() }
+const selectControl = (wrapper: VueWrapper, id: string) => wrapper.findAllComponents(Select).find(control => control.props('id') === id)!
+const clickGroup = async (wrapper: VueWrapper, index: number) => { selectControl(wrapper, 'monitor-group').vm.$emit('update:modelValue', index + 1); await settle() }
 beforeEach(() => {
   vi.useRealTimers(); vi.clearAllMocks()
   mock.app = reactive({ cachedPublicSettings: { channel_monitor_enabled: true, channel_monitor_mode: 'v2', model_plaza_enabled: true, available_channels_enabled: true, api_base_url: 'https://api.example.test', server_utc_offset: '+08:00' } })
   mock.channels.mockResolvedValue(channels()); mock.groups.mockResolvedValue([group(1), group(2), group(3, 'composite')]); mock.rates.mockResolvedValue({ 2: .085 })
-  mock.plaza.mockResolvedValue({ groups: plaza() }); mock.keys.mockResolvedValue([key(1, 1), key(2, 2, 'inactive'), key(3, 3)])
+  mock.plaza.mockResolvedValue({ groups: plaza() }); mock.keys.mockResolvedValue([key(1, 1)])
   mock.matrix.mockResolvedValue(matrix()); mock.snapshot.mockResolvedValue({ config: { refresh_interval_seconds: 300 }, coverage: coverage() })
   mock.scope.mockResolvedValue({ group_ids: [1, 2, 3], platforms: [{ platform: 'openai', models: [] }, { platform: 'gemini', models: [] }] })
 })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.useRealTimers() })
 
 describe('新版普通用户渠道状态业务和生命周期', () => {
+  it('优先有 Key 的厂商，多厂商有 Key 时优先 OpenAI，分组按实际倍率降序', async () => {
+    mock.keys.mockResolvedValue([key(1, 1), key(2, 2), key(3, 3)])
+    const wrapper = createView(); await settle()
+    expect(selectControl(wrapper, 'monitor-vendor').props('modelValue')).toBe('openai')
+    expect(selectControl(wrapper, 'monitor-group').props('options').map(option => option.value)).toEqual([3, 2, 1])
+    expect(selectControl(wrapper, 'monitor-group').props('modelValue')).toBe(3)
+    mock.rates.mockResolvedValue({ 1: .38, 2: .085 })
+    await wrapper.get('.um-refresh').trigger('click'); await settle()
+    // 刷新只更新排序，保留用户当前有效选择。
+    expect(selectControl(wrapper, 'monitor-group').props('options').map(option => option.value)).toEqual([1, 3, 2])
+    expect(selectControl(wrapper, 'monitor-group').props('modelValue')).toBe(3)
+  })
+  it('OpenAI 无 Key 时选择有 Key 的其他厂商，无 Key 时回退 OpenAI', async () => {
+    const source = channels()
+    source[0].platforms[1].groups = [group(4, 'gemini')] as never[]
+    mock.channels.mockResolvedValue(source)
+    mock.groups.mockResolvedValue([group(1), group(2), group(4, 'gemini')])
+    mock.keys.mockResolvedValue([key(4, 4)])
+    mock.scope.mockResolvedValue({ group_ids: [1, 2, 4], platforms: [{ platform: 'openai', models: [] }, { platform: 'gemini', models: [] }] })
+    const wrapper = createView(); await settle()
+    expect(selectControl(wrapper, 'monitor-vendor').props('modelValue')).toBe('gemini')
+    expect(selectControl(wrapper, 'monitor-vendor').props('options').map(option => option.value)).toEqual(['gemini', 'openai'])
+    mock.keys.mockResolvedValue([])
+    const noKeys = createView(); await settle()
+    expect(selectControl(noKeys, 'monitor-vendor').props('modelValue')).toBe('openai')
+    expect(selectControl(noKeys, 'monitor-group').props('modelValue')).toBe(2)
+  })
   it('模型卡片按监控配置顺序展示，刷新后同步新顺序并移除关联密钥按钮', async () => {
     const orderedModels = ['no-samples', 'model-X', 'no-association']
     mock.scope.mockResolvedValue({ group_ids: [1, 2], platforms: [{ platform: 'openai', models: orderedModels }] })
@@ -65,7 +93,7 @@ describe('新版普通用户渠道状态业务和生命周期', () => {
     expect(wrapper.findAll('.um-model')).toHaveLength(1)
     expect(wrapper.find('[data-model="no-samples"]').exists()).toBe(false)
     expect(source[0].platforms[0].supported_models).toHaveLength(3)
-    expect(wrapper.findAll('.um-field')[1].findAll('button')).toHaveLength(1)
+    expect(selectControl(wrapper, 'monitor-group').props('options')).toHaveLength(1)
     mock.scope.mockRejectedValue({ status: 503 })
     await wrapper.get('.um-refresh').trigger('click'); await settle()
     expect(wrapper.findAll('.um-model')).toHaveLength(0)
@@ -94,6 +122,8 @@ describe('新版普通用户渠道状态业务和生命周期', () => {
     expect(card(wrapper).text()).toContain('1.80%')
     expect(card(wrapper).text()).toContain('userMonitor.health.warning')
     expect(wrapper.findAll('.um-field')[1].text()).toContain('0.085x')
+    mock.keys.mockResolvedValue([key(1, 1), key(2, 2, 'inactive')])
+    await wrapper.get('.um-refresh').trigger('click'); await settle()
     expect(wrapper.get('.um-linked').text()).toContain('密钥-2')
     expect(wrapper.get('.um-linked').text()).toContain('keys.status.inactive')
     expect(wrapper.get('.um-linked').text()).not.toContain('密钥-1')
@@ -140,8 +170,9 @@ describe('新版普通用户渠道状态业务和生命周期', () => {
     expect(card(wrapper).get('.um-health').text()).toBe('userMonitor.health.unknown')
   })
   it('Composite 保留跨平台能力和真实分组；切换厂商与模型更新右侧选择', async () => {
+    mock.keys.mockResolvedValue([key(3, 3)])
     const wrapper = createView(); await settle(); await clickGroup(wrapper, 2)
-    await wrapper.findAll('.um-field')[0].findAll('button').find(el => el.text().includes('Gemini'))!.trigger('click'); await settle()
+    selectControl(wrapper, 'monitor-vendor').vm.$emit('update:modelValue', 'gemini'); await settle()
     expect(wrapper.get('.um-side-heading').text()).toContain('Gemini')
     expect(wrapper.get('.um-linked').text()).toContain('密钥-3')
     await wrapper.get('.um-secondary-button').trigger('click')
@@ -185,22 +216,23 @@ describe('新版普通用户渠道状态业务和生命周期', () => {
     const wrapper = createView(); await settle()
     expect(wrapper.findAll('.um-key')).toHaveLength(0)
     expect(wrapper.text()).toContain('userMonitor.issue.keys')
+    await clickGroup(wrapper, 0)
     expect(card(wrapper).text()).toContain('96.0')
   })
   it('四个真实时间范围可切换，切换时旧健康撤下，迟到响应不能污染新范围', async () => {
     const wrapper = createView(); await settle()
     let resolveOld!: (value: MonitorMatrixResponse) => void
     mock.matrix.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
-    wrapper.findAllComponents(Select)[0].vm.$emit('update:modelValue', '7d'); await settle()
+    selectControl(wrapper, 'monitor-range').vm.$emit('update:modelValue', '7d'); await settle()
     const oldSignal = mock.matrix.mock.calls.at(-1)![3] as AbortSignal
     expect(card(wrapper).text()).not.toContain('96.0')
-    wrapper.findAllComponents(Select)[0].vm.$emit('update:modelValue', '30d'); await settle()
+    selectControl(wrapper, 'monitor-range').vm.$emit('update:modelValue', '30d'); await settle()
     expect(oldSignal.aborted).toBe(true)
     resolveOld(matrix([row(1, 'openai', 'model-X', 'warning')]))
     await settle()
     expect(card(wrapper).text()).toContain('userMonitor.ranges.30d')
     expect(card(wrapper).get('.um-health').text()).toContain('healthy')
-    wrapper.findAllComponents(Select)[0].vm.$emit('update:modelValue', '90m'); await settle()
+    selectControl(wrapper, 'monitor-range').vm.$emit('update:modelValue', '90m'); await settle()
     expect(mock.matrix.mock.calls.at(-1)![0].range).toBe('90m')
   })
   it('重复刷新、卸载取消请求并清理定时器；迟到结果不复活界面', async () => {

@@ -54,6 +54,12 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/videobillingevent"
+	"github.com/Wei-Shaw/sub2api/ent/videofinancialreservation"
+	"github.com/Wei-Shaw/sub2api/ent/videoprovidermodel"
+	"github.com/Wei-Shaw/sub2api/ent/videoquotareservation"
+	"github.com/Wei-Shaw/sub2api/ent/videotask"
+	"github.com/Wei-Shaw/sub2api/ent/videotaskevent"
 
 	stdsql "database/sql"
 )
@@ -141,6 +147,18 @@ type Client struct {
 	UserPlatformQuota *UserPlatformQuotaClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
+	// VideoBillingEvent is the client for interacting with the VideoBillingEvent builders.
+	VideoBillingEvent *VideoBillingEventClient
+	// VideoFinancialReservation is the client for interacting with the VideoFinancialReservation builders.
+	VideoFinancialReservation *VideoFinancialReservationClient
+	// VideoProviderModel is the client for interacting with the VideoProviderModel builders.
+	VideoProviderModel *VideoProviderModelClient
+	// VideoQuotaReservation is the client for interacting with the VideoQuotaReservation builders.
+	VideoQuotaReservation *VideoQuotaReservationClient
+	// VideoTask is the client for interacting with the VideoTask builders.
+	VideoTask *VideoTaskClient
+	// VideoTaskEvent is the client for interacting with the VideoTaskEvent builders.
+	VideoTaskEvent *VideoTaskEventClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -191,6 +209,12 @@ func (c *Client) init() {
 	c.UserAttributeValue = NewUserAttributeValueClient(c.config)
 	c.UserPlatformQuota = NewUserPlatformQuotaClient(c.config)
 	c.UserSubscription = NewUserSubscriptionClient(c.config)
+	c.VideoBillingEvent = NewVideoBillingEventClient(c.config)
+	c.VideoFinancialReservation = NewVideoFinancialReservationClient(c.config)
+	c.VideoProviderModel = NewVideoProviderModelClient(c.config)
+	c.VideoQuotaReservation = NewVideoQuotaReservationClient(c.config)
+	c.VideoTask = NewVideoTaskClient(c.config)
+	c.VideoTaskEvent = NewVideoTaskEventClient(c.config)
 }
 
 type (
@@ -322,6 +346,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		UserAttributeValue:            NewUserAttributeValueClient(cfg),
 		UserPlatformQuota:             NewUserPlatformQuotaClient(cfg),
 		UserSubscription:              NewUserSubscriptionClient(cfg),
+		VideoBillingEvent:             NewVideoBillingEventClient(cfg),
+		VideoFinancialReservation:     NewVideoFinancialReservationClient(cfg),
+		VideoProviderModel:            NewVideoProviderModelClient(cfg),
+		VideoQuotaReservation:         NewVideoQuotaReservationClient(cfg),
+		VideoTask:                     NewVideoTaskClient(cfg),
+		VideoTaskEvent:                NewVideoTaskEventClient(cfg),
 	}, nil
 }
 
@@ -380,6 +410,12 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		UserAttributeValue:            NewUserAttributeValueClient(cfg),
 		UserPlatformQuota:             NewUserPlatformQuotaClient(cfg),
 		UserSubscription:              NewUserSubscriptionClient(cfg),
+		VideoBillingEvent:             NewVideoBillingEventClient(cfg),
+		VideoFinancialReservation:     NewVideoFinancialReservationClient(cfg),
+		VideoProviderModel:            NewVideoProviderModelClient(cfg),
+		VideoQuotaReservation:         NewVideoQuotaReservationClient(cfg),
+		VideoTask:                     NewVideoTaskClient(cfg),
+		VideoTaskEvent:                NewVideoTaskEventClient(cfg),
 	}, nil
 }
 
@@ -419,7 +455,9 @@ func (c *Client) Use(hooks ...Hook) {
 		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
 		c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
 		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserPlatformQuota, c.UserSubscription,
+		c.UserPlatformQuota, c.UserSubscription, c.VideoBillingEvent,
+		c.VideoFinancialReservation, c.VideoProviderModel, c.VideoQuotaReservation,
+		c.VideoTask, c.VideoTaskEvent,
 	} {
 		n.Use(hooks...)
 	}
@@ -439,7 +477,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
 		c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
 		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserPlatformQuota, c.UserSubscription,
+		c.UserPlatformQuota, c.UserSubscription, c.VideoBillingEvent,
+		c.VideoFinancialReservation, c.VideoProviderModel, c.VideoQuotaReservation,
+		c.VideoTask, c.VideoTaskEvent,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -526,6 +566,18 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserPlatformQuota.mutate(ctx, m)
 	case *UserSubscriptionMutation:
 		return c.UserSubscription.mutate(ctx, m)
+	case *VideoBillingEventMutation:
+		return c.VideoBillingEvent.mutate(ctx, m)
+	case *VideoFinancialReservationMutation:
+		return c.VideoFinancialReservation.mutate(ctx, m)
+	case *VideoProviderModelMutation:
+		return c.VideoProviderModel.mutate(ctx, m)
+	case *VideoQuotaReservationMutation:
+		return c.VideoQuotaReservation.mutate(ctx, m)
+	case *VideoTaskMutation:
+		return c.VideoTask.mutate(ctx, m)
+	case *VideoTaskEventMutation:
+		return c.VideoTaskEvent.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -6838,6 +6890,804 @@ func (c *UserSubscriptionClient) mutate(ctx context.Context, m *UserSubscription
 	}
 }
 
+// VideoBillingEventClient is a client for the VideoBillingEvent schema.
+type VideoBillingEventClient struct {
+	config
+}
+
+// NewVideoBillingEventClient returns a client for the VideoBillingEvent from the given config.
+func NewVideoBillingEventClient(c config) *VideoBillingEventClient {
+	return &VideoBillingEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `videobillingevent.Hooks(f(g(h())))`.
+func (c *VideoBillingEventClient) Use(hooks ...Hook) {
+	c.hooks.VideoBillingEvent = append(c.hooks.VideoBillingEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `videobillingevent.Intercept(f(g(h())))`.
+func (c *VideoBillingEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VideoBillingEvent = append(c.inters.VideoBillingEvent, interceptors...)
+}
+
+// Create returns a builder for creating a VideoBillingEvent entity.
+func (c *VideoBillingEventClient) Create() *VideoBillingEventCreate {
+	mutation := newVideoBillingEventMutation(c.config, OpCreate)
+	return &VideoBillingEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VideoBillingEvent entities.
+func (c *VideoBillingEventClient) CreateBulk(builders ...*VideoBillingEventCreate) *VideoBillingEventCreateBulk {
+	return &VideoBillingEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VideoBillingEventClient) MapCreateBulk(slice any, setFunc func(*VideoBillingEventCreate, int)) *VideoBillingEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VideoBillingEventCreateBulk{err: fmt.Errorf("calling to VideoBillingEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VideoBillingEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VideoBillingEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VideoBillingEvent.
+func (c *VideoBillingEventClient) Update() *VideoBillingEventUpdate {
+	mutation := newVideoBillingEventMutation(c.config, OpUpdate)
+	return &VideoBillingEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VideoBillingEventClient) UpdateOne(_m *VideoBillingEvent) *VideoBillingEventUpdateOne {
+	mutation := newVideoBillingEventMutation(c.config, OpUpdateOne, withVideoBillingEvent(_m))
+	return &VideoBillingEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VideoBillingEventClient) UpdateOneID(id int64) *VideoBillingEventUpdateOne {
+	mutation := newVideoBillingEventMutation(c.config, OpUpdateOne, withVideoBillingEventID(id))
+	return &VideoBillingEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VideoBillingEvent.
+func (c *VideoBillingEventClient) Delete() *VideoBillingEventDelete {
+	mutation := newVideoBillingEventMutation(c.config, OpDelete)
+	return &VideoBillingEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VideoBillingEventClient) DeleteOne(_m *VideoBillingEvent) *VideoBillingEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VideoBillingEventClient) DeleteOneID(id int64) *VideoBillingEventDeleteOne {
+	builder := c.Delete().Where(videobillingevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VideoBillingEventDeleteOne{builder}
+}
+
+// Query returns a query builder for VideoBillingEvent.
+func (c *VideoBillingEventClient) Query() *VideoBillingEventQuery {
+	return &VideoBillingEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVideoBillingEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VideoBillingEvent entity by its id.
+func (c *VideoBillingEventClient) Get(ctx context.Context, id int64) (*VideoBillingEvent, error) {
+	return c.Query().Where(videobillingevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VideoBillingEventClient) GetX(ctx context.Context, id int64) *VideoBillingEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VideoBillingEventClient) Hooks() []Hook {
+	return c.hooks.VideoBillingEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *VideoBillingEventClient) Interceptors() []Interceptor {
+	return c.inters.VideoBillingEvent
+}
+
+func (c *VideoBillingEventClient) mutate(ctx context.Context, m *VideoBillingEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VideoBillingEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VideoBillingEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VideoBillingEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VideoBillingEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VideoBillingEvent mutation op: %q", m.Op())
+	}
+}
+
+// VideoFinancialReservationClient is a client for the VideoFinancialReservation schema.
+type VideoFinancialReservationClient struct {
+	config
+}
+
+// NewVideoFinancialReservationClient returns a client for the VideoFinancialReservation from the given config.
+func NewVideoFinancialReservationClient(c config) *VideoFinancialReservationClient {
+	return &VideoFinancialReservationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `videofinancialreservation.Hooks(f(g(h())))`.
+func (c *VideoFinancialReservationClient) Use(hooks ...Hook) {
+	c.hooks.VideoFinancialReservation = append(c.hooks.VideoFinancialReservation, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `videofinancialreservation.Intercept(f(g(h())))`.
+func (c *VideoFinancialReservationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VideoFinancialReservation = append(c.inters.VideoFinancialReservation, interceptors...)
+}
+
+// Create returns a builder for creating a VideoFinancialReservation entity.
+func (c *VideoFinancialReservationClient) Create() *VideoFinancialReservationCreate {
+	mutation := newVideoFinancialReservationMutation(c.config, OpCreate)
+	return &VideoFinancialReservationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VideoFinancialReservation entities.
+func (c *VideoFinancialReservationClient) CreateBulk(builders ...*VideoFinancialReservationCreate) *VideoFinancialReservationCreateBulk {
+	return &VideoFinancialReservationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VideoFinancialReservationClient) MapCreateBulk(slice any, setFunc func(*VideoFinancialReservationCreate, int)) *VideoFinancialReservationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VideoFinancialReservationCreateBulk{err: fmt.Errorf("calling to VideoFinancialReservationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VideoFinancialReservationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VideoFinancialReservationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VideoFinancialReservation.
+func (c *VideoFinancialReservationClient) Update() *VideoFinancialReservationUpdate {
+	mutation := newVideoFinancialReservationMutation(c.config, OpUpdate)
+	return &VideoFinancialReservationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VideoFinancialReservationClient) UpdateOne(_m *VideoFinancialReservation) *VideoFinancialReservationUpdateOne {
+	mutation := newVideoFinancialReservationMutation(c.config, OpUpdateOne, withVideoFinancialReservation(_m))
+	return &VideoFinancialReservationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VideoFinancialReservationClient) UpdateOneID(id int64) *VideoFinancialReservationUpdateOne {
+	mutation := newVideoFinancialReservationMutation(c.config, OpUpdateOne, withVideoFinancialReservationID(id))
+	return &VideoFinancialReservationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VideoFinancialReservation.
+func (c *VideoFinancialReservationClient) Delete() *VideoFinancialReservationDelete {
+	mutation := newVideoFinancialReservationMutation(c.config, OpDelete)
+	return &VideoFinancialReservationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VideoFinancialReservationClient) DeleteOne(_m *VideoFinancialReservation) *VideoFinancialReservationDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VideoFinancialReservationClient) DeleteOneID(id int64) *VideoFinancialReservationDeleteOne {
+	builder := c.Delete().Where(videofinancialreservation.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VideoFinancialReservationDeleteOne{builder}
+}
+
+// Query returns a query builder for VideoFinancialReservation.
+func (c *VideoFinancialReservationClient) Query() *VideoFinancialReservationQuery {
+	return &VideoFinancialReservationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVideoFinancialReservation},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VideoFinancialReservation entity by its id.
+func (c *VideoFinancialReservationClient) Get(ctx context.Context, id int64) (*VideoFinancialReservation, error) {
+	return c.Query().Where(videofinancialreservation.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VideoFinancialReservationClient) GetX(ctx context.Context, id int64) *VideoFinancialReservation {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VideoFinancialReservationClient) Hooks() []Hook {
+	return c.hooks.VideoFinancialReservation
+}
+
+// Interceptors returns the client interceptors.
+func (c *VideoFinancialReservationClient) Interceptors() []Interceptor {
+	return c.inters.VideoFinancialReservation
+}
+
+func (c *VideoFinancialReservationClient) mutate(ctx context.Context, m *VideoFinancialReservationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VideoFinancialReservationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VideoFinancialReservationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VideoFinancialReservationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VideoFinancialReservationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VideoFinancialReservation mutation op: %q", m.Op())
+	}
+}
+
+// VideoProviderModelClient is a client for the VideoProviderModel schema.
+type VideoProviderModelClient struct {
+	config
+}
+
+// NewVideoProviderModelClient returns a client for the VideoProviderModel from the given config.
+func NewVideoProviderModelClient(c config) *VideoProviderModelClient {
+	return &VideoProviderModelClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `videoprovidermodel.Hooks(f(g(h())))`.
+func (c *VideoProviderModelClient) Use(hooks ...Hook) {
+	c.hooks.VideoProviderModel = append(c.hooks.VideoProviderModel, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `videoprovidermodel.Intercept(f(g(h())))`.
+func (c *VideoProviderModelClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VideoProviderModel = append(c.inters.VideoProviderModel, interceptors...)
+}
+
+// Create returns a builder for creating a VideoProviderModel entity.
+func (c *VideoProviderModelClient) Create() *VideoProviderModelCreate {
+	mutation := newVideoProviderModelMutation(c.config, OpCreate)
+	return &VideoProviderModelCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VideoProviderModel entities.
+func (c *VideoProviderModelClient) CreateBulk(builders ...*VideoProviderModelCreate) *VideoProviderModelCreateBulk {
+	return &VideoProviderModelCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VideoProviderModelClient) MapCreateBulk(slice any, setFunc func(*VideoProviderModelCreate, int)) *VideoProviderModelCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VideoProviderModelCreateBulk{err: fmt.Errorf("calling to VideoProviderModelClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VideoProviderModelCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VideoProviderModelCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VideoProviderModel.
+func (c *VideoProviderModelClient) Update() *VideoProviderModelUpdate {
+	mutation := newVideoProviderModelMutation(c.config, OpUpdate)
+	return &VideoProviderModelUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VideoProviderModelClient) UpdateOne(_m *VideoProviderModel) *VideoProviderModelUpdateOne {
+	mutation := newVideoProviderModelMutation(c.config, OpUpdateOne, withVideoProviderModel(_m))
+	return &VideoProviderModelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VideoProviderModelClient) UpdateOneID(id int64) *VideoProviderModelUpdateOne {
+	mutation := newVideoProviderModelMutation(c.config, OpUpdateOne, withVideoProviderModelID(id))
+	return &VideoProviderModelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VideoProviderModel.
+func (c *VideoProviderModelClient) Delete() *VideoProviderModelDelete {
+	mutation := newVideoProviderModelMutation(c.config, OpDelete)
+	return &VideoProviderModelDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VideoProviderModelClient) DeleteOne(_m *VideoProviderModel) *VideoProviderModelDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VideoProviderModelClient) DeleteOneID(id int64) *VideoProviderModelDeleteOne {
+	builder := c.Delete().Where(videoprovidermodel.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VideoProviderModelDeleteOne{builder}
+}
+
+// Query returns a query builder for VideoProviderModel.
+func (c *VideoProviderModelClient) Query() *VideoProviderModelQuery {
+	return &VideoProviderModelQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVideoProviderModel},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VideoProviderModel entity by its id.
+func (c *VideoProviderModelClient) Get(ctx context.Context, id int64) (*VideoProviderModel, error) {
+	return c.Query().Where(videoprovidermodel.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VideoProviderModelClient) GetX(ctx context.Context, id int64) *VideoProviderModel {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VideoProviderModelClient) Hooks() []Hook {
+	return c.hooks.VideoProviderModel
+}
+
+// Interceptors returns the client interceptors.
+func (c *VideoProviderModelClient) Interceptors() []Interceptor {
+	return c.inters.VideoProviderModel
+}
+
+func (c *VideoProviderModelClient) mutate(ctx context.Context, m *VideoProviderModelMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VideoProviderModelCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VideoProviderModelUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VideoProviderModelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VideoProviderModelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VideoProviderModel mutation op: %q", m.Op())
+	}
+}
+
+// VideoQuotaReservationClient is a client for the VideoQuotaReservation schema.
+type VideoQuotaReservationClient struct {
+	config
+}
+
+// NewVideoQuotaReservationClient returns a client for the VideoQuotaReservation from the given config.
+func NewVideoQuotaReservationClient(c config) *VideoQuotaReservationClient {
+	return &VideoQuotaReservationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `videoquotareservation.Hooks(f(g(h())))`.
+func (c *VideoQuotaReservationClient) Use(hooks ...Hook) {
+	c.hooks.VideoQuotaReservation = append(c.hooks.VideoQuotaReservation, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `videoquotareservation.Intercept(f(g(h())))`.
+func (c *VideoQuotaReservationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VideoQuotaReservation = append(c.inters.VideoQuotaReservation, interceptors...)
+}
+
+// Create returns a builder for creating a VideoQuotaReservation entity.
+func (c *VideoQuotaReservationClient) Create() *VideoQuotaReservationCreate {
+	mutation := newVideoQuotaReservationMutation(c.config, OpCreate)
+	return &VideoQuotaReservationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VideoQuotaReservation entities.
+func (c *VideoQuotaReservationClient) CreateBulk(builders ...*VideoQuotaReservationCreate) *VideoQuotaReservationCreateBulk {
+	return &VideoQuotaReservationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VideoQuotaReservationClient) MapCreateBulk(slice any, setFunc func(*VideoQuotaReservationCreate, int)) *VideoQuotaReservationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VideoQuotaReservationCreateBulk{err: fmt.Errorf("calling to VideoQuotaReservationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VideoQuotaReservationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VideoQuotaReservationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VideoQuotaReservation.
+func (c *VideoQuotaReservationClient) Update() *VideoQuotaReservationUpdate {
+	mutation := newVideoQuotaReservationMutation(c.config, OpUpdate)
+	return &VideoQuotaReservationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VideoQuotaReservationClient) UpdateOne(_m *VideoQuotaReservation) *VideoQuotaReservationUpdateOne {
+	mutation := newVideoQuotaReservationMutation(c.config, OpUpdateOne, withVideoQuotaReservation(_m))
+	return &VideoQuotaReservationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VideoQuotaReservationClient) UpdateOneID(id int64) *VideoQuotaReservationUpdateOne {
+	mutation := newVideoQuotaReservationMutation(c.config, OpUpdateOne, withVideoQuotaReservationID(id))
+	return &VideoQuotaReservationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VideoQuotaReservation.
+func (c *VideoQuotaReservationClient) Delete() *VideoQuotaReservationDelete {
+	mutation := newVideoQuotaReservationMutation(c.config, OpDelete)
+	return &VideoQuotaReservationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VideoQuotaReservationClient) DeleteOne(_m *VideoQuotaReservation) *VideoQuotaReservationDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VideoQuotaReservationClient) DeleteOneID(id int64) *VideoQuotaReservationDeleteOne {
+	builder := c.Delete().Where(videoquotareservation.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VideoQuotaReservationDeleteOne{builder}
+}
+
+// Query returns a query builder for VideoQuotaReservation.
+func (c *VideoQuotaReservationClient) Query() *VideoQuotaReservationQuery {
+	return &VideoQuotaReservationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVideoQuotaReservation},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VideoQuotaReservation entity by its id.
+func (c *VideoQuotaReservationClient) Get(ctx context.Context, id int64) (*VideoQuotaReservation, error) {
+	return c.Query().Where(videoquotareservation.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VideoQuotaReservationClient) GetX(ctx context.Context, id int64) *VideoQuotaReservation {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VideoQuotaReservationClient) Hooks() []Hook {
+	return c.hooks.VideoQuotaReservation
+}
+
+// Interceptors returns the client interceptors.
+func (c *VideoQuotaReservationClient) Interceptors() []Interceptor {
+	return c.inters.VideoQuotaReservation
+}
+
+func (c *VideoQuotaReservationClient) mutate(ctx context.Context, m *VideoQuotaReservationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VideoQuotaReservationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VideoQuotaReservationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VideoQuotaReservationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VideoQuotaReservationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VideoQuotaReservation mutation op: %q", m.Op())
+	}
+}
+
+// VideoTaskClient is a client for the VideoTask schema.
+type VideoTaskClient struct {
+	config
+}
+
+// NewVideoTaskClient returns a client for the VideoTask from the given config.
+func NewVideoTaskClient(c config) *VideoTaskClient {
+	return &VideoTaskClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `videotask.Hooks(f(g(h())))`.
+func (c *VideoTaskClient) Use(hooks ...Hook) {
+	c.hooks.VideoTask = append(c.hooks.VideoTask, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `videotask.Intercept(f(g(h())))`.
+func (c *VideoTaskClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VideoTask = append(c.inters.VideoTask, interceptors...)
+}
+
+// Create returns a builder for creating a VideoTask entity.
+func (c *VideoTaskClient) Create() *VideoTaskCreate {
+	mutation := newVideoTaskMutation(c.config, OpCreate)
+	return &VideoTaskCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VideoTask entities.
+func (c *VideoTaskClient) CreateBulk(builders ...*VideoTaskCreate) *VideoTaskCreateBulk {
+	return &VideoTaskCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VideoTaskClient) MapCreateBulk(slice any, setFunc func(*VideoTaskCreate, int)) *VideoTaskCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VideoTaskCreateBulk{err: fmt.Errorf("calling to VideoTaskClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VideoTaskCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VideoTaskCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VideoTask.
+func (c *VideoTaskClient) Update() *VideoTaskUpdate {
+	mutation := newVideoTaskMutation(c.config, OpUpdate)
+	return &VideoTaskUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VideoTaskClient) UpdateOne(_m *VideoTask) *VideoTaskUpdateOne {
+	mutation := newVideoTaskMutation(c.config, OpUpdateOne, withVideoTask(_m))
+	return &VideoTaskUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VideoTaskClient) UpdateOneID(id int64) *VideoTaskUpdateOne {
+	mutation := newVideoTaskMutation(c.config, OpUpdateOne, withVideoTaskID(id))
+	return &VideoTaskUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VideoTask.
+func (c *VideoTaskClient) Delete() *VideoTaskDelete {
+	mutation := newVideoTaskMutation(c.config, OpDelete)
+	return &VideoTaskDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VideoTaskClient) DeleteOne(_m *VideoTask) *VideoTaskDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VideoTaskClient) DeleteOneID(id int64) *VideoTaskDeleteOne {
+	builder := c.Delete().Where(videotask.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VideoTaskDeleteOne{builder}
+}
+
+// Query returns a query builder for VideoTask.
+func (c *VideoTaskClient) Query() *VideoTaskQuery {
+	return &VideoTaskQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVideoTask},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VideoTask entity by its id.
+func (c *VideoTaskClient) Get(ctx context.Context, id int64) (*VideoTask, error) {
+	return c.Query().Where(videotask.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VideoTaskClient) GetX(ctx context.Context, id int64) *VideoTask {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VideoTaskClient) Hooks() []Hook {
+	return c.hooks.VideoTask
+}
+
+// Interceptors returns the client interceptors.
+func (c *VideoTaskClient) Interceptors() []Interceptor {
+	return c.inters.VideoTask
+}
+
+func (c *VideoTaskClient) mutate(ctx context.Context, m *VideoTaskMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VideoTaskCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VideoTaskUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VideoTaskUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VideoTaskDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VideoTask mutation op: %q", m.Op())
+	}
+}
+
+// VideoTaskEventClient is a client for the VideoTaskEvent schema.
+type VideoTaskEventClient struct {
+	config
+}
+
+// NewVideoTaskEventClient returns a client for the VideoTaskEvent from the given config.
+func NewVideoTaskEventClient(c config) *VideoTaskEventClient {
+	return &VideoTaskEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `videotaskevent.Hooks(f(g(h())))`.
+func (c *VideoTaskEventClient) Use(hooks ...Hook) {
+	c.hooks.VideoTaskEvent = append(c.hooks.VideoTaskEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `videotaskevent.Intercept(f(g(h())))`.
+func (c *VideoTaskEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VideoTaskEvent = append(c.inters.VideoTaskEvent, interceptors...)
+}
+
+// Create returns a builder for creating a VideoTaskEvent entity.
+func (c *VideoTaskEventClient) Create() *VideoTaskEventCreate {
+	mutation := newVideoTaskEventMutation(c.config, OpCreate)
+	return &VideoTaskEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VideoTaskEvent entities.
+func (c *VideoTaskEventClient) CreateBulk(builders ...*VideoTaskEventCreate) *VideoTaskEventCreateBulk {
+	return &VideoTaskEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VideoTaskEventClient) MapCreateBulk(slice any, setFunc func(*VideoTaskEventCreate, int)) *VideoTaskEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VideoTaskEventCreateBulk{err: fmt.Errorf("calling to VideoTaskEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VideoTaskEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VideoTaskEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VideoTaskEvent.
+func (c *VideoTaskEventClient) Update() *VideoTaskEventUpdate {
+	mutation := newVideoTaskEventMutation(c.config, OpUpdate)
+	return &VideoTaskEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VideoTaskEventClient) UpdateOne(_m *VideoTaskEvent) *VideoTaskEventUpdateOne {
+	mutation := newVideoTaskEventMutation(c.config, OpUpdateOne, withVideoTaskEvent(_m))
+	return &VideoTaskEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VideoTaskEventClient) UpdateOneID(id int64) *VideoTaskEventUpdateOne {
+	mutation := newVideoTaskEventMutation(c.config, OpUpdateOne, withVideoTaskEventID(id))
+	return &VideoTaskEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VideoTaskEvent.
+func (c *VideoTaskEventClient) Delete() *VideoTaskEventDelete {
+	mutation := newVideoTaskEventMutation(c.config, OpDelete)
+	return &VideoTaskEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VideoTaskEventClient) DeleteOne(_m *VideoTaskEvent) *VideoTaskEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VideoTaskEventClient) DeleteOneID(id int64) *VideoTaskEventDeleteOne {
+	builder := c.Delete().Where(videotaskevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VideoTaskEventDeleteOne{builder}
+}
+
+// Query returns a query builder for VideoTaskEvent.
+func (c *VideoTaskEventClient) Query() *VideoTaskEventQuery {
+	return &VideoTaskEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVideoTaskEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VideoTaskEvent entity by its id.
+func (c *VideoTaskEventClient) Get(ctx context.Context, id int64) (*VideoTaskEvent, error) {
+	return c.Query().Where(videotaskevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VideoTaskEventClient) GetX(ctx context.Context, id int64) *VideoTaskEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VideoTaskEventClient) Hooks() []Hook {
+	return c.hooks.VideoTaskEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *VideoTaskEventClient) Interceptors() []Interceptor {
+	return c.inters.VideoTaskEvent
+}
+
+func (c *VideoTaskEventClient) mutate(ctx context.Context, m *VideoTaskEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VideoTaskEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VideoTaskEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VideoTaskEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VideoTaskEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VideoTaskEvent mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
@@ -6850,7 +7700,8 @@ type (
 		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
 		UserAttributeDefinition, UserAttributeValue, UserPlatformQuota,
-		UserSubscription []ent.Hook
+		UserSubscription, VideoBillingEvent, VideoFinancialReservation,
+		VideoProviderModel, VideoQuotaReservation, VideoTask, VideoTaskEvent []ent.Hook
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
@@ -6862,7 +7713,9 @@ type (
 		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
 		UserAttributeDefinition, UserAttributeValue, UserPlatformQuota,
-		UserSubscription []ent.Interceptor
+		UserSubscription, VideoBillingEvent, VideoFinancialReservation,
+		VideoProviderModel, VideoQuotaReservation, VideoTask,
+		VideoTaskEvent []ent.Interceptor
 	}
 )
 

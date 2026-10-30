@@ -3116,7 +3116,7 @@ function InfiniteCanvasPage() {
 
     return (
         <div className="flex h-full min-h-0 flex-col" style={{ background: theme.canvas.background, color: theme.node.text }}>
-            {IS_SUB2API_HOST && <nav className="flex min-h-12 shrink-0 items-center justify-between gap-3 px-4 text-sm" aria-label="创作工作区切换"><button type="button" onClick={returnToImage} className="flex min-h-11 shrink-0 items-center gap-2 rounded-md px-2 transition hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-white/10"><ArrowLeft className="size-4" aria-hidden="true" />返回生图</button><span className="font-semibold">画布工作台</span></nav>}
+            {IS_SUB2API_HOST && <nav className="flex shrink-0 items-center justify-between gap-3 px-4 py-1 text-sm" aria-label="创作工作区切换"><span className="font-semibold">画布工作台</span><button type="button" onClick={returnToImage} className="flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 transition hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-white/10"><ArrowLeft className="size-4" aria-hidden="true" />返回生图</button></nav>}
         <main className="flex min-h-0 flex-1 overflow-hidden">
             <CanvasSidePanel nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={focusNode} onPreviewNode={setPreviewNodeId} onInsertAsset={handleAssetInsert} />
             <section className="relative min-w-0 flex-1 overflow-hidden">

@@ -380,6 +380,7 @@
           </template>
 
           <template #cell-actions="{ row }">
+ <KokoGroupGate v-if="row.platform === 'video'" :group-id="row.id" />
             <div class="flex items-center gap-1">
               <button
                 @click="handleEdit(row)"
@@ -4265,6 +4266,7 @@
 </template>
 
 <script setup lang="ts">
+import KokoGroupGate from '@/components/video/KokoGroupGate.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";

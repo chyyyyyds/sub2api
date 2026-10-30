@@ -1532,7 +1532,7 @@ export interface CodexUsageSnapshot {
 
 export type OpenAICompactMode = 'auto' | 'force_on' | 'force_off'
 export type OpenAIResponsesMode = 'auto' | 'force_responses' | 'force_chat_completions'
-export type OpenAIEndpointCapability = 'chat_completions' | 'embeddings' | 'seedance'
+export type OpenAIEndpointCapability = 'chat_completions' | 'embeddings' | 'seedance' | 'koko_video'
 
 export interface OpenAICompactState {
   openai_compact_mode?: OpenAICompactMode
@@ -1766,6 +1766,18 @@ export type ImageSizeSource = 'output' | 'input' | 'default' | 'legacy'
 export type ImageSizeBreakdown = Record<string, number>
 
 export interface UsageLog {
+  /** @description 媒体类型；KOKO 视频为 video。 */
+  media_type?: string | null
+  /** @description 成功结算的视频数量。 */
+  video_count?: number
+  /** @description 视频秒数。 */
+  video_duration_seconds?: number | null
+  /** @description 分辨率原值。 */
+  video_resolution?: string | null
+  /** @description 本地视频任务关联编号。 */
+  video_task_id?: string | null
+  /** @description 创建时的十进制价格快照。 */
+  video_pricing_snapshot?: { base_price: string; charge: string; group_multiplier: string; currency: string } | null
   id: number
   user_id: number
   api_key_id: number

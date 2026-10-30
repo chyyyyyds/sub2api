@@ -7,6 +7,10 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Sub2API 创作界面微调：GPT 推理模型的 Chat Completions 请求默认携带 `reasoning_effort: high`，Responses 请求携带 `reasoning.effort: high`；图片首次选择及目录调整时优先使用当前 Key 已授权的 `gpt-image-2.5`，手动选择继续保留。iframe 加载前与等待宿主配置期间显示加载提示；创作参数标题右侧移除重复模型名；画布标题在左、「返回生图」在右，与生图页「进入画布」位置对齐。本轮仅本地修改，待用户检查实际界面，未部署、未调用真实收费接口；TODO 无对应事项，无需调整。
+
+- Sub2API KOKO Video：V5 Vue 视频创作接入 Go 持久任务、六张 PostgreSQL 表、跨实例 Worker 租约、十进制资金与额度预留、成功标准 UsageLog 和失败退款；现有账号管理可新增/编辑专用 KOKO Account，查看实时积分/模型/分组并幂等初始化原 Group/Channel/Account，新增模型按用户指定的 1:1 汇率初始定价 $8/个。管理员和用户使用记录可筛选视频费用，管理员可关联任务财务审计。Mock、自动化测试、部署与截图以 `canvas/STAGE_C2_REPORT.md` 的实际结果为准，尚未由用户人工验收。正式创建默认关闭，未调用真实收费 POST；旧 Canvas 视频逻辑保持未启用，不自动保存 MP4 或上传 R2。
+
 - Sub2API 工作区切换：生图页顶部常驻「进入画布」，没有生成图片也可打开最近画布，无项目时创建空画布；画布顶部独立切换栏常驻「返回生图」，再次进入优先返回原画布。独立本地浏览器已确认桌面和手机入口可见可点击、多项目返回原画布、节点及视口缩放保留、原项目删除后进入其他画布，无页面脚本异常，未调用真实生图接口。生图进行中暂不可切换，完成后恢复入口；用户已确认改动并要求按固定版本 6.6.6 发布，实际线上效果待发布后确认。TODO 无对应待办，无需调整。
 
 - Sub2API 创作会话刷新修复：同一用户的 `/auth/me` 资料更新保留模型、Key、画布与进行中的生成；换号、退出、手动切 Key 仍重新校验和隔离。空画布提前与目录查询并行加载，首次选择不重复查询同一 Key，其余 Key 和画布编辑器等非首屏页面按需加载。待在生产图片页确认周期刷新不再变暗、禁用或取消生成；使用本地延迟响应回归，不为验收自动重发真实收费请求。TODO 中暂停的视频事项无需调整。

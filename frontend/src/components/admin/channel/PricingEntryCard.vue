@@ -224,8 +224,10 @@
           </div>
         </div>
 
+        <!-- KOKO 使用同一渠道定价结构，不新增平行价格表。 -->
         <!-- Image/video mode -->
         <div v-else-if="entry.billing_mode === 'image' || entry.billing_mode === 'video'">
+        <p v-if="platform === 'openai' && entry.billing_mode === 'video'" class="mt-2 text-xs text-gray-500">KOKO 视频按个配置美元基价。参数档标签格式：duration=秒数;resolution=目录原值;mode=已核实模式。请以账号实时能力为准；上游积分不参与美元换算。</p>
           <!-- Default image price (per-request, same as per_request mode) -->
           <label class="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">
             {{ entry.billing_mode === 'video' ? t('admin.channels.form.defaultVideoPrice') : t('admin.channels.form.defaultImagePrice') }}

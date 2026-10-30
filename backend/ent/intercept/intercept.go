@@ -48,6 +48,12 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/videobillingevent"
+	"github.com/Wei-Shaw/sub2api/ent/videofinancialreservation"
+	"github.com/Wei-Shaw/sub2api/ent/videoprovidermodel"
+	"github.com/Wei-Shaw/sub2api/ent/videoquotareservation"
+	"github.com/Wei-Shaw/sub2api/ent/videotask"
+	"github.com/Wei-Shaw/sub2api/ent/videotaskevent"
 )
 
 // The Query interface represents an operation that queries a graph.
@@ -1159,6 +1165,168 @@ func (f TraverseUserSubscription) Traverse(ctx context.Context, q ent.Query) err
 	return fmt.Errorf("unexpected query type %T. expect *ent.UserSubscriptionQuery", q)
 }
 
+// The VideoBillingEventFunc type is an adapter to allow the use of ordinary function as a Querier.
+type VideoBillingEventFunc func(context.Context, *ent.VideoBillingEventQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f VideoBillingEventFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.VideoBillingEventQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.VideoBillingEventQuery", q)
+}
+
+// The TraverseVideoBillingEvent type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseVideoBillingEvent func(context.Context, *ent.VideoBillingEventQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseVideoBillingEvent) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseVideoBillingEvent) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.VideoBillingEventQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.VideoBillingEventQuery", q)
+}
+
+// The VideoFinancialReservationFunc type is an adapter to allow the use of ordinary function as a Querier.
+type VideoFinancialReservationFunc func(context.Context, *ent.VideoFinancialReservationQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f VideoFinancialReservationFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.VideoFinancialReservationQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.VideoFinancialReservationQuery", q)
+}
+
+// The TraverseVideoFinancialReservation type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseVideoFinancialReservation func(context.Context, *ent.VideoFinancialReservationQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseVideoFinancialReservation) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseVideoFinancialReservation) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.VideoFinancialReservationQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.VideoFinancialReservationQuery", q)
+}
+
+// The VideoProviderModelFunc type is an adapter to allow the use of ordinary function as a Querier.
+type VideoProviderModelFunc func(context.Context, *ent.VideoProviderModelQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f VideoProviderModelFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.VideoProviderModelQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.VideoProviderModelQuery", q)
+}
+
+// The TraverseVideoProviderModel type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseVideoProviderModel func(context.Context, *ent.VideoProviderModelQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseVideoProviderModel) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseVideoProviderModel) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.VideoProviderModelQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.VideoProviderModelQuery", q)
+}
+
+// The VideoQuotaReservationFunc type is an adapter to allow the use of ordinary function as a Querier.
+type VideoQuotaReservationFunc func(context.Context, *ent.VideoQuotaReservationQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f VideoQuotaReservationFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.VideoQuotaReservationQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.VideoQuotaReservationQuery", q)
+}
+
+// The TraverseVideoQuotaReservation type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseVideoQuotaReservation func(context.Context, *ent.VideoQuotaReservationQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseVideoQuotaReservation) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseVideoQuotaReservation) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.VideoQuotaReservationQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.VideoQuotaReservationQuery", q)
+}
+
+// The VideoTaskFunc type is an adapter to allow the use of ordinary function as a Querier.
+type VideoTaskFunc func(context.Context, *ent.VideoTaskQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f VideoTaskFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.VideoTaskQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.VideoTaskQuery", q)
+}
+
+// The TraverseVideoTask type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseVideoTask func(context.Context, *ent.VideoTaskQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseVideoTask) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseVideoTask) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.VideoTaskQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.VideoTaskQuery", q)
+}
+
+// The VideoTaskEventFunc type is an adapter to allow the use of ordinary function as a Querier.
+type VideoTaskEventFunc func(context.Context, *ent.VideoTaskEventQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f VideoTaskEventFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.VideoTaskEventQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.VideoTaskEventQuery", q)
+}
+
+// The TraverseVideoTaskEvent type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseVideoTaskEvent func(context.Context, *ent.VideoTaskEventQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseVideoTaskEvent) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseVideoTaskEvent) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.VideoTaskEventQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.VideoTaskEventQuery", q)
+}
+
 // NewQuery returns the generic Query interface for the given typed query.
 func NewQuery(q ent.Query) (Query, error) {
 	switch q := q.(type) {
@@ -1240,6 +1408,18 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.UserPlatformQuotaQuery, predicate.UserPlatformQuota, userplatformquota.OrderOption]{typ: ent.TypeUserPlatformQuota, tq: q}, nil
 	case *ent.UserSubscriptionQuery:
 		return &query[*ent.UserSubscriptionQuery, predicate.UserSubscription, usersubscription.OrderOption]{typ: ent.TypeUserSubscription, tq: q}, nil
+	case *ent.VideoBillingEventQuery:
+		return &query[*ent.VideoBillingEventQuery, predicate.VideoBillingEvent, videobillingevent.OrderOption]{typ: ent.TypeVideoBillingEvent, tq: q}, nil
+	case *ent.VideoFinancialReservationQuery:
+		return &query[*ent.VideoFinancialReservationQuery, predicate.VideoFinancialReservation, videofinancialreservation.OrderOption]{typ: ent.TypeVideoFinancialReservation, tq: q}, nil
+	case *ent.VideoProviderModelQuery:
+		return &query[*ent.VideoProviderModelQuery, predicate.VideoProviderModel, videoprovidermodel.OrderOption]{typ: ent.TypeVideoProviderModel, tq: q}, nil
+	case *ent.VideoQuotaReservationQuery:
+		return &query[*ent.VideoQuotaReservationQuery, predicate.VideoQuotaReservation, videoquotareservation.OrderOption]{typ: ent.TypeVideoQuotaReservation, tq: q}, nil
+	case *ent.VideoTaskQuery:
+		return &query[*ent.VideoTaskQuery, predicate.VideoTask, videotask.OrderOption]{typ: ent.TypeVideoTask, tq: q}, nil
+	case *ent.VideoTaskEventQuery:
+		return &query[*ent.VideoTaskEventQuery, predicate.VideoTaskEvent, videotaskevent.OrderOption]{typ: ent.TypeVideoTaskEvent, tq: q}, nil
 	default:
 		return nil, fmt.Errorf("unknown query type %T", q)
 	}

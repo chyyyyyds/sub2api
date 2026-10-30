@@ -107,6 +107,7 @@ func provideCleanup(
 	geminiCachedContent *service.GeminiCachedContentService,
 	batchImageCleanup *service.BatchImageCleanupService,
 	batchImageWorker *service.BatchImageWorkerRuntime,
+	videoService *service.VideoService,
 	pricing *service.PricingService,
 	emailQueue *service.EmailQueueService,
 	billingCache *service.BillingCacheService,
@@ -257,6 +258,7 @@ func provideCleanup(
 				}
 				return nil
 			}},
+			{"VideoService", func() error { videoService.Stop(); return nil }},
 			{"BatchImageWorkerRuntime", func() error {
 				if batchImageWorker != nil {
 					batchImageWorker.Stop()

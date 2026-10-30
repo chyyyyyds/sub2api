@@ -437,7 +437,7 @@
 
         <fieldset v-if="!showEditModal" data-tour="key-form-provider">
           <legend class="input-label">{{ t('keys.providerLabel') }}</legend>
-          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <label
               v-for="provider in createProviderOptions"
               :key="provider.value"
@@ -1027,6 +1027,7 @@
     <UseKeyModal trap-focus panel-class="uk-dialog uk-use-dialog"
       :show="showUseKeyModal"
       :api-key="selectedKey?.key || ''"
+      :key-id="selectedKey?.id"
       :base-url="publicSettings?.api_base_url || ''"
       :platform="selectedKey?.group?.platform || null"
       :claude-code-only="selectedKey?.group?.claude_code_only || false"
@@ -2142,7 +2143,12 @@ const applyChannelCreateNavigation = async () => {
   const identity = JSON.stringify(route.query)
   if (handledCreateNavigation === identity) return
   const raw = route.query.group_id ?? route.query.group
-  const group = typeof raw === 'string' && /^\d+$/.test(raw) ? groups.value.find(g => g.id === Number(raw)) : undefined
+  const vendor = route.query.vendor ?? route.query.platform
+  // 创作页不携带固定分组 ID；按接口原顺序选择当前用户真正可用的首个厂商分组。
+  // 显式传入的分组仍须严格匹配，不能将无权限或无效 ID 自动替换为其他分组。
+  const group = raw == null
+    ? groups.value.find(g => g.platform === vendor)
+    : typeof raw === 'string' && /^\d+$/.test(raw) ? groups.value.find(g => g.id === Number(raw)) : undefined
   handledCreateNavigation = identity
   if (!group) { appStore.showError(t('keys.groupRequired')); return }
   showCreateModal.value = true

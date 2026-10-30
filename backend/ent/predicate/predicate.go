@@ -122,3 +122,21 @@ type UserPlatformQuota func(*sql.Selector)
 
 // UserSubscription is the predicate function for usersubscription builders.
 type UserSubscription func(*sql.Selector)
+
+// VideoBillingEvent is the predicate function for videobillingevent builders.
+type VideoBillingEvent func(*sql.Selector)
+
+// VideoFinancialReservation is the predicate function for videofinancialreservation builders.
+type VideoFinancialReservation func(*sql.Selector)
+
+// VideoProviderModel is the predicate function for videoprovidermodel builders.
+type VideoProviderModel func(*sql.Selector)
+
+// VideoQuotaReservation is the predicate function for videoquotareservation builders.
+type VideoQuotaReservation func(*sql.Selector)
+
+// VideoTask is the predicate function for videotask builders.
+type VideoTask func(*sql.Selector)
+
+// VideoTaskEvent is the predicate function for videotaskevent builders.
+type VideoTaskEvent func(*sql.Selector)

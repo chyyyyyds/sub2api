@@ -19,6 +19,8 @@ const (
 	PlatformGatewayGemini PlatformGateway = "gemini"
 	// PlatformGatewayAntigravity 由 Antigravity 网关处理。
 	PlatformGatewayAntigravity PlatformGateway = "antigravity"
+	// PlatformGatewayVideo 由持久视频任务服务处理。
+	PlatformGatewayVideo PlatformGateway = "video"
 )
 
 // PlatformSpec 描述一个具体（非 composite）平台。
@@ -48,6 +50,7 @@ var platformList = []PlatformSpec{
 	{ID: PlatformTypeSafe, DisplayName: "TypeSafe / Jev", Gateway: PlatformGatewayAnthropic, LiteLLMProvider: "typesafe"},
 	{ID: PlatformCommandCode, DisplayName: "Command Code", Gateway: PlatformGatewayOpenAI},
 	{ID: PlatformCline, DisplayName: "Cline", Gateway: PlatformGatewayOpenAI},
+	{ID: PlatformVideo, DisplayName: "视频创作", Gateway: PlatformGatewayVideo},
 }
 
 var platformIndex = func() map[string]int {

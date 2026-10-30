@@ -92,6 +92,18 @@ type Tx struct {
 	UserPlatformQuota *UserPlatformQuotaClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
+	// VideoBillingEvent is the client for interacting with the VideoBillingEvent builders.
+	VideoBillingEvent *VideoBillingEventClient
+	// VideoFinancialReservation is the client for interacting with the VideoFinancialReservation builders.
+	VideoFinancialReservation *VideoFinancialReservationClient
+	// VideoProviderModel is the client for interacting with the VideoProviderModel builders.
+	VideoProviderModel *VideoProviderModelClient
+	// VideoQuotaReservation is the client for interacting with the VideoQuotaReservation builders.
+	VideoQuotaReservation *VideoQuotaReservationClient
+	// VideoTask is the client for interacting with the VideoTask builders.
+	VideoTask *VideoTaskClient
+	// VideoTaskEvent is the client for interacting with the VideoTaskEvent builders.
+	VideoTaskEvent *VideoTaskEventClient
 
 	// lazily loaded.
 	client     *Client
@@ -262,6 +274,12 @@ func (tx *Tx) init() {
 	tx.UserAttributeValue = NewUserAttributeValueClient(tx.config)
 	tx.UserPlatformQuota = NewUserPlatformQuotaClient(tx.config)
 	tx.UserSubscription = NewUserSubscriptionClient(tx.config)
+	tx.VideoBillingEvent = NewVideoBillingEventClient(tx.config)
+	tx.VideoFinancialReservation = NewVideoFinancialReservationClient(tx.config)
+	tx.VideoProviderModel = NewVideoProviderModelClient(tx.config)
+	tx.VideoQuotaReservation = NewVideoQuotaReservationClient(tx.config)
+	tx.VideoTask = NewVideoTaskClient(tx.config)
+	tx.VideoTaskEvent = NewVideoTaskEventClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

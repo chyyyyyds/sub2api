@@ -4,11 +4,13 @@ package ent
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
@@ -865,6 +867,64 @@ func (_u *UsageLogUpdate) ClearImageSizeBreakdown() *UsageLogUpdate {
 	return _u
 }
 
+// SetMediaType sets the "media_type" field.
+func (_u *UsageLogUpdate) SetMediaType(v string) *UsageLogUpdate {
+	_u.mutation.SetMediaType(v)
+	return _u
+}
+
+// SetNillableMediaType sets the "media_type" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableMediaType(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetMediaType(*v)
+	}
+	return _u
+}
+
+// ClearMediaType clears the value of the "media_type" field.
+func (_u *UsageLogUpdate) ClearMediaType() *UsageLogUpdate {
+	_u.mutation.ClearMediaType()
+	return _u
+}
+
+// SetVideoTaskID sets the "video_task_id" field.
+func (_u *UsageLogUpdate) SetVideoTaskID(v string) *UsageLogUpdate {
+	_u.mutation.SetVideoTaskID(v)
+	return _u
+}
+
+// SetNillableVideoTaskID sets the "video_task_id" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableVideoTaskID(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetVideoTaskID(*v)
+	}
+	return _u
+}
+
+// ClearVideoTaskID clears the value of the "video_task_id" field.
+func (_u *UsageLogUpdate) ClearVideoTaskID() *UsageLogUpdate {
+	_u.mutation.ClearVideoTaskID()
+	return _u
+}
+
+// SetVideoPricingSnapshot sets the "video_pricing_snapshot" field.
+func (_u *UsageLogUpdate) SetVideoPricingSnapshot(v jsontext.Value) *UsageLogUpdate {
+	_u.mutation.SetVideoPricingSnapshot(v)
+	return _u
+}
+
+// AppendVideoPricingSnapshot appends value to the "video_pricing_snapshot" field.
+func (_u *UsageLogUpdate) AppendVideoPricingSnapshot(v jsontext.Value) *UsageLogUpdate {
+	_u.mutation.AppendVideoPricingSnapshot(v)
+	return _u
+}
+
+// ClearVideoPricingSnapshot clears the value of the "video_pricing_snapshot" field.
+func (_u *UsageLogUpdate) ClearVideoPricingSnapshot() *UsageLogUpdate {
+	_u.mutation.ClearVideoPricingSnapshot()
+	return _u
+}
+
 // SetVideoCount sets the "video_count" field.
 func (_u *UsageLogUpdate) SetVideoCount(v int) *UsageLogUpdate {
 	_u.mutation.ResetVideoCount()
@@ -1104,6 +1164,16 @@ func (_u *UsageLogUpdate) check() error {
 	if v, ok := _u.mutation.ImageSizeSource(); ok {
 		if err := usagelog.ImageSizeSourceValidator(v); err != nil {
 			return &ValidationError{Name: "image_size_source", err: fmt.Errorf(`ent: validator failed for field "UsageLog.image_size_source": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.MediaType(); ok {
+		if err := usagelog.MediaTypeValidator(v); err != nil {
+			return &ValidationError{Name: "media_type", err: fmt.Errorf(`ent: validator failed for field "UsageLog.media_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.VideoTaskID(); ok {
+		if err := usagelog.VideoTaskIDValidator(v); err != nil {
+			return &ValidationError{Name: "video_task_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.video_task_id": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.VideoResolution(); ok {
@@ -1356,6 +1426,29 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ImageSizeBreakdownCleared() {
 		_spec.ClearField(usagelog.FieldImageSizeBreakdown, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.MediaType(); ok {
+		_spec.SetField(usagelog.FieldMediaType, field.TypeString, value)
+	}
+	if _u.mutation.MediaTypeCleared() {
+		_spec.ClearField(usagelog.FieldMediaType, field.TypeString)
+	}
+	if value, ok := _u.mutation.VideoTaskID(); ok {
+		_spec.SetField(usagelog.FieldVideoTaskID, field.TypeString, value)
+	}
+	if _u.mutation.VideoTaskIDCleared() {
+		_spec.ClearField(usagelog.FieldVideoTaskID, field.TypeString)
+	}
+	if value, ok := _u.mutation.VideoPricingSnapshot(); ok {
+		_spec.SetField(usagelog.FieldVideoPricingSnapshot, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedVideoPricingSnapshot(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, usagelog.FieldVideoPricingSnapshot, value)
+		})
+	}
+	if _u.mutation.VideoPricingSnapshotCleared() {
+		_spec.ClearField(usagelog.FieldVideoPricingSnapshot, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.VideoCount(); ok {
 		_spec.SetField(usagelog.FieldVideoCount, field.TypeInt, value)
@@ -2379,6 +2472,64 @@ func (_u *UsageLogUpdateOne) ClearImageSizeBreakdown() *UsageLogUpdateOne {
 	return _u
 }
 
+// SetMediaType sets the "media_type" field.
+func (_u *UsageLogUpdateOne) SetMediaType(v string) *UsageLogUpdateOne {
+	_u.mutation.SetMediaType(v)
+	return _u
+}
+
+// SetNillableMediaType sets the "media_type" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableMediaType(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetMediaType(*v)
+	}
+	return _u
+}
+
+// ClearMediaType clears the value of the "media_type" field.
+func (_u *UsageLogUpdateOne) ClearMediaType() *UsageLogUpdateOne {
+	_u.mutation.ClearMediaType()
+	return _u
+}
+
+// SetVideoTaskID sets the "video_task_id" field.
+func (_u *UsageLogUpdateOne) SetVideoTaskID(v string) *UsageLogUpdateOne {
+	_u.mutation.SetVideoTaskID(v)
+	return _u
+}
+
+// SetNillableVideoTaskID sets the "video_task_id" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableVideoTaskID(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetVideoTaskID(*v)
+	}
+	return _u
+}
+
+// ClearVideoTaskID clears the value of the "video_task_id" field.
+func (_u *UsageLogUpdateOne) ClearVideoTaskID() *UsageLogUpdateOne {
+	_u.mutation.ClearVideoTaskID()
+	return _u
+}
+
+// SetVideoPricingSnapshot sets the "video_pricing_snapshot" field.
+func (_u *UsageLogUpdateOne) SetVideoPricingSnapshot(v jsontext.Value) *UsageLogUpdateOne {
+	_u.mutation.SetVideoPricingSnapshot(v)
+	return _u
+}
+
+// AppendVideoPricingSnapshot appends value to the "video_pricing_snapshot" field.
+func (_u *UsageLogUpdateOne) AppendVideoPricingSnapshot(v jsontext.Value) *UsageLogUpdateOne {
+	_u.mutation.AppendVideoPricingSnapshot(v)
+	return _u
+}
+
+// ClearVideoPricingSnapshot clears the value of the "video_pricing_snapshot" field.
+func (_u *UsageLogUpdateOne) ClearVideoPricingSnapshot() *UsageLogUpdateOne {
+	_u.mutation.ClearVideoPricingSnapshot()
+	return _u
+}
+
 // SetVideoCount sets the "video_count" field.
 func (_u *UsageLogUpdateOne) SetVideoCount(v int) *UsageLogUpdateOne {
 	_u.mutation.ResetVideoCount()
@@ -2631,6 +2782,16 @@ func (_u *UsageLogUpdateOne) check() error {
 	if v, ok := _u.mutation.ImageSizeSource(); ok {
 		if err := usagelog.ImageSizeSourceValidator(v); err != nil {
 			return &ValidationError{Name: "image_size_source", err: fmt.Errorf(`ent: validator failed for field "UsageLog.image_size_source": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.MediaType(); ok {
+		if err := usagelog.MediaTypeValidator(v); err != nil {
+			return &ValidationError{Name: "media_type", err: fmt.Errorf(`ent: validator failed for field "UsageLog.media_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.VideoTaskID(); ok {
+		if err := usagelog.VideoTaskIDValidator(v); err != nil {
+			return &ValidationError{Name: "video_task_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.video_task_id": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.VideoResolution(); ok {
@@ -2900,6 +3061,29 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.ImageSizeBreakdownCleared() {
 		_spec.ClearField(usagelog.FieldImageSizeBreakdown, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.MediaType(); ok {
+		_spec.SetField(usagelog.FieldMediaType, field.TypeString, value)
+	}
+	if _u.mutation.MediaTypeCleared() {
+		_spec.ClearField(usagelog.FieldMediaType, field.TypeString)
+	}
+	if value, ok := _u.mutation.VideoTaskID(); ok {
+		_spec.SetField(usagelog.FieldVideoTaskID, field.TypeString, value)
+	}
+	if _u.mutation.VideoTaskIDCleared() {
+		_spec.ClearField(usagelog.FieldVideoTaskID, field.TypeString)
+	}
+	if value, ok := _u.mutation.VideoPricingSnapshot(); ok {
+		_spec.SetField(usagelog.FieldVideoPricingSnapshot, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedVideoPricingSnapshot(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, usagelog.FieldVideoPricingSnapshot, value)
+		})
+	}
+	if _u.mutation.VideoPricingSnapshotCleared() {
+		_spec.ClearField(usagelog.FieldVideoPricingSnapshot, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.VideoCount(); ok {
 		_spec.SetField(usagelog.FieldVideoCount, field.TypeInt, value)

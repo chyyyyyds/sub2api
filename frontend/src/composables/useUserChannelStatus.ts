@@ -28,8 +28,17 @@ export function useUserChannelStatus() {
   const refreshSeconds = ref(300)
   const now = ref(Date.now())
   const enabled = computed(() => app.cachedPublicSettings?.channel_monitor_enabled !== false && app.cachedPublicSettings?.channel_monitor_mode === 'v2')
-  const vendors = computed(() => [...new Set(catalog.value.map(item => item.platform))])
-  const groups = computed(() => [...new Map(catalog.value.filter(item => item.platform === platform.value).map(item => [item.group.id, item.group])).values()])
+  const keyedGroups = computed(() => new Set(keys.value.map(key => key.group_id)))
+  // 按真实分组关联 Key，兼容 Composite 在多个厂商目录中的投影。
+  const vendors = computed(() => {
+    const keyedVendors = new Set(catalog.value.filter(item => keyedGroups.value.has(item.group.id)).map(item => item.platform))
+    return [...new Set(catalog.value.map(item => item.platform))].sort((a, b) =>
+      Number(keyedVendors.has(b)) - Number(keyedVendors.has(a)) || Number(b === 'openai') - Number(a === 'openai'))
+  })
+  // 先展示有 Key 的分组，再按用户实际倍率降序；无专属倍率时沿用分组倍率。
+  const groups = computed(() => [...new Map(catalog.value.filter(item => item.platform === platform.value).map(item => [item.group.id, item.group])).values()].sort((a, b) =>
+    Number(keyedGroups.value.has(b.id)) - Number(keyedGroups.value.has(a.id)) ||
+    (rates.value[b.id] ?? b.rate_multiplier) - (rates.value[a.id] ?? a.rate_multiplier)))
   const models = computed(() => catalog.value.filter(item => item.platform === platform.value && item.group.id === groupId.value))
   const selected = computed(() => models.value.find(item => item.model === model.value))
   const linked = computed(() => relatedKeys(keys.value, selected.value))
@@ -39,6 +48,7 @@ export function useUserChannelStatus() {
   let timer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
   function choosePlatform(value: string) {
+    if (platform.value !== value) groupId.value = null
     platform.value = value
     if (!groups.value.some(group => group.id === groupId.value)) groupId.value = groups.value[0]?.id ?? null
     chooseGroup(groupId.value)
@@ -92,7 +102,8 @@ export function useUserChannelStatus() {
       // snapshot 仅提供刷新节奏；健康与趋势一律取精确三维行，禁止用全局摘要填充模型。
       if (snapshot.status === 'fulfilled' && snapshot.value) refreshSeconds.value = snapshot.value.config.refresh_interval_seconds || 300
       else if (snapshot.status === 'rejected') issues.value.push('snapshot')
-      if (!vendors.value.includes(platform.value)) platform.value = vendors.value.includes('openai') ? 'openai' : vendors.value[0] || ''
+      // 首次进入按排序选择；自动刷新保留用户已经选择的有效厂商和分组。
+      if (!vendors.value.includes(platform.value)) platform.value = vendors.value[0] || ''
       choosePlatform(platform.value)
     } finally {
       clearTimeout(deadline)

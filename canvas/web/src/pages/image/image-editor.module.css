@@ -29,7 +29,6 @@
 }
 .titleRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .titleRow h1 { font-size: 16px !important; }
-.badge { border: 1px solid #205554; background: #0a3034; color: var(--editor-accent); border-radius: 99px; padding: 4px 9px; font-size: 10px; font-weight: 650; max-width: 55%; overflow-wrap: anywhere; }
 .labelRow { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
 .labelRow > label { font-size: 13px; font-weight: 700; }
 .hint { color: var(--editor-muted); font-size: 11px; }

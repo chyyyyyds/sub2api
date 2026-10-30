@@ -35,6 +35,22 @@ describe('聊天协议和上下文', () => {
       if (other !== field) expect(body).not.toHaveProperty(other)
     }
   })
+  it('聊天与 Responses 默认使用高推理强度，非推理模型不附加参数', () => {
+    const context = chatContext([], '问题')
+    for (const model of ['gpt-6-sol', 'gpt-6.1-sol', 'gpt-5.4', 'o3']) {
+      const body = chatRequest(model, context).body
+      expect(body).toHaveProperty('reasoning_effort', 'high')
+      expect(body).not.toHaveProperty('reasoning')
+    }
+    const responses = chatRequest('gpt-5-codex', context).body
+    expect(responses).toHaveProperty('reasoning.effort', 'high')
+    expect(responses).not.toHaveProperty('reasoning_effort')
+    for (const model of ['gpt-4o', 'claude-sonnet', 'private-alias', 'gemini-3-flash']) {
+      const body = chatRequest(model, context).body
+      expect(body).not.toHaveProperty('reasoning_effort')
+      expect(body).not.toHaveProperty('reasoning')
+    }
+  })
   it.each([0, -1, 1.5, NaN, Infinity])('无效输出限额 %s 在发出请求前拒绝', limit => {
     expect(() => chatRequest('gpt-6-sol', chatContext([], '问题'), 'chat', limit)).toThrow('configuration')
   })

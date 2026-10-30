@@ -51,6 +51,12 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/videobillingevent"
+	"github.com/Wei-Shaw/sub2api/ent/videofinancialreservation"
+	"github.com/Wei-Shaw/sub2api/ent/videoprovidermodel"
+	"github.com/Wei-Shaw/sub2api/ent/videoquotareservation"
+	"github.com/Wei-Shaw/sub2api/ent/videotask"
+	"github.com/Wei-Shaw/sub2api/ent/videotaskevent"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -150,6 +156,12 @@ func checkColumn(t, c string) error {
 			userattributevalue.Table:            userattributevalue.ValidColumn,
 			userplatformquota.Table:             userplatformquota.ValidColumn,
 			usersubscription.Table:              usersubscription.ValidColumn,
+			videobillingevent.Table:             videobillingevent.ValidColumn,
+			videofinancialreservation.Table:     videofinancialreservation.ValidColumn,
+			videoprovidermodel.Table:            videoprovidermodel.ValidColumn,
+			videoquotareservation.Table:         videoquotareservation.ValidColumn,
+			videotask.Table:                     videotask.ValidColumn,
+			videotaskevent.Table:                videotaskevent.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

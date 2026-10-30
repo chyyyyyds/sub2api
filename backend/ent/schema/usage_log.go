@@ -2,6 +2,7 @@
 package schema
 
 import (
+	"encoding/json"
 	"time"
 
 	"entgo.io/ent"
@@ -164,6 +165,9 @@ func (UsageLog) Fields() []ent.Field {
 			Optional().
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 
+		field.String("media_type").MaxLen(16).Optional().Nillable().Comment("KOKO 成功结算的媒体类型，旧业务保持原值"),
+		field.String("video_task_id").MaxLen(48).Optional().Nillable().Comment("本地持久视频任务编号"),
+		field.JSON("video_pricing_snapshot", json.RawMessage{}).Optional().Comment("视频创建时十进制价格快照"),
 		// 视频生成字段（Grok 视频按秒计费；billing_mode 走 token/其他模式时这些列仍标记视频用量）
 		field.Int("video_count").
 			Default(0).

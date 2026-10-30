@@ -207,6 +207,10 @@ type UsageLog struct {
 	VideoCount           int
 	VideoResolution      *string
 	VideoDurationSeconds *int
+	// VideoTaskID 关联本地视频任务，不使用上游任务编号。
+	VideoTaskID *string
+	// VideoPricingSnapshot 创建时的价格与倍率快照。
+	VideoPricingSnapshot *VideoPriceSnapshot
 
 	CreatedAt time.Time
 

@@ -56,6 +56,8 @@ const (
 	FieldMonthlyLimitUsd = "monthly_limit_usd"
 	// FieldDefaultValidityDays holds the string denoting the default_validity_days field in the database.
 	FieldDefaultValidityDays = "default_validity_days"
+	// FieldAllowKokoVideoGeneration holds the string denoting the allow_koko_video_generation field in the database.
+	FieldAllowKokoVideoGeneration = "allow_koko_video_generation"
 	// FieldAllowImageGeneration holds the string denoting the allow_image_generation field in the database.
 	FieldAllowImageGeneration = "allow_image_generation"
 	// FieldAllowBatchImageGeneration holds the string denoting the allow_batch_image_generation field in the database.
@@ -245,6 +247,7 @@ var Columns = []string{
 	FieldWeeklyLimitUsd,
 	FieldMonthlyLimitUsd,
 	FieldDefaultValidityDays,
+	FieldAllowKokoVideoGeneration,
 	FieldAllowImageGeneration,
 	FieldAllowBatchImageGeneration,
 	FieldImageRateIndependent,
@@ -363,6 +366,8 @@ var (
 	SubscriptionTypeValidator func(string) error
 	// DefaultDefaultValidityDays holds the default value on creation for the "default_validity_days" field.
 	DefaultDefaultValidityDays int
+	// DefaultAllowKokoVideoGeneration holds the default value on creation for the "allow_koko_video_generation" field.
+	DefaultAllowKokoVideoGeneration bool
 	// DefaultAllowImageGeneration holds the default value on creation for the "allow_image_generation" field.
 	DefaultAllowImageGeneration bool
 	// DefaultAllowBatchImageGeneration holds the default value on creation for the "allow_batch_image_generation" field.
@@ -542,6 +547,11 @@ func ByMonthlyLimitUsd(opts ...sql.OrderTermOption) OrderOption {
 // ByDefaultValidityDays orders the results by the default_validity_days field.
 func ByDefaultValidityDays(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDefaultValidityDays, opts...).ToFunc()
+}
+
+// ByAllowKokoVideoGeneration orders the results by the allow_koko_video_generation field.
+func ByAllowKokoVideoGeneration(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAllowKokoVideoGeneration, opts...).ToFunc()
 }
 
 // ByAllowImageGeneration orders the results by the allow_image_generation field.

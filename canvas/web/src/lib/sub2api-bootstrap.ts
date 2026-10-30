@@ -4,8 +4,16 @@ import { getHostConfig, parseHostConfig, setHostConfig } from "./sub2api-context
 /** 在任何业务 store 初始化前验证父窗口，隔离用户数据库与凭证生命周期。 */
 export function startHostCanvas() {
     const root = document.getElementById("root")!;
-    root.textContent = "请从 Sub2API 的 AI 创作页面打开图片工作台";
-    if (window.parent === window || !/^\/canvas\/(image|assets|canvas(?:\/[^/]+)?)\/?$/.test(location.pathname)) return;
+    if (window.parent === window || !/^\/canvas\/(image|assets|canvas(?:\/[^/]+)?)\/?$/.test(location.pathname)) {
+        root.textContent = "请从 Sub2API 的 AI 创作页面打开图片工作台";
+        return;
+    }
+    // 嵌入页面等待宿主配置和应用资源期间，明确展示加载状态。
+    const loading = document.createElement("div");
+    loading.setAttribute("role", "status");
+    loading.style.cssText = "display:grid;place-items:center;min-height:100vh;font-size:14px";
+    loading.textContent = "图片工作台加载中…";
+    root.replaceChildren(loading);
     const frameId = crypto.randomUUID();
     let requests = new AbortController();
     let ownerScope = "";
@@ -91,7 +99,8 @@ export function startHostCanvas() {
             const selected = encodeChannelModel(imported.channelId!, config.preferredModel);
             useConfigStore.setState({ config: { ...state.config, channels, model: selected, imageModel: selected, proxyEnabled: false } });
             if (retired || !ownerIsCurrent()) return;
-            if (!appMounted) { root.textContent = ""; appMounted = true; await import("../app"); }
+            // 保留加载提示，直到 React 首次渲染接管根节点，避免下载应用资源时出现空白。
+            if (!appMounted) { appMounted = true; await import("../app"); }
             if (retired || getHostConfig()?.sessionId !== config.sessionId) return;
             window.parent.postMessage({ type: "new-api:canvas-configured", version: 1, frameId, sessionId: config.sessionId }, location.origin);
         } catch {

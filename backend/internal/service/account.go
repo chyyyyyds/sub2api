@@ -1917,6 +1917,14 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 	if a == nil {
 		return false
 	}
+	if capability == OpenAIEndpointCapabilityKokoVideo {
+		configured, _ := a.openAIEndpointCapabilitySet()
+		return (a.Platform == PlatformVideo || (configured["koko_video"] && a.Platform == PlatformOpenAI)) && a.Type == AccountTypeAPIKey && a.ParentAccountID == nil && a.GetCredential("api_key") != ""
+	}
+	configuredKoko, _ := a.openAIEndpointCapabilitySet()
+	if configuredKoko["koko_video"] {
+		return false
+	}
 	if capability == OpenAIEndpointCapabilitySeedance {
 		configured, _ := a.openAIEndpointCapabilitySet()
 		return configured["seedance"] && a.Platform == PlatformOpenAI && a.Type == AccountTypeAPIKey &&
@@ -2102,6 +2110,9 @@ func (a *Account) openAIEndpointCapabilitySet() (map[string]bool, bool) {
 }
 
 func (a *Account) SupportsOpenAIImageCapability(capability OpenAIImagesCapability) bool {
+	if a.SupportsOpenAIEndpointCapability(OpenAIEndpointCapabilityKokoVideo) {
+		return false
+	}
 	if capability == "" {
 		return true
 	}

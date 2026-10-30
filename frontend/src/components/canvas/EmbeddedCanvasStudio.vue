@@ -1,7 +1,9 @@
 <template>
   <div class="canvas-body">
-    <iframe v-if="frameOwner && !locked && auth.isAuthenticated && frameOwner === auth.user?.id" :key="frameVersion" ref="frame" src="/canvas/image" :title="t('imageStudio.title')" referrerpolicy="no-referrer" :style="!credential ? { pointerEvents: 'none', opacity: 0.5 } : undefined" />
-    <div v-else class="studio-empty" role="status">{{ error || t('imageStudio.loading') }}</div>
+    <div class="canvas-frame">
+      <iframe v-if="frameOwner && !locked && auth.isAuthenticated && frameOwner === auth.user?.id" :key="frameVersion" ref="frame" src="/canvas/image" :title="t('imageStudio.title')" referrerpolicy="no-referrer" :style="!credential ? { pointerEvents: 'none', opacity: 0.5 } : undefined" @load="frameLoaded = true" />
+      <div v-if="!frameLoaded || locked" class="studio-empty" role="status">{{ error || t('imageStudio.loading') }}</div>
+    </div>
     <p class="studio-local">{{ t('imageStudio.local') }}</p>
   </div>
 </template>
@@ -28,11 +30,14 @@ const { t } = useI18n()
 const auth = useAuthStore()
 const frame = ref<HTMLIFrameElement>()
 const frameVersion = ref(0)
+const frameLoaded = ref(false)
 const frameOwner = ref<number>()
 let sessionId = ''
 let frameId = ''
 
 function restartFrame() {
+  // iframe 文档加载前由宿主占位，文档加载后继续由画布显示初始化进度。
+  frameLoaded.value = false
   emit('connected', false)
   frameId = ''
   sessionId = crypto.randomUUID()
@@ -80,5 +85,5 @@ onBeforeUnmount(() => { emit('connected', false); window.removeEventListener('me
 defineExpose({ restartFrame })
 </script>
 <style scoped>
-.canvas-body{display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden}.canvas-body iframe{display:block;width:100%;flex:1;min-height:0;border:0;background:#0b121b}.studio-empty{flex:1;display:grid;place-items:center;padding:24px;text-align:center;color:#94a9b8;font-size:13px}.studio-local{flex:none;padding:7px 14px;border-top:1px solid #20303e;font-size:11px;color:#8295a7;line-height:1.5}
+.canvas-body{display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden}.canvas-frame{position:relative;display:flex;flex:1;min-height:0}.canvas-body iframe{display:block;width:100%;flex:1;min-height:0;border:0;background:#0b121b}.studio-empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#94a9b8;background:#0b121b;font-size:13px}.studio-local{flex:none;padding:7px 14px;border-top:1px solid #20303e;font-size:11px;color:#8295a7;line-height:1.5}
 </style>

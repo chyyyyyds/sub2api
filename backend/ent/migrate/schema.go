@@ -923,6 +923,7 @@ var (
 		{Name: "weekly_limit_usd", Type: field.TypeFloat64, Nullable: true, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
 		{Name: "monthly_limit_usd", Type: field.TypeFloat64, Nullable: true, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
 		{Name: "default_validity_days", Type: field.TypeInt, Default: 30},
+		{Name: "allow_koko_video_generation", Type: field.TypeBool, Default: false},
 		{Name: "allow_image_generation", Type: field.TypeBool, Default: false},
 		{Name: "allow_batch_image_generation", Type: field.TypeBool, Default: false},
 		{Name: "image_rate_independent", Type: field.TypeBool, Default: false},
@@ -1005,7 +1006,7 @@ var (
 			{
 				Name:    "group_sort_order",
 				Unique:  false,
-				Columns: []*schema.Column{GroupsColumns[50]},
+				Columns: []*schema.Column{GroupsColumns[51]},
 			},
 			{
 				Name:    "idx_groups_duplicate_operation_id_active",
@@ -1675,6 +1676,9 @@ var (
 		{Name: "image_output_size", Type: field.TypeString, Nullable: true, Size: 32},
 		{Name: "image_size_source", Type: field.TypeString, Nullable: true, Size: 16},
 		{Name: "image_size_breakdown", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "media_type", Type: field.TypeString, Nullable: true, Size: 16},
+		{Name: "video_task_id", Type: field.TypeString, Nullable: true, Size: 48},
+		{Name: "video_pricing_snapshot", Type: field.TypeJSON, Nullable: true},
 		{Name: "video_count", Type: field.TypeInt, Default: 0},
 		{Name: "video_resolution", Type: field.TypeString, Nullable: true, Size: 10},
 		{Name: "video_duration_seconds", Type: field.TypeInt, Nullable: true},
@@ -1694,31 +1698,31 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "usage_logs_api_keys_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[43]},
+				Columns:    []*schema.Column{UsageLogsColumns[46]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_accounts_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[44]},
+				Columns:    []*schema.Column{UsageLogsColumns[47]},
 				RefColumns: []*schema.Column{AccountsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_groups_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[45]},
+				Columns:    []*schema.Column{UsageLogsColumns[48]},
 				RefColumns: []*schema.Column{GroupsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "usage_logs_users_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[46]},
+				Columns:    []*schema.Column{UsageLogsColumns[49]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_user_subscriptions_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[47]},
+				Columns:    []*schema.Column{UsageLogsColumns[50]},
 				RefColumns: []*schema.Column{UserSubscriptionsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -1727,32 +1731,32 @@ var (
 			{
 				Name:    "usagelog_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[46]},
+				Columns: []*schema.Column{UsageLogsColumns[49]},
 			},
 			{
 				Name:    "usagelog_api_key_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[43]},
+				Columns: []*schema.Column{UsageLogsColumns[46]},
 			},
 			{
 				Name:    "usagelog_account_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[44]},
+				Columns: []*schema.Column{UsageLogsColumns[47]},
 			},
 			{
 				Name:    "usagelog_group_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[45]},
+				Columns: []*schema.Column{UsageLogsColumns[48]},
 			},
 			{
 				Name:    "usagelog_subscription_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[47]},
+				Columns: []*schema.Column{UsageLogsColumns[50]},
 			},
 			{
 				Name:    "usagelog_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[42]},
+				Columns: []*schema.Column{UsageLogsColumns[45]},
 			},
 			{
 				Name:    "usagelog_model",
@@ -1772,17 +1776,17 @@ var (
 			{
 				Name:    "usagelog_user_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[46], UsageLogsColumns[42]},
+				Columns: []*schema.Column{UsageLogsColumns[49], UsageLogsColumns[45]},
 			},
 			{
 				Name:    "usagelog_api_key_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[43], UsageLogsColumns[42]},
+				Columns: []*schema.Column{UsageLogsColumns[46], UsageLogsColumns[45]},
 			},
 			{
 				Name:    "usagelog_group_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[45], UsageLogsColumns[42]},
+				Columns: []*schema.Column{UsageLogsColumns[48], UsageLogsColumns[45]},
 			},
 		},
 	}
@@ -2088,6 +2092,167 @@ var (
 			},
 		},
 	}
+	// VideoBillingEventsColumns holds the columns for the "video_billing_events" table.
+	VideoBillingEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "task_id", Type: field.TypeInt64},
+		{Name: "operation", Type: field.TypeString},
+		{Name: "request_id", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeJSON},
+		{Name: "payload_hash", Type: field.TypeString},
+		{Name: "status", Type: field.TypeString},
+		{Name: "attempts", Type: field.TypeInt64},
+		{Name: "next_attempt_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "last_error_code", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "applied_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+	}
+	// VideoBillingEventsTable holds the schema information for the "video_billing_events" table.
+	VideoBillingEventsTable = &schema.Table{
+		Name:       "video_billing_events",
+		Columns:    VideoBillingEventsColumns,
+		PrimaryKey: []*schema.Column{VideoBillingEventsColumns[0]},
+	}
+	// VideoFinancialReservationsColumns holds the columns for the "video_financial_reservations" table.
+	VideoFinancialReservationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "task_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+		{Name: "api_key_id", Type: field.TypeInt64},
+		{Name: "funding_source", Type: field.TypeString},
+		{Name: "subscription_id", Type: field.TypeInt64, Nullable: true},
+		{Name: "currency", Type: field.TypeString},
+		{Name: "amount", Type: field.TypeString, SchemaType: map[string]string{"postgres": "numeric(20,8)"}},
+		{Name: "captured_amount", Type: field.TypeString, SchemaType: map[string]string{"postgres": "numeric(20,8)"}},
+		{Name: "state", Type: field.TypeString},
+		{Name: "pricing_snapshot_hash", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "finalized_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+	}
+	// VideoFinancialReservationsTable holds the schema information for the "video_financial_reservations" table.
+	VideoFinancialReservationsTable = &schema.Table{
+		Name:       "video_financial_reservations",
+		Columns:    VideoFinancialReservationsColumns,
+		PrimaryKey: []*schema.Column{VideoFinancialReservationsColumns[0]},
+	}
+	// VideoProviderModelsColumns holds the columns for the "video_provider_models" table.
+	VideoProviderModelsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "account_id", Type: field.TypeInt64},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "model_id", Type: field.TypeString},
+		{Name: "display_name", Type: field.TypeString},
+		{Name: "enabled", Type: field.TypeBool},
+		{Name: "maintenance", Type: field.TypeBool},
+		{Name: "capability", Type: field.TypeJSON},
+		{Name: "evidence", Type: field.TypeJSON},
+		{Name: "capability_hash", Type: field.TypeString},
+		{Name: "contract_version", Type: field.TypeInt64},
+		{Name: "observed_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+	}
+	// VideoProviderModelsTable holds the schema information for the "video_provider_models" table.
+	VideoProviderModelsTable = &schema.Table{
+		Name:       "video_provider_models",
+		Columns:    VideoProviderModelsColumns,
+		PrimaryKey: []*schema.Column{VideoProviderModelsColumns[0]},
+	}
+	// VideoQuotaReservationsColumns holds the columns for the "video_quota_reservations" table.
+	VideoQuotaReservationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "task_id", Type: field.TypeInt64},
+		{Name: "scope_type", Type: field.TypeString},
+		{Name: "scope_key", Type: field.TypeString},
+		{Name: "amount", Type: field.TypeString, SchemaType: map[string]string{"postgres": "numeric(20,8)"}},
+		{Name: "state", Type: field.TypeString},
+		{Name: "snapshot", Type: field.TypeJSON},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "finalized_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+	}
+	// VideoQuotaReservationsTable holds the schema information for the "video_quota_reservations" table.
+	VideoQuotaReservationsTable = &schema.Table{
+		Name:       "video_quota_reservations",
+		Columns:    VideoQuotaReservationsColumns,
+		PrimaryKey: []*schema.Column{VideoQuotaReservationsColumns[0]},
+	}
+	// VideoTasksColumns holds the columns for the "video_tasks" table.
+	VideoTasksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "public_id", Type: field.TypeString},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "user_id", Type: field.TypeInt64},
+		{Name: "api_key_id", Type: field.TypeInt64},
+		{Name: "group_id", Type: field.TypeInt64},
+		{Name: "channel_id", Type: field.TypeInt64, Nullable: true},
+		{Name: "account_id", Type: field.TypeInt64},
+		{Name: "provider_scope", Type: field.TypeString},
+		{Name: "requested_model", Type: field.TypeString},
+		{Name: "channel_mapped_model", Type: field.TypeString},
+		{Name: "upstream_model", Type: field.TypeString},
+		{Name: "client_idempotency_key", Type: field.TypeString},
+		{Name: "upstream_idempotency_key", Type: field.TypeString},
+		{Name: "request_hash", Type: field.TypeString},
+		{Name: "request_ciphertext", Type: field.TypeBytes},
+		{Name: "request_cipher_version", Type: field.TypeInt64},
+		{Name: "capability_snapshot", Type: field.TypeJSON},
+		{Name: "pricing_snapshot", Type: field.TypeJSON},
+		{Name: "pricing_snapshot_hash", Type: field.TypeString},
+		{Name: "quoted_upstream_points", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "numeric(20,8)"}},
+		{Name: "actual_upstream_points", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "numeric(20,8)"}},
+		{Name: "upstream_refund_state", Type: field.TypeString},
+		{Name: "upstream_id", Type: field.TypeString, Nullable: true},
+		{Name: "status", Type: field.TypeString},
+		{Name: "upstream_status", Type: field.TypeString, Nullable: true},
+		{Name: "previous_active_status", Type: field.TypeString, Nullable: true},
+		{Name: "download_state", Type: field.TypeString},
+		{Name: "retention_expires_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "retention_evidence", Type: field.TypeJSON, Nullable: true},
+		{Name: "upstream_completed_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "last_content_checked_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "submitted_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "started_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "completed_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "failed_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "last_checked_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "next_check_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "review_required", Type: field.TypeBool},
+		{Name: "last_error_code", Type: field.TypeString, Nullable: true},
+		{Name: "upstream_request_id", Type: field.TypeString, Nullable: true},
+		{Name: "submit_attempts", Type: field.TypeInt64},
+		{Name: "poll_attempts", Type: field.TypeInt64},
+		{Name: "consecutive_errors", Type: field.TypeInt64},
+		{Name: "lease_owner", Type: field.TypeString, Nullable: true},
+		{Name: "lease_until", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "lease_epoch", Type: field.TypeInt64},
+		{Name: "row_version", Type: field.TypeInt64},
+	}
+	// VideoTasksTable holds the schema information for the "video_tasks" table.
+	VideoTasksTable = &schema.Table{
+		Name:       "video_tasks",
+		Columns:    VideoTasksColumns,
+		PrimaryKey: []*schema.Column{VideoTasksColumns[0]},
+	}
+	// VideoTaskEventsColumns holds the columns for the "video_task_events" table.
+	VideoTaskEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "task_id", Type: field.TypeInt64},
+		{Name: "event_key", Type: field.TypeString},
+		{Name: "event_type", Type: field.TypeString},
+		{Name: "task_version", Type: field.TypeInt64},
+		{Name: "payload", Type: field.TypeJSON},
+		{Name: "actor_type", Type: field.TypeString},
+		{Name: "actor_id", Type: field.TypeInt64, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+	}
+	// VideoTaskEventsTable holds the schema information for the "video_task_events" table.
+	VideoTaskEventsTable = &schema.Table{
+		Name:       "video_task_events",
+		Columns:    VideoTaskEventsColumns,
+		PrimaryKey: []*schema.Column{VideoTaskEventsColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
@@ -2129,6 +2294,12 @@ var (
 		UserAttributeValuesTable,
 		UserPlatformQuotasTable,
 		UserSubscriptionsTable,
+		VideoBillingEventsTable,
+		VideoFinancialReservationsTable,
+		VideoProviderModelsTable,
+		VideoQuotaReservationsTable,
+		VideoTasksTable,
+		VideoTaskEventsTable,
 	}
 )
 
@@ -2285,5 +2456,23 @@ func init() {
 	UserSubscriptionsTable.ForeignKeys[2].RefTable = UsersTable
 	UserSubscriptionsTable.Annotation = &entsql.Annotation{
 		Table: "user_subscriptions",
+	}
+	VideoBillingEventsTable.Annotation = &entsql.Annotation{
+		Table: "video_billing_events",
+	}
+	VideoFinancialReservationsTable.Annotation = &entsql.Annotation{
+		Table: "video_financial_reservations",
+	}
+	VideoProviderModelsTable.Annotation = &entsql.Annotation{
+		Table: "video_provider_models",
+	}
+	VideoQuotaReservationsTable.Annotation = &entsql.Annotation{
+		Table: "video_quota_reservations",
+	}
+	VideoTasksTable.Annotation = &entsql.Annotation{
+		Table: "video_tasks",
+	}
+	VideoTaskEventsTable.Annotation = &entsql.Annotation{
+		Table: "video_task_events",
 	}
 }

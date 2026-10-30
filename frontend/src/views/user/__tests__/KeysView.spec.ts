@@ -595,7 +595,7 @@ describe('user KeysView column settings', () => {
 
     it('classifies all configured platforms and retains the complete table filter', async () => {
       const wrapper = await openCreate()
-      expect(wrapper.findAll('input[name="key-provider"]')).toHaveLength(4)
+      expect(wrapper.findAll('input[name="key-provider"]')).toHaveLength(5)
       expect(optionIds(wrapper)).toEqual([1])
       await chooseProvider(wrapper, 'openai')
       expect(optionIds(wrapper)).toEqual([2])
@@ -819,6 +819,33 @@ describe('user KeysView column settings', () => {
   it('渠道状态 URL 不会把未授权历史分组加入创建候选或打开创建弹窗', async () => {
     navigation.query = { vendor: 'openai', group_id: '99', action: 'create' }
     getAvailableGroups.mockResolvedValue([{ id: 1, name: 'Allowed', platform: 'openai' }])
+    const wrapper = await mountView()
+    expect(showError).toHaveBeenCalledWith('keys.groupRequired')
+    expect((wrapper.vm as unknown as { showCreateModal: boolean }).showCreateModal).toBe(false)
+    expect(keysAPI.create).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('创作页创建导航默认选择 OpenAI 的首个真实可用分组，不自动创建密钥', async () => {
+    navigation.query = { vendor: 'openai', action: 'create' }
+    getAvailableGroups.mockResolvedValue([
+      { id: 3, name: 'Other vendor', platform: 'anthropic', rate_multiplier: 1 },
+      { id: 17, name: 'First OpenAI', platform: 'openai', rate_multiplier: .2 },
+      { id: 2, name: 'Second OpenAI', platform: 'openai', rate_multiplier: .05 },
+    ])
+    const wrapper = await mountView()
+    const group = wrapper.findAllComponents({ name: 'Select' }).find(component => component.attributes('id') === 'key-form-group')!
+    expect((wrapper.vm as unknown as { showCreateModal: boolean }).showCreateModal).toBe(true)
+    expect(wrapper.get('input[name="key-provider"][value="openai"]').element).toHaveProperty('checked', true)
+    expect(group.props('modelValue')).toBe(17)
+    expect(group.props('options').map((option: { value: number }) => option.value)).toEqual([17, 2])
+    expect(keysAPI.create).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('没有可用 OpenAI 分组时不挪用其他厂商分组', async () => {
+    navigation.query = { vendor: 'openai', action: 'create' }
+    getAvailableGroups.mockResolvedValue([{ id: 3, name: 'Other vendor', platform: 'anthropic' }])
     const wrapper = await mountView()
     expect(showError).toHaveBeenCalledWith('keys.groupRequired')
     expect((wrapper.vm as unknown as { showCreateModal: boolean }).showCreateModal).toBe(false)

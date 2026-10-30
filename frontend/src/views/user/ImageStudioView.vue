@@ -12,29 +12,38 @@
       <section class="creation-stage" :class="{ 'is-chat': kind === 'chat' }" :aria-label="t(`imageStudio.${kind}`)">
         <div class="creation-toolbar">
           <div class="creation-tool-left">
-            <div class="creation-field creation-model"><label for="studio-model">{{ t(`imageStudio.${kind}Model`) }}</label><Select id="studio-model" v-model="selectedModel" :aria-label="t(`imageStudio.${kind}Model`)" :options="modelOptions" :placeholder="t(kind === 'video' ? 'imageStudio.unverifiedModels' : 'imageStudio.selectModel')" :disabled="loadingKeys || locked || kind === 'video'" :match-trigger-width="kind === 'chat'" dropdown-class="canvas-studio-dropdown creation-model-dropdown" searchable /></div>
+            <div v-if="kind !== 'video'" class="creation-field creation-model"><label for="studio-model">{{ t(`imageStudio.${kind}Model`) }}</label><Select id="studio-model" v-model="selectedModel" :aria-label="t(`imageStudio.${kind}Model`)" :options="modelOptions" :placeholder="t('imageStudio.selectModel')" :disabled="loadingKeys || locked" :match-trigger-width="kind === 'chat'" dropdown-class="canvas-studio-dropdown creation-model-dropdown" searchable /></div>
             <div class="creation-field creation-key"><label for="studio-key">{{ t('imageStudio.key') }}</label><Select id="studio-key" v-model="selectedKey" :aria-label="t('imageStudio.key')" :options="keyOptions" :placeholder="t('imageStudio.selectKey')" :disabled="loadingKeys || locked" dropdown-class="canvas-studio-dropdown" /></div>
           </div>
           <div class="creation-toolbar-right">
             <span v-if="kind === 'image'" role="status">{{ connected ? t('imageStudio.connected') : (loadingModels || credential ? t('imageStudio.loading') : '') }}</span>
-            <span v-else-if="kind === 'video'">{{ t('imageStudio.stageA') }}</span>
+            <span v-else-if="kind === 'video'">1080P 视频 · 自动跟进生成进度</span>
             <span v-else role="status">{{ loadingKeys || loadingModels ? t('imageStudio.chatConfigLoading') : t('imageStudio.localOnly') }}</span>
             <button v-if="kind === 'image'" type="button" :disabled="loadingKeys || loadingModels || locked" @click="reconnect">↻ {{ t('imageStudio.reconnect') }}</button>
           </div>
         </div>
-        <p v-if="error" class="creation-error" role="alert">{{ error }} <button v-if="!locked" type="button" @click="reload">{{ t('imageStudio.retry') }}</button></p>
+        <section v-if="noAvailableKeys" class="creation-key-empty" role="status" aria-labelledby="creation-key-empty-title">
+          <div class="creation-key-empty-icon"><Icon name="key" size="xl" /></div>
+          <div class="creation-key-empty-copy"><h2 id="creation-key-empty-title">{{ t('imageStudio.noKeysTitle') }}</h2><p>{{ kind === 'video' ? '创建视频创作平台的 Key，即可上传素材、生成和下载视频。' : t('imageStudio.createKeyDescription') }}</p></div>
+          <div class="creation-key-empty-actions">
+            <div class="creation-key-empty-buttons">
+              <RouterLink class="creation-key-create" :to="{ path: '/keys', query: { action: 'create', vendor: kind === 'video' ? 'video' : 'openai' } }"><Icon name="plus" size="sm" />{{ t('imageStudio.createKey') }}<Icon name="arrowRight" size="sm" /></RouterLink>
+              <button type="button" class="creation-key-refresh" :disabled="loadingKeys || locked" @click="reload"><Icon name="refresh" size="sm" />{{ t('imageStudio.refreshKeys') }}</button>
+            </div>
+            <p><Icon name="infoCircle" size="sm" />{{ kind === 'video' ? '在密钥管理中选择「视频创作」平台，返回后点击刷新 Key。' : t('imageStudio.createKeyHint') }}</p>
+          </div>
+        </section>
+        <p v-else-if="error" class="creation-error" role="alert">{{ error }} <button v-if="!locked" type="button" @click="reload">{{ t('imageStudio.retry') }}</button></p>
         <p v-if="notice" class="creation-notice" role="status">{{ notice }}</p>
         <EmbeddedCanvasStudio v-if="kind === 'image'" ref="canvas" :credential="credential" :locked="locked" :error="error" @connected="connected = $event" />
         <CreationChat v-else-if="kind === 'chat'" :credential="credential" :locked="locked" :loading-keys="loadingKeys" :selection="{ model: selectedModel, key: selectedKey }" @restore-selection="restoreChatSelection" />
-        <div v-else class="creation-video-body">
-          <aside class="creation-video-create"><div class="creation-pane-title">{{ t('imageStudio.createVideo') }}<small>{{ t('imageStudio.async') }}</small></div><label for="video-prompt">{{ t('imageStudio.videoPrompt') }}</label><textarea id="video-prompt" v-model="videoDraft" :placeholder="t('imageStudio.videoPlaceholder')" /><div class="creation-video-fields"><label v-for="field in videoFields" :key="field">{{ t(`imageStudio.${field}`) }}<select disabled><option>{{ t('imageStudio.waitCapabilities') }}</option></select></label></div><label>{{ t('imageStudio.references') }}</label><div class="creation-upload"><Icon name="photograph" size="lg" /><span>{{ t('imageStudio.referencePending') }}</span></div><div class="creation-warning">{{ t('imageStudio.videoPending') }}</div><button disabled type="button" class="creation-primary">＋ {{ t('imageStudio.createPending') }}</button></aside>
-          <section class="creation-video-tasks"><div class="creation-pane-title">{{ t('imageStudio.taskCenter') }}<small>{{ t('imageStudio.stageA') }}</small></div><div class="creation-warning">{{ t('imageStudio.storageWarning') }}</div><div class="creation-stats"><div v-for="stat in ['running', 'downloadable', 'failedExpired']" :key="stat"><span>{{ t(`imageStudio.${stat}`) }}</span><strong>—</strong></div></div><div class="creation-task-controls"><nav :aria-label="t('imageStudio.taskFilters')"><button v-for="filter in taskFilters" :key="filter" type="button" :aria-pressed="taskFilter === filter" @click="taskFilter = filter">{{ t(`imageStudio.${filter}`) }}</button></nav><button disabled type="button">↻ {{ t('imageStudio.refresh') }}</button></div><div class="creation-task-empty"><Icon name="video" size="xl" /><p>{{ t('imageStudio.noTasks') }}</p><span>{{ t('imageStudio.noFakeTasks') }}</span></div></section>
-        </div>
+        <CreationVideo v-else :credential="credential" :locked="locked" :user-id="userId" />
       </section>
     </section>
   </AppLayout>
 </template>
 <script setup lang="ts">
+import CreationVideo from '@/components/video/CreationVideo.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -49,17 +58,17 @@ import { useCreationSelection, type CreationKind } from '@/composables/useCreati
 const { t } = useI18n()
 const route = useRoute()
 const kind = computed<CreationKind>(() => route.path.endsWith('/chat') ? 'chat' : route.path.endsWith('/video') ? 'video' : 'image')
-// 视频源码和直达路由保留，默认隐藏入口；本轮暂停开发。
-const videoEnabled = import.meta.env.VITE_CREATION_VIDEO_ENABLED === 'true'
+// 视频创作使用独立平台 Key，入口直接开放。
+const videoEnabled = true
 const modes = ([{ id: 'chat', icon: 'chat' }, { id: 'image', icon: 'photograph' }, { id: 'video', icon: 'video' }] as const).filter(mode => mode.id !== 'video' || videoEnabled)
-const { selectedKey, selectedModel, credential, modelOptions, keyOptions, loadingKeys, loadingModels, locked, error, notice, reload } = useCreationSelection(kind)
+const { userId, selectedKey, selectedModel, credential, modelOptions, keyOptions, loadingKeys, loadingModels, locked, error, notice, noAvailableKeys, reload } = useCreationSelection(kind)
+// 仅预选编号，实际归属和平台能力仍由用户 Key 接口重新验证。
+watch([() => route.query.key_id, kind], ([id, current]) => {
+  if (current === 'video' && typeof id === 'string' && /^[1-9]\d*$/.test(id)) selectedKey.value = Number(id)
+}, { immediate: true })
 const canvas = ref<InstanceType<typeof EmbeddedCanvasStudio>>()
 const connected = ref(false)
-// 视频继续停留在 Stage A，Stage B 只接入原生 Vue 聊天。
-const videoDraft = ref('')
-const videoFields = ['duration', 'ratio', 'resolution', 'generationMode']
-const taskFilters = ['allTasks', 'running', 'completed', 'failedExpired']
-const taskFilter = ref('allTasks')
+
 watch(kind, () => { connected.value = false })
 function reconnect() { if (credential.value) canvas.value?.restartFrame(); else void reload() }
 function restoreChatSelection(value: ChatPreference) { selectedKey.value = value.key; selectedModel.value = value.model }

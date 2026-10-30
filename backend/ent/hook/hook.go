@@ -477,6 +477,78 @@ func (f UserSubscriptionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.V
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserSubscriptionMutation", m)
 }
 
+// The VideoBillingEventFunc type is an adapter to allow the use of ordinary
+// function as VideoBillingEvent mutator.
+type VideoBillingEventFunc func(context.Context, *ent.VideoBillingEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VideoBillingEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VideoBillingEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VideoBillingEventMutation", m)
+}
+
+// The VideoFinancialReservationFunc type is an adapter to allow the use of ordinary
+// function as VideoFinancialReservation mutator.
+type VideoFinancialReservationFunc func(context.Context, *ent.VideoFinancialReservationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VideoFinancialReservationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VideoFinancialReservationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VideoFinancialReservationMutation", m)
+}
+
+// The VideoProviderModelFunc type is an adapter to allow the use of ordinary
+// function as VideoProviderModel mutator.
+type VideoProviderModelFunc func(context.Context, *ent.VideoProviderModelMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VideoProviderModelFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VideoProviderModelMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VideoProviderModelMutation", m)
+}
+
+// The VideoQuotaReservationFunc type is an adapter to allow the use of ordinary
+// function as VideoQuotaReservation mutator.
+type VideoQuotaReservationFunc func(context.Context, *ent.VideoQuotaReservationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VideoQuotaReservationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VideoQuotaReservationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VideoQuotaReservationMutation", m)
+}
+
+// The VideoTaskFunc type is an adapter to allow the use of ordinary
+// function as VideoTask mutator.
+type VideoTaskFunc func(context.Context, *ent.VideoTaskMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VideoTaskFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VideoTaskMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VideoTaskMutation", m)
+}
+
+// The VideoTaskEventFunc type is an adapter to allow the use of ordinary
+// function as VideoTaskEvent mutator.
+type VideoTaskEventFunc func(context.Context, *ent.VideoTaskEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VideoTaskEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VideoTaskEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VideoTaskEventMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

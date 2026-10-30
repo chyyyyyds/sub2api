@@ -102,6 +102,7 @@ export function cardTokenPrices(entry: CatalogModel, userRate?: number, ratesAva
 // 文案仅属于渠道状态页，避免修改共享语言包及其他五个页面。
 export const monitorMessages = {
   zh: { monitorDisplay: {
+    currentSelection: '当前',
     available: '可用模型', latency: '平均延迟', success: '请求成功率',
     availableNote: '当前厂商与分组中，用户授权目录内可选择的模型；不保证上游实时可调度。',
     latencyNote: '暂无可靠平均延迟：用户监控接口隐藏延迟样本数，无法按请求加权汇总。',
@@ -116,6 +117,7 @@ export const monitorMessages = {
     nativeDetails: '请求表现详情', noSamples: '暂无监测数据'
   } },
   en: { monitorDisplay: {
+    currentSelection: 'Current',
     available: 'Available models', latency: 'Average latency', success: 'Request success rate',
     availableNote: 'Selectable models in your authorized catalog for this vendor and group; live upstream scheduling is not guaranteed.',
     latencyNote: 'Unavailable: latency sample counts are hidden, so a request-weighted average cannot be computed.',

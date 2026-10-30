@@ -42,7 +42,8 @@ export interface CreationCredential {
 }
 
 /** @description 复用原服务端权限；本地只排除已失效或耗尽的密钥。 */
-function isAvailable(key: ApiKey, owner: number) {
+function isAvailable(key: ApiKey, owner: number, readOnlyVideo = false) {
+  if (readOnlyVideo) return key.user_id === owner && ['active', 'expired', 'quota_exhausted'].includes(key.status)
   return key.user_id === owner && key.status === 'active' &&
     (!key.expires_at || Date.parse(key.expires_at) > Date.now()) &&
     !(key.quota > 0 && key.quota_used >= key.quota)
@@ -59,10 +60,13 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
   })
   const credential = shallowRef<CreationCredential | null>(null)
   const loadingKeys = ref(false)
+  const keysLoaded = ref(false)
   const loadingModels = ref(false)
   const locked = ref(false)
   const error = ref('')
   const notice = ref('')
+  // 只在本人密钥列表完整读取后展示创建引导，网络失败和模型目录失败不冒充无密钥。
+  const noAvailableKeys = computed(() => keysLoaded.value && !loadingKeys.value && !locked.value && !keys.value.some(key => key.available))
   let epoch = 0
   let discoveryEpoch = 0
   let controller = new AbortController()
@@ -75,7 +79,8 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
   const selectedKey = computed({ get: () => preferences.value[kind.value].key, set: value => { preferences.value[kind.value].key = value === 'auto' ? 0 : value } })
   const selectedModel = computed({ get: () => preferences.value[kind.value].model, set: value => { preferences.value[kind.value].model = value } })
   function candidates(key: KeyCatalog) {
-    if (!key.available || key.failed || kind.value === 'video') return []
+    if (!key.available || key.failed) return []
+    if (kind.value === 'video') return key.models
     if (kind.value === 'image') return key.imageAllowed ? imageModelCandidates(key.models) : []
     return key.models.filter(model => !/image|flux|seedream|dall|video|seedance|sora|veo|kling|hailuo|tts|whisper|audio|pp-sd25|oo-sd25|minimax-h3|mm-h3/i.test(model))
   }
@@ -84,6 +89,12 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
   const keyOptions = computed(() => keys.value.map(key => ({ value: key.id,
     label: `${key.name}${key.groupName ? ` · ${key.groupName}` : ''}${!key.available ? ` · ${t('imageStudio.keyUnavailable')}` : key.failed ? ` · ${t('imageStudio.catalogFailed')}` : ''}`,
     disabled: !key.available || key.failed })))
+
+  function defaultModel(allowed: string[]) {
+    // 仅从当前 Key 的授权目录选择默认模型，保留用户已有的手动偏好。
+    const preferred = kind.value === 'image' ? ['gpt-image-2.5'] : kind.value === 'chat' ? ['gpt-6-sol', 'gpt-6.1-sol'] : []
+    return preferred.find(model => allowed.includes(model)) || allowed[0]
+  }
 
   function invalidate() {
     epoch++
@@ -95,9 +106,9 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
   /** @description 用本人 Key 调用现有模型网关；返回值只在调用期间包含明文凭证。 */
   async function readCatalog(id: number, signal: AbortSignal, owner: number) {
     const key = await keysAPI.getById(id)
-    if (signal.aborted || disposed || auth.user?.id !== owner || !auth.isAuthenticated || !isAvailable(key, owner)) throw new Error('invalid-key')
-    const response = await axios.get<{ data?: { id: string }[] }>('/v1/models', {
-      signal, timeout: 30000, headers: { Authorization: `Bearer ${key.key}` }
+    if (signal.aborted || disposed || auth.user?.id !== owner || !auth.isAuthenticated || !isAvailable(key, owner, kind.value === 'video')) throw new Error('invalid-key')
+    const response = await axios.get<{ data?: { id: string }[] }>(kind.value === 'video' ? '/v1/video-models' : '/v1/models', {
+      signal, timeout: kind.value === 'video' ? 180000 : 30000, headers: { Authorization: `Bearer ${key.key}` }
     })
     const catalog: KeyCatalog = {
       available: true,
@@ -108,6 +119,7 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
   }
 
   async function loadKeys() {
+    keysLoaded.value = false
     invalidate()
     discoveredCatalogs.clear()
     discovery.abort()
@@ -128,8 +140,8 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
         const result = await keysAPI.list(page, 100, undefined, { signal })
         if (signal.aborted || current !== discoveryEpoch) return
         // 目录只保留 ID 和权限元数据，列表里的 Key 不进入响应缓存或持久化。
-        for (const key of result.items.filter(key => key.user_id === owner)) {
-          if (!isAvailable(key, owner)) {
+        for (const key of result.items.filter(key => key.user_id === owner && (kind.value !== 'video' || key.group?.platform === 'video'))) {
+          if (!isAvailable(key, owner, kind.value === 'video')) {
             catalogs.push({ id: key.id, name: key.name, groupName: key.group?.name || '', available: false, imageAllowed: false, models: [], failed: false })
             continue
           }
@@ -143,7 +155,7 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
             if (signal.aborted) return
             catalogs.push(verified.catalog)
             discoveredCatalogs.set(key.id, verified)
-            foundPreferred = candidates(verified.catalog).length > 0 && verified.catalog.imageAllowed && imageModelCandidates(verified.catalog.models).some(model => /image|flux|seedream|dall/i.test(model))
+            foundPreferred = kind.value === 'video' ? candidates(verified.catalog).length > 0 : candidates(verified.catalog).length > 0 && verified.catalog.imageAllowed && imageModelCandidates(verified.catalog.models).some(model => /image|flux|seedream|dall/i.test(model))
           } catch {
             if (signal.aborted) return
             catalogs.push({ id: key.id, name: key.name, groupName: key.group?.name || '', available: true, imageAllowed: false, models: [], failed: true })
@@ -154,6 +166,7 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
       }
       if (signal.aborted || current !== discoveryEpoch || auth.user?.id !== owner) return
       keys.value = catalogs
+      keysLoaded.value = true
       if (!catalogs.some(key => key.available)) error.value = t('imageStudio.noKeys')
     } catch { if (!signal.aborted) error.value = t('imageStudio.failed'); return }
     finally { if (current === discoveryEpoch) loadingKeys.value = false }
@@ -172,21 +185,17 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
     const choice = selectedKey.value
     notice.value = ''
     if (!keys.value.length) { error.value = t('imageStudio.noKeys'); return }
-    // 视频只提供 Stage A 外壳，绝不将未验证的旧模型作为真实能力展示。
-    if (type === 'video') { error.value = ''; return }
     if (!choice || choice === 'auto') {
       const compatible = keys.value.filter(key => candidates(key).length)
       // 按用户 Key 顺序优先选择有明确图片模型的 Key；不把未知别名当成已确认的生图能力。
-      const first = compatible.find(key => key.imageAllowed && imageModelCandidates(key.models).some(model => /image|flux|seedream|dall/i.test(model))) || compatible[0] || keys.value.find(key => key.available && !key.failed)
+      const first = (type === 'video' ? compatible[0] : undefined) || compatible.find(key => key.imageAllowed && imageModelCandidates(key.models).some(model => /image|flux|seedream|dall/i.test(model))) || compatible[0] || keys.value.find(key => key.available && !key.failed)
       if (!first) { error.value = t('imageStudio.noKeys'); return }
       selectedKey.value = first.id
       return
     }
     if (!keys.value.some(key => key.id === choice && key.available)) { error.value = t('imageStudio.savedKeyUnavailable'); return }
     if (!selectedModel.value && models.value.length) {
-      // 仅为尚无偏好的聊天选择已授权主流模型，不覆盖已有会话或用户手动选择。
-      const preferred = type === 'chat' ? ['gpt-6-sol', 'gpt-6.1-sol'].find(model => models.value.includes(model)) : undefined
-      selectedModel.value = preferred || models.value[0]
+      selectedModel.value = defaultModel(models.value)
       return
     }
     const eligible = keys.value.filter(key => key.id === choice)
@@ -203,7 +212,7 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
           const allowed = candidates(catalog)
           if (!allowed.includes(selectedModel.value)) {
             if (allowed.length) {
-              selectedModel.value = allowed[0]
+              selectedModel.value = defaultModel(allowed)
               notice.value = t('imageStudio.modelAdjusted')
               return
             }
@@ -243,5 +252,5 @@ export function useCreationSelection(kind: Ref<CreationKind>) {
   })
   onMounted(() => { window.addEventListener('storage', checkSession); void loadKeys() })
   onBeforeUnmount(() => { disposed = true; invalidate(); discovery.abort(); discoveredCatalogs.clear(); window.removeEventListener('storage', checkSession) })
-  return { selectedKey, selectedModel, credential, keys, modelOptions, keyOptions, loadingKeys, loadingModels, locked, error, notice, reload: loadKeys }
+  return { userId: computed(() => auth.user?.id || null), selectedKey, selectedModel, credential, keys, modelOptions, keyOptions, loadingKeys, loadingModels, locked, error, notice, noAvailableKeys, reload: loadKeys }
 }

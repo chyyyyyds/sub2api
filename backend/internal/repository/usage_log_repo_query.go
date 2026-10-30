@@ -48,6 +48,16 @@ func (r *usageLogRepository) GetByID(ctx context.Context, id int64) (log *servic
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+	if strings.HasPrefix(log.RequestID, "video:cap:vtsk_") {
+		if err = rows.Close(); err != nil {
+			return nil, err
+		}
+		one := []service.UsageLog{*log}
+		if err = r.hydrateKokoUsage(ctx, one); err != nil {
+			return nil, err
+		}
+		*log = one[0]
+	}
 	return log, nil
 }
 
@@ -267,6 +277,12 @@ func (r *usageLogRepository) queryUsageLogs(ctx context.Context, query string, a
 		logs = append(logs, *log)
 	}
 	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	if err = rows.Close(); err != nil {
+		return nil, err
+	}
+	if err = r.hydrateKokoUsage(ctx, logs); err != nil {
 		return nil, err
 	}
 	return logs, nil

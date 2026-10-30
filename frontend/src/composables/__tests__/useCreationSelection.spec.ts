@@ -12,9 +12,9 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 const auth = reactive({ user: { id: 71 }, isAuthenticated: true })
 const key = (id: number, status = 'active') => ({ id, user_id: auth.user.id, name: `Key ${id}`, key: `memory-${id}`, status, quota: 0, quota_used: 0, expires_at: null, group: { name: '本人分组', allow_image_generation: true } }) as ApiKey
-function setup() {
+function setup(kind: CreationKind = 'chat') {
   let selection!: ReturnType<typeof useCreationSelection>
-  const wrapper = mount(defineComponent({ setup() { selection = useCreationSelection(ref<CreationKind>('chat')); return () => null } }))
+  const wrapper = mount(defineComponent({ setup() { selection = useCreationSelection(ref<CreationKind>(kind)); return () => null } }))
   return { selection, wrapper }
 }
 beforeEach(() => {
@@ -24,6 +24,47 @@ beforeEach(() => {
   vi.mocked(axios.get).mockReset().mockResolvedValue({ data: { data: [{ id: 'gpt-6' }, { id: 'claude-sonnet' }, { id: 'private-alias' }] } })
 })
 describe('P2 模型与 Key 偏好重新验证', () => {
+  it('只有成功读完空密钥列表后才展示创建引导，刷新发现密钥后撤下', async () => {
+    vi.mocked(keysAPI.list).mockResolvedValueOnce({ items: [], total: 0 } as never)
+    const { selection: s, wrapper } = setup()
+    expect(s.noAvailableKeys.value).toBe(false)
+    await vi.waitFor(() => expect(s.noAvailableKeys.value).toBe(true))
+    await s.reload()
+    expect(s.noAvailableKeys.value).toBe(false)
+    wrapper.unmount()
+  })
+  it('密钥列表网络失败时不展示创建引导', async () => {
+    vi.mocked(keysAPI.list).mockRejectedValueOnce(new Error('offline'))
+    const { selection: s, wrapper } = setup()
+    await vi.waitFor(() => expect(s.error.value).toBe('imageStudio.failed'))
+    expect(s.noAvailableKeys.value).toBe(false)
+    wrapper.unmount()
+  })
+  it('已有可用密钥但模型目录失败时不误导用户创建新密钥', async () => {
+    vi.mocked(axios.get).mockRejectedValue(new Error('catalog unavailable'))
+    const { selection: s, wrapper } = setup()
+    await vi.waitFor(() => expect(s.loadingKeys.value).toBe(false))
+    expect(s.noAvailableKeys.value).toBe(false)
+    wrapper.unmount()
+  })
+  it('图片默认选择已授权的 2.5，手动选择后刷新仍保留', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: { data: ['gpt-image-2', 'gpt-image-2.5'].map(id => ({ id })) } })
+    const { selection: s, wrapper } = setup('image')
+    await vi.waitFor(() => expect(s.credential.value?.model).toBe('gpt-image-2.5'))
+    s.selectedModel.value = 'gpt-image-2'
+    await vi.waitFor(() => expect(s.credential.value?.model).toBe('gpt-image-2'))
+    await s.reload()
+    await vi.waitFor(() => expect(s.credential.value?.model).toBe('gpt-image-2'))
+    wrapper.unmount()
+  })
+  it('2.5 未授权时使用现有模型，换 Key 后在新目录中优先选择 2.5', async () => {
+    vi.mocked(axios.get).mockImplementation(async (_url, config) => ({ data: { data: (config?.headers?.Authorization === 'Bearer memory-1' ? ['gpt-image-1'] : ['gpt-image-2', 'gpt-image-2.5']).map(id => ({ id })) } }))
+    const { selection: s, wrapper } = setup('image')
+    await vi.waitFor(() => expect(s.credential.value?.model).toBe('gpt-image-1'))
+    s.selectedKey.value = 2
+    await vi.waitFor(() => expect(s.credential.value).toMatchObject({ keyId: 2, model: 'gpt-image-2.5' }))
+    wrapper.unmount()
+  })
   it('发现默认 Key 后不预读其余目录，手动选择时仍用新 Key 重新校验', async () => {
     vi.mocked(axios.get).mockResolvedValue({ data: { data: ['gpt-image-2', 'gpt-6-sol'].map(id => ({ id })) } })
     const { selection: s, wrapper } = setup()

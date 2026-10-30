@@ -42,7 +42,9 @@ type Group struct {
 	DefaultValidityDays int
 
 	// 图片生成计费配置（antigravity 和 gemini 平台使用）
-	AllowImageGeneration         bool
+	AllowImageGeneration bool
+	// AllowKokoVideoGeneration 控制 KOKO 视频新任务，默认关闭。
+	AllowKokoVideoGeneration     bool
 	AllowBatchImageGeneration    bool
 	ImageRateIndependent         bool
 	ImageRateMultiplier          float64

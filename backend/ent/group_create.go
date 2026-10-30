@@ -294,6 +294,20 @@ func (_c *GroupCreate) SetNillableDefaultValidityDays(v *int) *GroupCreate {
 	return _c
 }
 
+// SetAllowKokoVideoGeneration sets the "allow_koko_video_generation" field.
+func (_c *GroupCreate) SetAllowKokoVideoGeneration(v bool) *GroupCreate {
+	_c.mutation.SetAllowKokoVideoGeneration(v)
+	return _c
+}
+
+// SetNillableAllowKokoVideoGeneration sets the "allow_koko_video_generation" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableAllowKokoVideoGeneration(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetAllowKokoVideoGeneration(*v)
+	}
+	return _c
+}
+
 // SetAllowImageGeneration sets the "allow_image_generation" field.
 func (_c *GroupCreate) SetAllowImageGeneration(v bool) *GroupCreate {
 	_c.mutation.SetAllowImageGeneration(v)
@@ -1097,6 +1111,10 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultDefaultValidityDays
 		_c.mutation.SetDefaultValidityDays(v)
 	}
+	if _, ok := _c.mutation.AllowKokoVideoGeneration(); !ok {
+		v := group.DefaultAllowKokoVideoGeneration
+		_c.mutation.SetAllowKokoVideoGeneration(v)
+	}
 	if _, ok := _c.mutation.AllowImageGeneration(); !ok {
 		v := group.DefaultAllowImageGeneration
 		_c.mutation.SetAllowImageGeneration(v)
@@ -1302,6 +1320,9 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.DefaultValidityDays(); !ok {
 		return &ValidationError{Name: "default_validity_days", err: errors.New(`ent: missing required field "Group.default_validity_days"`)}
+	}
+	if _, ok := _c.mutation.AllowKokoVideoGeneration(); !ok {
+		return &ValidationError{Name: "allow_koko_video_generation", err: errors.New(`ent: missing required field "Group.allow_koko_video_generation"`)}
 	}
 	if _, ok := _c.mutation.AllowImageGeneration(); !ok {
 		return &ValidationError{Name: "allow_image_generation", err: errors.New(`ent: missing required field "Group.allow_image_generation"`)}
@@ -1537,6 +1558,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DefaultValidityDays(); ok {
 		_spec.SetField(group.FieldDefaultValidityDays, field.TypeInt, value)
 		_node.DefaultValidityDays = value
+	}
+	if value, ok := _c.mutation.AllowKokoVideoGeneration(); ok {
+		_spec.SetField(group.FieldAllowKokoVideoGeneration, field.TypeBool, value)
+		_node.AllowKokoVideoGeneration = value
 	}
 	if value, ok := _c.mutation.AllowImageGeneration(); ok {
 		_spec.SetField(group.FieldAllowImageGeneration, field.TypeBool, value)
@@ -2161,6 +2186,18 @@ func (u *GroupUpsert) UpdateDefaultValidityDays() *GroupUpsert {
 // AddDefaultValidityDays adds v to the "default_validity_days" field.
 func (u *GroupUpsert) AddDefaultValidityDays(v int) *GroupUpsert {
 	u.Add(group.FieldDefaultValidityDays, v)
+	return u
+}
+
+// SetAllowKokoVideoGeneration sets the "allow_koko_video_generation" field.
+func (u *GroupUpsert) SetAllowKokoVideoGeneration(v bool) *GroupUpsert {
+	u.Set(group.FieldAllowKokoVideoGeneration, v)
+	return u
+}
+
+// UpdateAllowKokoVideoGeneration sets the "allow_koko_video_generation" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateAllowKokoVideoGeneration() *GroupUpsert {
+	u.SetExcluded(group.FieldAllowKokoVideoGeneration)
 	return u
 }
 
@@ -3324,6 +3361,20 @@ func (u *GroupUpsertOne) AddDefaultValidityDays(v int) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateDefaultValidityDays() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateDefaultValidityDays()
+	})
+}
+
+// SetAllowKokoVideoGeneration sets the "allow_koko_video_generation" field.
+func (u *GroupUpsertOne) SetAllowKokoVideoGeneration(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetAllowKokoVideoGeneration(v)
+	})
+}
+
+// UpdateAllowKokoVideoGeneration sets the "allow_koko_video_generation" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateAllowKokoVideoGeneration() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateAllowKokoVideoGeneration()
 	})
 }
 
@@ -4784,6 +4835,20 @@ func (u *GroupUpsertBulk) AddDefaultValidityDays(v int) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateDefaultValidityDays() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateDefaultValidityDays()
+	})
+}
+
+// SetAllowKokoVideoGeneration sets the "allow_koko_video_generation" field.
+func (u *GroupUpsertBulk) SetAllowKokoVideoGeneration(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetAllowKokoVideoGeneration(v)
+	})
+}
+
+// UpdateAllowKokoVideoGeneration sets the "allow_koko_video_generation" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateAllowKokoVideoGeneration() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateAllowKokoVideoGeneration()
 	})
 }
 

@@ -1436,6 +1436,21 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 		accounts = filtered
 	}
 
+	// KOKO 的目录由专用视频接口提供，不让兼容 OpenAI 的默认模型进入聊天选项。
+	ordinary := make([]Account, 0, len(accounts))
+	hadKoko := false
+	for _, account := range accounts {
+		if account.SupportsOpenAIEndpointCapability(OpenAIEndpointCapabilityKokoVideo) {
+			hadKoko = true
+			continue
+		}
+		ordinary = append(ordinary, account)
+	}
+	accounts = ordinary
+	if hadKoko && len(accounts) == 0 {
+		return []string{}
+	}
+
 	// Collect unique models from all accounts
 	modelSet := make(map[string]struct{})
 	hasAnyMapping := false

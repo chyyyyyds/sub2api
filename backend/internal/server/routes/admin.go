@@ -34,6 +34,16 @@ func RegisterAdminRoutes(
 		// 部署与运营合规确认
 		registerAdminComplianceRoutes(admin, h)
 
+		// KOKO 管理入口沿用现有管理员鉴权与审计中间件。
+		admin.POST("/accounts/:id/koko/refresh", h.Video.AdminRefresh)
+		admin.POST("/koko-video/initialize", h.Video.Initialize)
+		admin.GET("/groups/:id/koko-video", h.Video.Gate)
+		admin.PUT("/groups/:id/koko-video", h.Video.Gate)
+		admin.GET("/video-tasks", h.Video.AdminList)
+		admin.GET("/video-tasks/:id", h.Video.AdminGet)
+		admin.GET("/video-tasks/:id/audit", h.Video.AdminAudit)
+		admin.POST("/video-tasks/:id/reconcile", h.Video.Reconcile)
+		admin.POST("/video-tasks/:id/retry-billing", h.Video.RetryBilling)
 		// 仪表盘
 		registerDashboardRoutes(admin, h)
 

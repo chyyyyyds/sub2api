@@ -57,17 +57,19 @@ type APIKeyAuthUserSnapshot struct {
 
 // APIKeyAuthGroupSnapshot 分组快照
 type APIKeyAuthGroupSnapshot struct {
-	ID                              int64                         `json:"id"`
-	Name                            string                        `json:"name"`
-	Platform                        string                        `json:"platform"`
-	IsExclusive                     bool                          `json:"is_exclusive"`
-	Status                          string                        `json:"status"`
-	SubscriptionType                string                        `json:"subscription_type"`
-	RateMultiplier                  float64                       `json:"rate_multiplier"`
-	DailyLimitUSD                   *float64                      `json:"daily_limit_usd,omitempty"`
-	WeeklyLimitUSD                  *float64                      `json:"weekly_limit_usd,omitempty"`
-	MonthlyLimitUSD                 *float64                      `json:"monthly_limit_usd,omitempty"`
-	AllowImageGeneration            bool                          `json:"allow_image_generation"`
+	ID                   int64    `json:"id"`
+	Name                 string   `json:"name"`
+	Platform             string   `json:"platform"`
+	IsExclusive          bool     `json:"is_exclusive"`
+	Status               string   `json:"status"`
+	SubscriptionType     string   `json:"subscription_type"`
+	RateMultiplier       float64  `json:"rate_multiplier"`
+	DailyLimitUSD        *float64 `json:"daily_limit_usd,omitempty"`
+	WeeklyLimitUSD       *float64 `json:"weekly_limit_usd,omitempty"`
+	MonthlyLimitUSD      *float64 `json:"monthly_limit_usd,omitempty"`
+	AllowImageGeneration bool     `json:"allow_image_generation"`
+	// AllowKokoVideoGeneration 控制 KOKO 视频新任务，默认关闭。
+	AllowKokoVideoGeneration        bool                          `json:"allow_koko_video_generation"`
 	AllowBatchImageGeneration       bool                          `json:"allow_batch_image_generation"`
 	ImageRateIndependent            bool                          `json:"image_rate_independent"`
 	ImageRateMultiplier             float64                       `json:"image_rate_multiplier"`

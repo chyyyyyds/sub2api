@@ -98,6 +98,12 @@ const (
 	FieldImageSizeSource = "image_size_source"
 	// FieldImageSizeBreakdown holds the string denoting the image_size_breakdown field in the database.
 	FieldImageSizeBreakdown = "image_size_breakdown"
+	// FieldMediaType holds the string denoting the media_type field in the database.
+	FieldMediaType = "media_type"
+	// FieldVideoTaskID holds the string denoting the video_task_id field in the database.
+	FieldVideoTaskID = "video_task_id"
+	// FieldVideoPricingSnapshot holds the string denoting the video_pricing_snapshot field in the database.
+	FieldVideoPricingSnapshot = "video_pricing_snapshot"
 	// FieldVideoCount holds the string denoting the video_count field in the database.
 	FieldVideoCount = "video_count"
 	// FieldVideoResolution holds the string denoting the video_resolution field in the database.
@@ -202,6 +208,9 @@ var Columns = []string{
 	FieldImageOutputSize,
 	FieldImageSizeSource,
 	FieldImageSizeBreakdown,
+	FieldMediaType,
+	FieldVideoTaskID,
+	FieldVideoPricingSnapshot,
 	FieldVideoCount,
 	FieldVideoResolution,
 	FieldVideoDurationSeconds,
@@ -282,6 +291,10 @@ var (
 	ImageOutputSizeValidator func(string) error
 	// ImageSizeSourceValidator is a validator for the "image_size_source" field. It is called by the builders before save.
 	ImageSizeSourceValidator func(string) error
+	// MediaTypeValidator is a validator for the "media_type" field. It is called by the builders before save.
+	MediaTypeValidator func(string) error
+	// VideoTaskIDValidator is a validator for the "video_task_id" field. It is called by the builders before save.
+	VideoTaskIDValidator func(string) error
 	// DefaultVideoCount holds the default value on creation for the "video_count" field.
 	DefaultVideoCount int
 	// VideoResolutionValidator is a validator for the "video_resolution" field. It is called by the builders before save.
@@ -503,6 +516,16 @@ func ByImageOutputSize(opts ...sql.OrderTermOption) OrderOption {
 // ByImageSizeSource orders the results by the image_size_source field.
 func ByImageSizeSource(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldImageSizeSource, opts...).ToFunc()
+}
+
+// ByMediaType orders the results by the media_type field.
+func ByMediaType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMediaType, opts...).ToFunc()
+}
+
+// ByVideoTaskID orders the results by the video_task_id field.
+func ByVideoTaskID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVideoTaskID, opts...).ToFunc()
 }
 
 // ByVideoCount orders the results by the video_count field.

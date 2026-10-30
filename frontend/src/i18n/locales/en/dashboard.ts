@@ -120,12 +120,14 @@ export default {
     providers: {
       anthropic: 'Anthropic',
       openai: 'OpenAI',
+      video: 'Video Creation',
       domestic: 'Chinese AI',
       other: 'Other'
     },
     providerHints: {
       anthropic: 'Choose an available Anthropic / Claude group',
       openai: 'Choose an available OpenAI / GPT group',
+      video: 'Create a key for oo-sd25-1080p and use it in the video studio',
       domestic: 'Includes DeepSeek, Kimi, Zhipu GLM and MiniMax',
       other: 'Includes Gemini, Grok, Antigravity, OpenCode and mixed groups'
     },

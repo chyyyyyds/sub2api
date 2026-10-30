@@ -110,7 +110,9 @@ type Group struct {
 	LongContextPricingEnabled bool     `json:"long_context_pricing_enabled"`
 
 	// 图片生成计费配置（仅 antigravity 平台使用）
-	AllowImageGeneration         bool    `json:"allow_image_generation"`
+	AllowImageGeneration bool `json:"allow_image_generation"`
+	// AllowKokoVideoGeneration 控制 KOKO 视频新任务，默认关闭。
+	AllowKokoVideoGeneration     bool    `json:"allow_koko_video_generation"`
 	AllowBatchImageGeneration    bool    `json:"allow_batch_image_generation"`
 	ImageRateIndependent         bool    `json:"image_rate_independent"`
 	ImageRateMultiplier          float64 `json:"image_rate_multiplier"`
@@ -663,6 +665,16 @@ type UsageLog struct {
 	ImageSizeSource    *string        `json:"image_size_source"`
 	ImageSizeBreakdown map[string]int `json:"image_size_breakdown"`
 	MediaType          *string        `json:"media_type"`
+	// VideoCount 本次成功结算的视频数量。
+	VideoCount int `json:"video_count"`
+	// VideoResolution 视频分辨率原值。
+	VideoResolution *string `json:"video_resolution"`
+	// VideoDurationSeconds 视频时长（秒）。
+	VideoDurationSeconds *int `json:"video_duration_seconds"`
+	// VideoTaskID 本地视频任务关联编号。
+	VideoTaskID *string `json:"video_task_id,omitempty"`
+	// VideoPricingSnapshot 创建时价格及倍率快照。
+	VideoPricingSnapshot *VideoUserPricingSnapshot `json:"video_pricing_snapshot,omitempty"`
 
 	// User-Agent
 	UserAgent *string `json:"user_agent"`

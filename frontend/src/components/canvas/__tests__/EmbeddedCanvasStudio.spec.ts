@@ -173,13 +173,15 @@ describe('图片创作桥接与用户会话', () => {
     expect(wrapper.find('iframe').attributes('style')).toContain('pointer-events: none')
     expect(wrapper.text()).toContain('imageStudio.incompatible')
   })
-  it('视频外壳不展示旧模型、不创建任务', async () => {
+  it('视频读取专用能力目录，不再使用旧图片模型或创建任务', async () => {
     const wrapper = await render()
     const vm = wrapper.vm as unknown as { kind: CreationKind; modelOptions: unknown[]; credential: unknown }
+    vi.mocked(axios.get).mockImplementation(async url => ({ data: { data: [{ id: url === '/v1/video-models' ? 'mock-koko-video' : 'gpt-image-2' }] } }))
     vm.kind = 'video'
     await flushPromises()
-    expect(vm.modelOptions).toEqual([])
-    expect(vm.credential).toBeNull()
+    expect(vm.modelOptions).toEqual([{ value: 'mock-koko-video', label: 'mock-koko-video' }])
+    expect(vm.credential).toMatchObject({ model: 'mock-koko-video', keyId: 1 })
+    expect(axios.get).toHaveBeenCalledWith('/v1/video-models', expect.objectContaining({ headers: { Authorization: 'Bearer fixture-user-key' } }))
   })
   it('只展示所选 Key 的模型，切模型不暗中跨 Key，手动切 Key 重新读取目录', async () => {
     const fixture = (id: number) => ({ id, name: `Key${id}`, user_id: 101, status: 'active', key: `fixture-key-${id}` })

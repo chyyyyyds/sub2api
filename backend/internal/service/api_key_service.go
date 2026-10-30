@@ -288,6 +288,7 @@ type RateLimitCacheInvalidator interface {
 }
 
 type APIKeyService struct {
+	videoQuota                VideoRepository
 	apiKeyRepo                APIKeyRepository
 	userRepo                  UserRepository
 	groupRepo                 GroupRepository
@@ -1215,4 +1216,11 @@ func (s *APIKeyService) UpdateRateLimitUsage(ctx context.Context, apiKeyID int64
 		return nil
 	}
 	return s.apiKeyRepo.IncrementRateLimitUsage(ctx, apiKeyID, cost)
+}
+
+func (s *APIKeyService) CheckVideoPending(ctx context.Context, key *APIKey) error {
+	if s.videoQuota == nil || key == nil || key.GroupID == nil {
+		return nil
+	}
+	return s.videoQuota.CheckAdmission(ctx, key.UserID, key.ID, *key.GroupID, "0")
 }

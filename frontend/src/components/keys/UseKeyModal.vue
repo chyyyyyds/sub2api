@@ -21,6 +21,11 @@
         </div>
       </div>
 
+      <div v-else-if="platform === 'video'" class="space-y-4">
+        <p class="text-sm text-gray-600 dark:text-gray-400">此 Key 用于视频创作。直接进入工作台，上传参考素材并生成 oo-sd25-1080p 视频。</p>
+        <RouterLink class="btn btn-primary inline-flex" :to="{ path: '/ai-creation/video', query: keyId ? { key_id: String(keyId) } : {} }" @click="emit('close')">进入视频创作</RouterLink>
+        <p class="text-xs text-gray-500">1080P · 参数以实时模型目录为准 · 任务完成后可预览和下载</p>
+      </div>
       <!-- Platform-specific content -->
       <template v-else>
         <!-- Description -->
@@ -291,6 +296,8 @@ interface Props {
   apiKey: string
   baseUrl: string
   platform: GroupPlatform | null
+  /** @description 指向当前用户 Key 的编号，不包含密钥明文。 */
+  keyId?: number
   claudeCodeOnly?: boolean
   allowMessagesDispatch?: boolean
 }

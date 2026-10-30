@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math"
 	"strconv"
 	"sync"
@@ -105,6 +106,7 @@ type subscriptionCacheInvalidationPubSub interface {
 // BillingCacheService 计费缓存服务
 // 负责余额和订阅数据的缓存管理，提供高性能的计费资格检查
 type BillingCacheService struct {
+	videoQuota            VideoRepository
 	cache                 BillingCache
 	userRepo              UserRepository
 	subRepo               UserSubscriptionRepository
@@ -862,6 +864,11 @@ func (s *BillingCacheService) checkFixedChargeSubscription(ctx context.Context, 
 
 // checkFixedChargeAPIKey 按库中 Key 用量校验总额度与限速窗口覆盖 pending；未接入仓储时使用请求上下文与限速缓存中的用量。
 func (s *BillingCacheService) checkFixedChargeAPIKey(ctx context.Context, apiKey *APIKey, pending float64) error {
+	if s.videoQuota != nil && apiKey != nil && apiKey.GroupID != nil {
+		if err := s.videoQuota.CheckAdmission(ctx, apiKey.UserID, apiKey.ID, *apiKey.GroupID, decimal.NewFromFloat(pending).String()); err != nil {
+			return ErrBillingServiceUnavailable.WithCause(err)
+		}
+	}
 	if apiKey.Quota <= 0 && !apiKey.HasRateLimits() {
 		return nil
 	}

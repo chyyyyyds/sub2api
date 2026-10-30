@@ -248,7 +248,7 @@
           </button>
           <!-- 没有专属界面的多协议供应商：通用表单（模式 / 协议 / 端点来自 profile） -->
           <button
-            v-for="spec in extraMultiProtocolPlatforms"
+            v-for="spec in [...extraMultiProtocolPlatforms, { id: 'video', display_name: '视频创作' }]"
             :key="spec.id"
             type="button"
             :data-testid="`platform-button-${spec.id}`"
@@ -266,6 +266,8 @@
         </div>
       </div>
 
+      <!-- 视频使用独立平台和 API Key，不展示聊天协议选项。 -->
+      <p v-if="form.platform === 'video'" class="input-hint">视频创作 · KOKO API Key · 完整地址 /openapi/v1</p>
       <!-- Account Type Selection (Anthropic) -->
       <div v-if="form.platform === 'anthropic'">
         <label class="input-label">{{ t('admin.accounts.accountType') }}</label>
@@ -1564,6 +1566,7 @@
 
         <!-- 上游倍率自动探测：全部 API-key 平台可用（所在区块已限定 apikey 类型） -->
         <div
+          v-if="form.platform !== 'video'"
           class="flex items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-dark-600"
         >
           <div>
@@ -4264,7 +4267,7 @@ const apiKeyHint = computed(() => {
   if (form.platform === 'openai') return t('admin.accounts.openai.apiKeyHint')
   if (form.platform === 'gemini') return t('admin.accounts.gemini.apiKeyHint')
   // Grok 与多协议供应商没有对应的说明文案；通用文案指 Claude Console Key。
-  if (form.platform === 'grok' || isMultiProtocolPlatform.value) return ''
+  if (form.platform === 'grok' || form.platform === 'video' || isMultiProtocolPlatform.value) return ''
   return t('admin.accounts.apiKeyHint')
 })
 
@@ -4275,6 +4278,8 @@ const apiKeyBaseUrlPlaceholder = computed(() => {
     return defaultCNBaseUrl(form.platform, mode, apiProtocol.value) || 'https://api.example.com'
   }
   switch (form.platform) {
+    case 'video':
+      return 'https://pay.kokoai.online/openapi/v1'
     case 'openai':
       return 'https://api.openai.com'
     case 'gemini':
@@ -4290,6 +4295,8 @@ const apiKeyBaseUrlPlaceholder = computed(() => {
 
 const apiKeyValuePlaceholder = computed(() => {
   switch (form.platform) {
+    case 'video':
+      return 'koko_live_...'
     case 'openai':
       return 'sk-proj-...'
     case 'gemini':
@@ -4529,7 +4536,7 @@ function selectTypeSafePlatform() {
   apiKeyBaseUrl.value = 'https://api.typesafe.ai'
   allowedModels.value = ['jev-latest']
 }
-function selectGenericMultiProtocolPlatform(platform: string) {
+function selectGenericMultiProtocolPlatform(platform: string) { if (platform === 'video') { form.platform = platform; form.type = 'apikey'; accountCategory.value = 'apikey'; apiKeyBaseUrl.value = 'https://pay.kokoai.online/openapi/v1'; return }
   form.platform = platform
   form.type = 'apikey'
   accountCategory.value = 'apikey'
@@ -4812,19 +4819,23 @@ const openAITextEndpointCapabilityLabel = computed(() => {
 const openAIEndpointCapabilityOptions = computed<{ value: OpenAIEndpointCapability; label: string }[]>(() => [
   { value: 'chat_completions', label: openAITextEndpointCapabilityLabel.value },
   { value: 'embeddings', label: t('admin.accounts.openai.capabilityEmbeddings') },
-  { value: 'seedance', label: 'Seedance (Ark)' }
+  { value: 'seedance', label: 'Seedance (Ark)' },
+
 ])
 const openAITextGenerationCapabilityEnabled = computed(() =>
   openAIEndpointCapabilities.value.includes('chat_completions')
 )
 
 const normalizeOpenAIEndpointCapabilities = (values: OpenAIEndpointCapability[]) => {
-  const allowed: OpenAIEndpointCapability[] = ['chat_completions', 'embeddings', 'seedance']
+  const allowed: OpenAIEndpointCapability[] = ['chat_completions', 'embeddings', 'seedance', 'koko_video']
   const selected = allowed.filter((value) => values.includes(value))
   return selected.length > 0 ? selected : ['chat_completions', 'embeddings'] as OpenAIEndpointCapability[]
 }
 
 const toggleOpenAIEndpointCapability = (capability: OpenAIEndpointCapability, event?: Event) => {
+  // KOKO 是独立视频供应商，避免被聊天或图片调度器误选。
+  if (capability === 'koko_video') { openAIEndpointCapabilities.value = ['koko_video']; return }
+  if (openAIEndpointCapabilities.value.includes('koko_video')) { openAIEndpointCapabilities.value = [capability]; return }
   if (openAIEndpointCapabilities.value.includes(capability)) {
     if (openAIEndpointCapabilities.value.length <= 1) {
       const input = event?.target as HTMLInputElement | null
@@ -4847,7 +4858,7 @@ const toggleOpenAIEndpointCapability = (capability: OpenAIEndpointCapability, ev
 
 const applyOpenAIEndpointCapabilities = (credentials: Record<string, unknown>) => {
   const capabilities = normalizeOpenAIEndpointCapabilities(openAIEndpointCapabilities.value)
-  if (capabilities.length === 2 && !capabilities.includes('seedance')) {
+  if (capabilities.length === 2 && !capabilities.includes('seedance') && !capabilities.includes('koko_video')) {
     delete credentials.openai_capabilities
     return
   }
@@ -5135,6 +5146,7 @@ watch(
 watch(
   () => form.platform,
   (newPlatform) => {
+    if (newPlatform === 'video') { upstreamBillingAutoProbeEnabled.value = false; accountCategory.value = 'apikey'; apiKeyBaseUrl.value = 'https://pay.kokoai.online/openapi/v1'; allowedModels.value = []; modelMappings.value = []; return }
     // Reset base URL based on platform
     if (isMultiProtocolApiKeyPlatform(newPlatform)) {
       const mode = newPlatform === 'opencode_go' ? openCodeAccountMode.value : accountMode.value

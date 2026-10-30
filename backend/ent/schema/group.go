@@ -102,6 +102,7 @@ func (Group) Fields() []ent.Field {
 		field.Int("default_validity_days").
 			Default(30),
 
+		field.Bool("allow_koko_video_generation").Default(false).Comment("是否允许 KOKO 视频收费创建，默认关闭"),
 		// 图片生成计费配置（antigravity 和 gemini 平台使用）
 		field.Bool("allow_image_generation").
 			Default(false).

@@ -1009,7 +1009,8 @@ func decodeUpstreamBillingProbeSnapshot(extra map[string]any) *UpstreamBillingPr
 // type=apikey by the admin form, so only pre-existing type=upstream rows
 // cannot turn the probe on.
 func IsUpstreamBillingProbeIdentity(platform, accountType string) bool {
-	return accountType == AccountTypeAPIKey && domain.IsConcretePlatform(platform)
+	// 视频提供方使用自己的账号状态接口，不发送聊天供应商的余额探测请求。
+	return accountType == AccountTypeAPIKey && platform != PlatformVideo && domain.IsConcretePlatform(platform)
 }
 
 func isUpstreamBillingProbeAccount(account *Account) bool {

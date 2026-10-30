@@ -1,0 +1,2089 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sub2API 视频创作",
+    "version": "6.6.6",
+    "description": "独立 video 平台，目前只开放 oo-sd25-1080p，固定 1080P。参数限制以 GET /models 实时返回为准。创建请求先保存本地持久任务，202 返回后由服务器后台提交；高峰提交允许等待十分钟，浏览器每六十秒更新本站记录。成功结算一次，失败解冻一次。"
+  },
+  "paths": {
+    "/v1/videos": {
+      "post": {
+        "summary": "创建视频任务并原子冻结费用",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PlatformAPIKey": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoCreateRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "8–100 位字母、数字、下划线或横线；重试必须保持原键和原参数。",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,100}$"
+            }
+          }
+        ]
+      },
+      "get": {
+        "summary": "分页查询当前 Key 和原分组的视频任务",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PlatformAPIKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "parameters": [
+          {
+            "name": "before",
+            "in": "query",
+            "description": "上一页 next_cursor；每页最多 100 条。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idempotency_key",
+            "in": "query",
+            "description": "只读确认原提交，不创建任务。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/video-models": {
+      "get": {
+        "summary": "查询授权视频目录与真实参数能力",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PlatformAPIKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoModelListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        }
+      }
+    },
+    "/v1/video-quote": {
+      "get": {
+        "summary": "只读查询美元基价和用户分组倍率",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PlatformAPIKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoQuote"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "parameters": [
+          {
+            "name": "model",
+            "in": "query",
+            "required": true,
+            "description": "请求模型",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "duration",
+            "in": "query",
+            "required": true,
+            "description": "视频秒数",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": true,
+            "description": "分辨率原值",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "description": "已核实模式",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/videos/{request_id}": {
+      "get": {
+        "summary": "查询本地原任务",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PlatformAPIKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/videos/{request_id}/content": {
+      "get": {
+        "summary": "流式中继下载原文件，不落盘和缓存完整 MP4",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PlatformAPIKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "完整文件或 HEAD 元数据",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "部分内容",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "范围不满足",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Range",
+            "in": "header",
+            "description": "单段字节范围",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Range",
+            "in": "header",
+            "description": "原文件强 ETag 或 Last-Modified",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "head": {
+        "summary": "流式中继下载原文件，不落盘和缓存完整 MP4",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PlatformAPIKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "完整文件或 HEAD 元数据",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "部分内容",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "范围不满足",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Range",
+            "in": "header",
+            "description": "单段字节范围",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Range",
+            "in": "header",
+            "description": "原文件强 ETag 或 Last-Modified",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/accounts/{id}/koko/refresh": {
+      "post": {
+        "summary": "只读连通性和实时目录刷新",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/KokoAdminAccountResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/koko-video/initialize": {
+      "post": {
+        "summary": "幂等复用或创建分组、渠道及账号关联",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoInitializeResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoInitializeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/groups/{id}/koko-video": {
+      "get": {
+        "summary": "读取分组视频创建开关",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoGateRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "配置分组视频创建开关",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoGateRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoGateRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/video-tasks": {
+      "get": {
+        "summary": "管理员视频任务列表",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoListResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/video-tasks/{id}": {
+      "get": {
+        "summary": "管理员原任务详情",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoTask"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/video-tasks/{id}/audit": {
+      "get": {
+        "summary": "任务状态和财务审计",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoAuditRecord"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/video-tasks/{id}/reconcile": {
+      "post": {
+        "summary": "只读核实并绑定原上游任务，绝不重新生成",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoActionResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoReconcileRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/video-tasks/{id}/retry-billing": {
+      "post": {
+        "summary": "恢复原结算或退款事件，不新建收费意图",
+        "description": "管理接口沿用管理员认证和审计。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoActionResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoReconcileRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/user/video-tasks": {
+      "get": {
+        "summary": "登录用户跨本人 Key 查看持久历史",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoListResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        }
+      }
+    },
+    "/api/v1/user/video-tasks/{id}": {
+      "get": {
+        "summary": "登录用户查看本人历史详情",
+        "description": "API Key 必须属于当前用户；原任务归属固定，查询和下载不会触发新的生成收费。",
+        "security": [
+          {
+            "PanelJWT": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "现有面板标准响应封装",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 表示成功"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "结果说明"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VideoTask"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、权限或能力拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在或无权访问"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "本地任务或已有实体编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "PlatformAPIKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "本站用户 API Key，绝不是 KOKO 上游 Key。"
+      },
+      "PanelJWT": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "现有面板 JWT；管理员接口还校验管理员角色。"
+      }
+    },
+    "schemas": {
+      "KokoMediaCapability": {
+        "type": "object",
+        "description": "KokoMediaCapability；字段说明以中文注释为准。",
+        "properties": {
+          "supported": {
+            "type": "boolean",
+            "description": "Supported 是否支持该种素材。"
+          },
+          "max": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Max 素材数量上限。"
+          },
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Formats 上游明确支持的格式。"
+          }
+        },
+        "required": [
+          "supported",
+          "max",
+          "formats"
+        ]
+      },
+      "KokoVideoModel": {
+        "type": "object",
+        "description": "KokoVideoModel；字段说明以中文注释为准。",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID 实际上游模型标识。"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name 模型显示名称。"
+          },
+          "type": {
+            "type": "string",
+            "description": "Type 模型类型。"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enabled 上游是否启用。"
+          },
+          "maintenance": {
+            "type": "boolean",
+            "description": "Maintenance 上游是否处于维护状态。"
+          },
+          "max_prompt_length": {
+            "type": "integer",
+            "format": "int32",
+            "description": "MaxPromptLength 提示词 UTF-16 单元上限，0 表示不限。"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Duration 上游默认时长。"
+          },
+          "durations": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Durations 支持的秒数。"
+          },
+          "ratio": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ratios 支持的宽高比。"
+          },
+          "resolutions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Resolutions 支持的分辨率原值。"
+          },
+          "reference_images": {
+            "$ref": "#/components/schemas/KokoMediaCapability",
+            "description": "Images 参考图片能力。"
+          },
+          "reference_audios": {
+            "$ref": "#/components/schemas/KokoMediaCapability",
+            "description": "Audios 参考音频能力。"
+          },
+          "duration_prices": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "DurationPrices 上游各时长积分，绝不作为美元价格。"
+          },
+          "modes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Modes 仅接受实时目录或管理员已核实合同声明的模式。"
+          },
+          "requires_image": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "RequiresImage 图片必需规则；未知时为 null。"
+          },
+          "evidence_source": {
+            "type": "string",
+            "description": "EvidenceSource 实时能力和管理员合同的来源说明。"
+          },
+          "integration_supported": {
+            "type": "boolean",
+            "description": "是否已接入该模型协议，未接入项只供管理员查看。"
+          },
+          "studio_enabled": {
+            "type": "boolean",
+            "description": "是否已在此账号开放视频创作。"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "enabled",
+          "maintenance",
+          "max_prompt_length",
+          "duration",
+          "durations",
+          "ratio",
+          "resolutions",
+          "reference_images",
+          "reference_audios",
+          "duration_prices"
+        ]
+      },
+      "VideoCreateRequest": {
+        "type": "object",
+        "description": "VideoCreateRequest；字段说明以中文注释为准。",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Model 用户请求的模型名称。",
+            "example": "oo-sd25-1080p"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Prompt 中文或其他语言的提示词。",
+            "example": "一艘帆船驶过清晨的湖面，镜头缓慢拉远"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Duration 视频秒数。",
+            "example": 30
+          },
+          "ratio": {
+            "type": "string",
+            "description": "Ratio 宽高比。",
+            "example": "16:9"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "Resolution 分辨率，以目录原值为准。",
+            "example": "1080p"
+          },
+          "mode": {
+            "type": "string",
+            "description": "全能参考模式，省略时默认为 reference；仅供本站处理，不向上游发送。",
+            "example": "reference"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Count 一次只允许一个视频。",
+            "enum": [
+              1
+            ],
+            "example": 1
+          },
+          "image_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Images HTTPS 或 data URL 图片参考素材。"
+          },
+          "audio_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Audios HTTPS 或 data URL 音频参考素材。"
+          }
+        },
+        "required": [
+          "model",
+          "prompt",
+          "duration",
+          "ratio",
+          "resolution"
+        ],
+        "additionalProperties": false
+      },
+      "KokoAccountStatus": {
+        "type": "object",
+        "description": "KokoAccountStatus；字段说明以中文注释为准。",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Status 上游账号状态。"
+          },
+          "balance": {
+            "type": "string",
+            "description": "Balance 上游积分余额，十进制字符串。"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency 积分单位。"
+          }
+        },
+        "required": [
+          "status",
+          "balance",
+          "currency"
+        ]
+      },
+      "VideoTask": {
+        "type": "object",
+        "description": "VideoTask；字段说明以中文注释为准。",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID 本地公开任务编号。"
+          },
+          "model": {
+            "type": "string",
+            "description": "Model 用户请求模型。"
+          },
+          "actual_model": {
+            "type": "string",
+            "description": "ActualModel 实际调用模型。"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status 生成状态。"
+          },
+          "billing_state": {
+            "type": "string",
+            "description": "BillingState HELD/CAPTURED/RELEASED。"
+          },
+          "charge": {
+            "type": "string",
+            "description": "Charge 创建时冻结的美元金额。"
+          },
+          "download_state": {
+            "type": "string",
+            "description": "DownloadState 文件可用性。"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Duration 视频秒数。"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "Resolution 分辨率。"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "CreatedAt 创建时间。"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UpdatedAt 最近状态更新时间。"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "CompletedAt 完成时间，未完成时为 null。"
+          },
+          "retention_expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "ExpiresAt 可信上游文件到期时间；未知时为 null。"
+          },
+          "api_key_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "APIKeyID 任务原始用户 Key 编号。"
+          },
+          "api_key_name": {
+            "type": "string",
+            "description": "APIKeyName 原 Key 显示名称，不包含密钥明文。"
+          },
+          "api_key_status": {
+            "type": "string",
+            "description": "APIKeyStatus 原 Key 当前状态；已删除时为 deleted。"
+          },
+          "error_code": {
+            "type": "string",
+            "description": "ErrorCode 受控错误码。"
+          }
+        },
+        "required": [
+          "id",
+          "model",
+          "actual_model",
+          "status",
+          "billing_state",
+          "charge",
+          "download_state",
+          "duration",
+          "resolution",
+          "created_at",
+          "updated_at",
+          "api_key_id",
+          "api_key_name",
+          "api_key_status",
+          "error_code"
+        ]
+      },
+      "VideoPriceSnapshot": {
+        "type": "object",
+        "description": "VideoPriceSnapshot；字段说明以中文注释为准。",
+        "properties": {
+          "base_price": {
+            "type": "string",
+            "description": "BasePrice 站内明确配置的每个视频美元基价。"
+          },
+          "group_multiplier": {
+            "type": "string",
+            "description": "Multiplier 生效分组倍率。"
+          },
+          "charge": {
+            "type": "string",
+            "description": "Charge 最终冻结和实际收费。"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency 下游结算币种。"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Duration 秒数。"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "Resolution 分辨率。"
+          },
+          "tier": {
+            "type": "string",
+            "description": "Tier 参数价格档标签。"
+          },
+          "account_multiplier": {
+            "type": "string",
+            "description": "AccountMultiplier 原账号统计倍率快照。"
+          },
+          "account_cost": {
+            "type": "string",
+            "description": "AccountCost 账号统计美元成本，不等于上游积分。"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source 正式价格来源，只允许 group 或 channel。"
+          }
+        },
+        "required": [
+          "base_price",
+          "group_multiplier",
+          "charge",
+          "currency",
+          "duration",
+          "resolution",
+          "tier",
+          "account_multiplier",
+          "account_cost",
+          "source"
+        ]
+      },
+      "VideoInitializeRequest": {
+        "type": "object",
+        "description": "VideoInitializeRequest；字段说明以中文注释为准。",
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "AccountID 管理员已配置的 KOKO Account。"
+          },
+          "group_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "GroupID 可选已有分组；为零时复用或创建专属关闭分组。"
+          },
+          "channel_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ChannelID 可选已有渠道；为零时复用或创建专属渠道。"
+          }
+        },
+        "required": [
+          "account_id",
+          "group_id",
+          "channel_id"
+        ]
+      },
+      "VideoInitializeResult": {
+        "type": "object",
+        "description": "VideoInitializeResult；字段说明以中文注释为准。",
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "AccountID 已关联的账号。"
+          },
+          "group_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "GroupID 已关联的分组。"
+          },
+          "channel_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ChannelID 已关联的渠道。"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Models 本次关联的实时启用视频模型。"
+          },
+          "creation_enabled": {
+            "type": "boolean",
+            "description": "CreationEnabled 收费创建开关，初始化不自动开启。"
+          }
+        },
+        "required": [
+          "account_id",
+          "group_id",
+          "channel_id",
+          "models",
+          "creation_enabled"
+        ]
+      },
+      "VideoPublicModel": {
+        "type": "object",
+        "description": "VideoPublicModel；字段说明以中文注释为准。",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID 用户可调用的模型。"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name 显示名称。"
+          },
+          "durations": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Durations 视频秒数列表。"
+          },
+          "ratios": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ratios 比例列表。"
+          },
+          "resolutions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Resolutions 分辨率列表。"
+          },
+          "modes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Modes 已确认的模式。"
+          },
+          "reference_images": {
+            "$ref": "#/components/schemas/KokoMediaCapability",
+            "description": "Images 参考图能力。"
+          },
+          "reference_audios": {
+            "$ref": "#/components/schemas/KokoMediaCapability",
+            "description": "Audios 参考音频能力。"
+          },
+          "requires_image": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "RequiresImage 是否必须提供参考图，未知时为 null。"
+          },
+          "creation_enabled": {
+            "type": "boolean",
+            "description": "CreationEnabled 当前是否允许提交。"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason 未开放原因。"
+          },
+          "max_prompt_length": {
+            "type": "integer",
+            "description": "上游提示词 UTF-16 单元上限，0 表示不限。",
+            "example": 8000
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "durations",
+          "ratios",
+          "resolutions",
+          "modes",
+          "reference_images",
+          "reference_audios",
+          "creation_enabled",
+          "reason"
+        ]
+      },
+      "VideoQuote": {
+        "type": "object",
+        "description": "VideoQuote；字段说明以中文注释为准。",
+        "properties": {
+          "base_price": {
+            "type": "string",
+            "description": "BasePrice 明确配置的美元基价。"
+          },
+          "group_multiplier": {
+            "type": "string",
+            "description": "Multiplier 当前用户分组倍率。"
+          },
+          "charge": {
+            "type": "string",
+            "description": "Charge 本次预计冻结金额。"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency 结算币种。"
+          }
+        },
+        "required": [
+          "base_price",
+          "group_multiplier",
+          "charge",
+          "currency"
+        ]
+      },
+      "VideoListResponse": {
+        "type": "object",
+        "description": "VideoListResponse；字段说明以中文注释为准。",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoTask"
+            },
+            "description": "Data 当前用户原 Key 的视频任务。"
+          },
+          "next_cursor": {
+            "type": "string",
+            "description": "NextCursor 下一页游标；空表示本页没有更多记录。"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "VideoModelListResponse": {
+        "type": "object",
+        "description": "VideoModelListResponse；字段说明以中文注释为准。",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoPublicModel"
+            },
+            "description": "Data 当前用户 Key 有权使用的视频模型。"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "KokoAdminAccountResponse": {
+        "type": "object",
+        "description": "KokoAdminAccountResponse；字段说明以中文注释为准。",
+        "properties": {
+          "account": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KokoAccountStatus"
+              }
+            ],
+            "nullable": true,
+            "description": "Account 上游状态和积分余额。"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KokoVideoModel"
+            },
+            "description": "Models 完整实时目录，包含维护和停用项。"
+          },
+          "group_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "GroupIDs 账号当前关联的现有分组。"
+          }
+        },
+        "required": [
+          "models",
+          "group_ids"
+        ]
+      },
+      "VideoGateRequest": {
+        "type": "object",
+        "description": "VideoGateRequest；字段说明以中文注释为准。",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Enabled 是否允许新任务；生产真实收费验证完成前保持 false。"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "VideoActionResult": {
+        "type": "object",
+        "description": "VideoActionResult；字段说明以中文注释为准。",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Success 原任务或原账务操作是否成功受理。"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "VideoReconcileRequest": {
+        "type": "object",
+        "description": "VideoReconcileRequest；字段说明以中文注释为准。",
+        "properties": {
+          "upstream_id": {
+            "type": "string",
+            "description": "UpstreamID 待验证的原上游任务编号。"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason 核对依据或恢复原因，必填。"
+          }
+        },
+        "required": [
+          "upstream_id",
+          "reason"
+        ]
+      },
+      "VideoErrorDetail": {
+        "type": "object",
+        "description": "VideoErrorDetail；字段说明以中文注释为准。",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Code 可用于判断重试或核对的安全错误码。"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message 面向用户的错误说明。"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "VideoErrorResponse": {
+        "type": "object",
+        "description": "VideoErrorResponse；字段说明以中文注释为准。",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/VideoErrorDetail",
+            "description": "Error 错误详情。"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "VideoFinancialAudit": {
+        "type": "object",
+        "description": "VideoFinancialAudit；字段说明以中文注释为准。",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID 预留记录编号。"
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "UserID 原用户。"
+          },
+          "api_key_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "APIKeyID 原用户 Key。"
+          },
+          "funding_source": {
+            "type": "string",
+            "description": "FundingSource wallet 或 subscription。"
+          },
+          "subscription_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "SubscriptionID 原订阅编号。"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency 下游结算币种。"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Amount 原冻结额。"
+          },
+          "captured_amount": {
+            "type": "string",
+            "description": "CapturedAmount 实际结算额。"
+          },
+          "state": {
+            "type": "string",
+            "description": "State HELD、CAPTURED 或 RELEASED。"
+          },
+          "finalized_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "FinalizedAt 账务终结时间。"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "api_key_id",
+          "funding_source",
+          "currency",
+          "amount",
+          "captured_amount",
+          "state"
+        ]
+      },
+      "VideoBillingAudit": {
+        "type": "object",
+        "description": "VideoBillingAudit；字段说明以中文注释为准。",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID 账务事件编号。"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation CAPTURE、RELEASE 或缓存失效操作。"
+          },
+          "request_id": {
+            "type": "string",
+            "description": "RequestID 稳定的账务幂等键。"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status PENDING、RETRY、APPLIED 或 REVIEW。"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Attempts 已尝试次数。"
+          },
+          "last_error_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "LastErrorCode 受控错误码。"
+          },
+          "payload_hash": {
+            "type": "string",
+            "description": "PayloadHash 原价格快照指纹。"
+          },
+          "applied_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "AppliedAt 实际应用时间。"
+          }
+        },
+        "required": [
+          "id",
+          "operation",
+          "request_id",
+          "status",
+          "attempts",
+          "payload_hash"
+        ]
+      },
+      "VideoAuditEvidence": {
+        "type": "object",
+        "description": "VideoAuditEvidence；字段说明以中文注释为准。",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Reason 管理员核对或恢复原因。"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Evidence 服务器验证的证据说明。"
+          }
+        }
+      },
+      "VideoStateAudit": {
+        "type": "object",
+        "description": "VideoStateAudit；字段说明以中文注释为准。",
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "description": "EventType 状态或管理操作类型。"
+          },
+          "event_key": {
+            "type": "string",
+            "description": "EventKey 事件唯一键。"
+          },
+          "actor_type": {
+            "type": "string",
+            "description": "ActorType system、user 或 admin。"
+          },
+          "actor_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "ActorID 操作者编号。"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "CreatedAt 事件发生时间。"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/VideoAuditEvidence",
+            "description": "Payload 恢复依据。"
+          }
+        },
+        "required": [
+          "event_type",
+          "event_key",
+          "actor_type",
+          "created_at",
+          "payload"
+        ]
+      },
+      "VideoAuditRecord": {
+        "type": "object",
+        "description": "VideoAuditRecord；字段说明以中文注释为准。",
+        "properties": {
+          "task": {
+            "type": "string",
+            "description": "Task 本地任务编号。"
+          },
+          "account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "AccountID 原账号。"
+          },
+          "group_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "GroupID 原分组。"
+          },
+          "channel_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ChannelID 原渠道。"
+          },
+          "pricing_snapshot": {
+            "$ref": "#/components/schemas/VideoPriceSnapshot",
+            "description": "PricingSnapshot 原价格、分组倍率与账号统计快照。"
+          },
+          "financial": {
+            "$ref": "#/components/schemas/VideoFinancialAudit",
+            "description": "Financial 唯一资金预留。"
+          },
+          "billing_events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoBillingAudit"
+            },
+            "description": "BillingEvents 结算、退款及缓存恢复事件。"
+          },
+          "task_events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoStateAudit"
+            },
+            "description": "TaskEvents 原任务状态和人工核对记录。"
+          }
+        },
+        "required": [
+          "task",
+          "account_id",
+          "group_id",
+          "channel_id",
+          "pricing_snapshot",
+          "financial",
+          "billing_events",
+          "task_events"
+        ]
+      },
+      "VideoUserPricingSnapshot": {
+        "type": "object",
+        "description": "VideoUserPricingSnapshot；字段说明以中文注释为准。",
+        "properties": {
+          "base_price": {
+            "type": "string",
+            "description": "BasePrice 创建时美元基价。"
+          },
+          "group_multiplier": {
+            "type": "string",
+            "description": "GroupMultiplier 创建时用户分组倍率。"
+          },
+          "charge": {
+            "type": "string",
+            "description": "Charge 实际结算美元金额。"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency 结算币种。"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Duration 视频秒数。"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "Resolution 分辨率原值。"
+          },
+          "tier": {
+            "type": "string",
+            "description": "Tier 命中的参数档。"
+          }
+        },
+        "required": [
+          "base_price",
+          "group_multiplier",
+          "charge",
+          "currency",
+          "duration",
+          "resolution",
+          "tier"
+        ]
+      }
+    }
+  }
+}
